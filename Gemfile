@@ -13,7 +13,7 @@ gem 'rdf', '~> 2.2'
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '4.2.7.1'
 # Use sqlite3 as the database for Active Record
-gem 'sqlite3'
+# gem 'sqlite3'
 # Use SCSS for stylesheets
 gem 'sass-rails', '~> 5.0'
 # Use Uglifier as compressor for JavaScript assets
@@ -83,7 +83,9 @@ gem 'media-element-logo-plugin'
 gem 'media_element_add_to_playlist', git: 'https://github.com/avalonmediasystem/media-element-add-to-playlist.git', tag: 'avalon-r6.1'
 gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/mediaelement-track-scrubber.git', tag: 'avalon-r6'
 
+gem 'dotenv-rails', '~> 2.1.1'
 
+gem 'pg', '~> 0.20.0'
 gem 'resque', '~> 1.26.0'
 gem 'resque-scheduler', '~> 4.3.0'
 
@@ -102,7 +104,6 @@ group :development, :test do
   gem 'solr_wrapper', '>= 0.16'
   gem 'fcrepo_wrapper'
   gem 'rspec-rails'
-  gem 'dotenv-rails'
 end
 
 group :development do
@@ -143,9 +144,6 @@ end
 
 group :mysql, optional: true do
   gem 'mysql2'
-end
-group :postgres, optional: true do
-  gem 'pg'
 end
 
 extra_gems = File.expand_path("../Gemfile.local",__FILE__)

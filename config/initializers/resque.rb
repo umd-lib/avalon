@@ -8,6 +8,8 @@ else
   Resque.redis = resque_config[rails_env]
 end
 
+Resque.logger = Logger.new(rails_root + "/log/resque.log")
+
 # Enable schedule tab in Resque web ui
 require 'resque-scheduler'
 require 'resque/scheduler/server'
