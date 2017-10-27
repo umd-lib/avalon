@@ -70,19 +70,12 @@ class CatalogController < ApplicationController
     #
     # :show may be set to false if you don't want the facet to be drawn in the
     # facet bar
-    config.add_facet_field 'avalon_resource_type_ssim', label: 'Format', limit: 5, collapse: false
-    config.add_facet_field 'creator_ssim', label: 'Main contributor', limit: 5
     config.add_facet_field 'date_sim', label: 'Date', limit: 5
     config.add_facet_field 'genre_sim', label: 'Genres', limit: 5
-    config.add_facet_field 'collection_ssim', label: 'Collection', limit: 5
-    config.add_facet_field 'unit_ssim', label: 'Unit', limit: 5
     config.add_facet_field 'language_sim', label: 'Language', limit: 5
     # Hide these facets if not a Collection Manager
-    config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
-    config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
     config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow", helper_method: :vgroup_display
     config.add_facet_field 'date_digitized_sim', label: 'Date Digitized', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"#, partial: 'blacklight/hierarchy/facet_hierarchy'
-    config.add_facet_field 'date_ingested_sim', label: 'Date Ingested', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
 
     # Have BL send all facet field names to Solr, which has been the default
     # previously. Simply remove these lines if you'd rather use Solr request
