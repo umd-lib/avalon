@@ -49,9 +49,3 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= display_metadata('Other Identifier', display_other_identifiers(@media_object)) %>
 
 </dl>
-<% if can? :inspect, @media_object %>
-  <%= link_to 'View Raw Metadata', inspect_media_object_path(@media_object.id, 'descMetadata'), :target => 'blank', :class => "btn btn-default btn-small" %>
-  <%= link_to 'View Fedora Objects', tree_media_object_path(@media_object.id), :id => 'show_object_tree', :target => 'blank', :class => "btn btn-default btn-small" %>
-  <div id="object_tree" data-src="<%=tree_media_object_path(@media_object.id)%>">
-  </div>
-<% end %>
