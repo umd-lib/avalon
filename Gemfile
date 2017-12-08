@@ -88,7 +88,7 @@ gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/me
 
 gem 'dotenv-rails', '~> 2.1.1'
 
-gem 'pg', '~> 0.20.0'
+gem 'pg'
 gem 'resque', '~> 1.26.0'
 gem 'resque-scheduler', '~> 4.3.0'
 
