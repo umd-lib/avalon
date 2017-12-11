@@ -17,6 +17,8 @@ require 'blacklight/catalog'
 
 class CatalogController < ApplicationController
 
+  include BlacklightRangeLimit::ControllerOverride
+
   include Hydra::Catalog
   include Hydra::MultiplePolicyAwareAccessControlsEnforcement
   include BlacklightHelperReloadFix

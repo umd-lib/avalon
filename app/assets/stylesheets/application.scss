@@ -12,6 +12,11 @@
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
  *   specific language governing permissions and limitations under the License.
  * ---  END LICENSE_HEADER BLOCK  ---
+
+ *
+ * Used by blacklight_range_limit
+ *= require  'blacklight_range_limit'
+ *
 */
 
 
@@ -41,6 +46,11 @@
  *= stub mediaelement/plugins/quality.css
 
  *= require_self
+
+ *
+ * Used by blacklight_range_limit
+ *= require  'blacklight_range_limit'
+ *
 */
 
 @import "bootstrap-sprockets";
