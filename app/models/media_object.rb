@@ -25,6 +25,9 @@ class MediaObject < ActiveFedora::Base
   include SpeedyAF::OrderedAggregationIndex
   include MediaObjectIntercom
   require 'avalon/controlled_vocabulary'
+  # Begin customization for LIBBCM-29
+  require 'date'
+  # End customization for LIBBCM-29
 
   include Kaminari::ActiveFedoraModelExtension
 
@@ -237,6 +240,31 @@ class MediaObject < ActiveFedora::Base
       solr_doc['avalon_resource_type_ssim'] = self.avalon_resource_type.map(&:titleize)
       solr_doc['identifier_ssim'] = self.identifier.map(&:downcase)
       solr_doc['all_comments_sim'] = all_comments
+
+      
+      # Begin customization for LIBBCM-29
+      # Add a trie date field
+      if solr_doc['date_ssi'] && '' !=  solr_doc['date_ssi']
+        solr_doc['date_dtti'] = solr_doc['date_ssi'] + 'T00:00:00Z'
+      end
+      
+      # Get the date object from temporal subject.
+      if solr_doc['time_sim'] && solr_doc['time_sim'][0]
+        dt = DateTime.strptime(solr_doc['time_sim'][0], '%Y-%m-%dT%H:%M')
+      end
+
+      if dt
+        # Add a string month field
+        solr_doc['month_si'] = dt.strftime('%B')
+
+        # Add an integer day field
+        solr_doc['day_ii'] = dt.day
+
+        # Add an integer hour field
+        solr_doc['hour_iti'] = dt.hour
+      end
+      # End customization for LIBBCM-29
+
       #Add all searchable fields to the all_text_timv field
       all_text_values = []
       all_text_values << solr_doc["title_tesi"]
