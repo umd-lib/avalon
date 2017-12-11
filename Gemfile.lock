@@ -255,6 +255,10 @@ GEM
       blacklight (~> 6.0)
       cancancan (~> 1.8)
       deprecation (~> 1.0)
+    blacklight_range_limit (6.3.0)
+      blacklight (>= 6.0.2)
+      jquery-rails
+      rails (>= 3.0)
     bootsnap (1.2.1)
       msgpack (~> 1.0)
     bootstrap-sass (3.3.7)
@@ -861,6 +865,7 @@ DEPENDENCIES
   aws-sdk-rails
   bixby
   blacklight (= 6.11.0)
+  blacklight_range_limit (~> 6.3.0)
   bootsnap
   bootstrap-toggle-rails!
   bootstrap_form
