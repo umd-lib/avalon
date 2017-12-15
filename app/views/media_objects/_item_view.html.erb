@@ -28,7 +28,10 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= render file: '_add_to_playlist.html.erb' if current_user.present? && is_mejs_2? %>
     <%= render partial: 'mejs4_add_to_playlist' if current_user.present? && is_mejs_4? %>
     <%= render 'workflow_progress' %>
-    <%= render 'share' if will_partial_list_render? :share %>
+    <div class='media_object_buttons'>
+      <%= render 'download' unless @currentStream.nil? %>
+      <%= render 'share' if will_partial_list_render? :share %>
+    </div>
 
     <!-- Sections -->
     <%= render partial: 'sections',
