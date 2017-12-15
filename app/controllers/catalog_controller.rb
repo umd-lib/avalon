@@ -70,7 +70,7 @@ class CatalogController < ApplicationController
     #
     # :show may be set to false if you don't want the facet to be drawn in the
     # facet bar
-    config.add_facet_field 'date_sim', label: 'Date', limit: 5
+    config.add_facet_field 'date_sim', label: 'Date', limit: 5, collapse: false
     config.add_facet_field 'genre_sim', label: 'Genres', limit: 5
     config.add_facet_field 'language_sim', label: 'Language', limit: 5
     # Hide these facets if not a Collection Manager
