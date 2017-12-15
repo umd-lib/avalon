@@ -85,6 +85,7 @@ Rails.application.routes.draw do
       get 'content/:file', :action => :deliver_content, :as => :inspect
       get 'track/:part', :action => :show, :as => :indexed_section
       get 'section/:content', :action => :show, :as => :id_section
+      get 'section/:content/download', :action => :download_section, :as => :section_download
       get 'section/:content/stream', :action => :show_stream_details, :as => :section_stream
       get 'tree', :action => :tree, :as => :tree
       get :confirm_remove

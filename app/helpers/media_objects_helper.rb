@@ -131,11 +131,14 @@ module MediaObjectsHelper
      def structure_html section, index, show_progress
        current = is_current_section? section
        progress_div = show_progress ? '<div class="status-detail alert" style="display: none"></div>' : ''
-
+       download_link = section_download_media_object_url(@media_object, section.id)
        headeropen = <<EOF
     <div class="panel-heading" role="tab" id="heading#{index}">
       <h4 class="panel-title #{ 'progress-indented' if progress_div.present? }">
       <button type="button" title="Add section to playlist" aria-label="Add section to playlist" class="structure_add_to_playlist outline_on btn btn-primary" data-scope="master_file" data-masterfile-id="#{section.id}"></button>
+      <a title="Download" href="#{download_link}" target="_blank" class="section-download-link">
+        <i class="fa fa-download" aria-hidden="true"></i>
+      </a>
 EOF
        headerclose = <<EOF
       #{progress_div}

@@ -764,9 +764,23 @@ a[data-trigger='submit'] {
   @extend .container-fluid;
 }
 
+.media_object_buttons {
+  margin-top: 10px;
+}
+
+#download-button {
+  text-align: right;
+  float: right;
+  margin-left: 5px;
+  margin-bottom: 0;
+  a:link, a:visited, a:hover, a:active {
+    text-decoration: none;
+    outline: 0;
+  }
+}
+
 #share-button {
   text-align: right;
-  margin-top: 10px;
   margin-bottom: 0;
   a:link, a:visited, a:hover, a:active {
     text-decoration: none;
@@ -855,6 +869,12 @@ $accordionPadding: 20px;
       }
     }
   }
+}
+
+.section-download-link {
+  float: right;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
 .current-section, .current-stream {

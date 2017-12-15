@@ -18,8 +18,8 @@ class MediaObjectsController < ApplicationController
   include Avalon::Workflow::WorkflowControllerBehavior
   include Avalon::Controller::ControllerBehavior
   include ConditionalPartials
-
-  before_filter :authenticate_user!, except: [:show, :set_session_quality, :show_stream_details]
+  
+  before_filter :authenticate_user!, except: [:show, :set_session_quality, :download_section, :show_stream_details]
   before_filter :authenticate_api!, only: [:show], if: proc{|c| request.format.json?}
   load_and_authorize_resource except: [:destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist_form, :add_to_playlist]
   # authorize_resource only: [:create, :update]
@@ -282,6 +282,27 @@ class MediaObjectsController < ApplicationController
       end
       format.json do
         render json: @media_object.to_json
+      end
+    end
+  end
+
+  def download_section
+    raise CanCan::AccessDenied unless current_ability.can? :read, @media_object
+    if params[:content]
+      begin
+        location = MasterFile.find(params[:content]).absolute_location
+        if location.nil? || location.empty?
+          flash[:notice] = "Download failed: Oringal file not stored."
+          return redirect_to media_object_path(@media_object.id)
+        end
+        location = location[7..-1] # Remove 'file://' prefix
+        send_file location
+      rescue ActiveFedora::ObjectNotFoundError
+        flash[:notice] = "Download failed: Cannot find section."
+        redirect_to media_object_path(@media_object.id)
+      rescue ActionController::MissingFile
+        flash[:notice] = "Download failed: File not found." + location
+        redirect_to media_object_path(@media_object.id)
       end
     end
   end

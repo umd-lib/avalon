@@ -32,6 +32,7 @@ development:
   groups:
     system_groups: [administrator, group_manager, manager]
   master_file_management:
+    # To support orignal file download, keep the strategy 'none'
     strategy: 'none' #'delete', or 'move' (for move uncomment and configure next line)
     #path: '/path/to/move/to'
   bib_retriever:
