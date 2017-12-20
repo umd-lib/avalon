@@ -76,7 +76,6 @@ class CatalogController < ApplicationController
     config.add_facet_field 'date_sim', label: 'Year', limit: 5, collapse: false
     config.add_facet_field 'month_si', label: 'Month', limit: 5
     config.add_facet_field 'day_ii', label: 'Day', limit: 5
-    config.add_facet_field 'date_dtti', label: 'Date Range', limit: 5, date: { format: :short }
     config.add_facet_field 'hour_iti', label: 'Hour Range', range: { assumed_boundaries: [0,23], segments: true} 
     # End customization for LIBBCM-29
     config.add_facet_field 'genre_sim', label: 'Genres', limit: 5
