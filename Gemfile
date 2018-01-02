@@ -8,6 +8,7 @@ gem 'active_fedora-datastreams'
 gem 'active_fedora-noid', '~> 2.0.2'
 gem 'speedy-af', '~>0.1.1'
 gem 'blacklight', '~> 6.6'
+gem 'blacklight_range_limit', ' ~> 6.3.2'
 gem 'rdf', '~> 2.2'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'

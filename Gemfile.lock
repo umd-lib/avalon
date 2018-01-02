@@ -228,6 +228,10 @@ GEM
       blacklight (~> 6.0)
       cancancan (~> 1.8)
       deprecation (~> 1.0)
+    blacklight_range_limit (6.3.0)
+      blacklight (>= 6.0.2)
+      jquery-rails
+      rails (>= 3.0)
     bootstrap-sass (3.3.7)
       autoprefixer-rails (>= 5.2.1)
       sass (>= 3.3.4)
@@ -775,6 +779,7 @@ DEPENDENCIES
   avalon-about!
   avalon-workflow!
   blacklight (~> 6.6)
+  blacklight_range_limit (~> 6.3.0)
   bootstrap-toggle-rails
   bootstrap_form
   browse-everything (~> 0.10.5)

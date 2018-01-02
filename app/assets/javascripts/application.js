@@ -31,3 +31,9 @@
 //= stub media_player_wrapper/mejs4_add_to_playlist
 
 //= require_tree .
+
+
+// For blacklight_range_limit built-in JS, if you don't want it you don't need
+// this:
+//= require 'blacklight_range_limit'
+
