@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20171120190443) do
+ActiveRecord::Schema.define(version: 20180102164651) do
 
   create_table "annotations", force: :cascade do |t|
     t.string  "uuid"
@@ -37,7 +37,7 @@ ActiveRecord::Schema.define(version: 20171120190443) do
 
   create_table "batch_entries", force: :cascade do |t|
     t.integer  "batch_registries_id"
-    t.text     "payload",             limit: 4294967295
+    t.text     "payload",
     t.boolean  "complete",                               default: false, null: false
     t.boolean  "error",                                  default: false, null: false
     t.string   "current_status"
