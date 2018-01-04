@@ -17,6 +17,8 @@
 @import "branding";
 @import "bootstrap/variables";
 //@import "bootstrap-responsive";
+$env-banner-height: 25px;
+@import "umd_lib_environment_banner";
 
 /**
  * Snippets to extend
