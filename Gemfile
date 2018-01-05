@@ -74,7 +74,7 @@ gem 'mediaelement-title', git:'https://github.com/avalonmediasystem/mediaelement
 gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/mediaelement-track-scrubber.git', tag: 'avalon-r6'
 
 gem 'dotenv-rails'
-gem 'pg'
+gem 'pg', '0.20.0'
 # Jobs
 gem 'redis-rails'
 gem 'resque', '~> 1.26.0'
