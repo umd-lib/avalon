@@ -1,4 +1,4 @@
-# Copyright 2011-2017, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2018, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -47,7 +47,7 @@ module MediaObjectsHelper
      def dropbox_url collection
         ic = Iconv.new('UTF-8//IGNORE', 'UTF-8')
         path = URI::Parser.new.escape(collection.dropbox_directory_name || "", %r{[/\\%& #]})
-        url = File.join(Avalon::Configuration.lookup('dropbox.upload_uri'), path)
+        url = File.join(Settings.dropbox.upload_uri, path)
         ic.iconv(url)
      end
 
@@ -103,7 +103,7 @@ module MediaObjectsHelper
        available_qualities += Array(stream_info[:stream_hls]).collect {|s| s[:quality]}
        available_qualities.uniq!
        quality ||= session[:quality] if session['quality'].present? && available_qualities.include?(session[:quality])
-       quality ||= Avalon::Configuration.lookup('streaming.default_quality') if available_qualities.include?(Avalon::Configuration.lookup('streaming.default_quality'))
+       quality ||= Settings.streaming.default_quality if available_qualities.include?(Settings.streaming.default_quality)
        quality ||= available_qualities.first
        quality
      end
@@ -131,19 +131,20 @@ module MediaObjectsHelper
      def structure_html section, index, show_progress
        current = is_current_section? section
        progress_div = show_progress ? '<div class="status-detail alert" style="display: none"></div>' : ''
-       download_link = section_download_media_object_url(@media_object, section.id)
+       download_link_url = section_download_media_object_url(@media_object, section.id)
+       download_link = "<a title=\"Download\" href=\"#{download_link_url}\" target=\"_blank\" class=\"section-download-link\"> <i class=\"fa fa-download\" aria-hidden=\"true\"></i></a>"
+       playlist_btn = current_ability.can?(:create, Playlist) ? "<button type=\"button\" title=\"Add section to playlist\" aria-label=\"Add section to playlist\" class=\"structure_add_to_playlist outline_on btn btn-primary\" data-scope=\"master_file\" data-masterfile-id=\"#{section.id}\"></button>" : ''
+
        headeropen = <<EOF
-    <div class="panel-heading" role="tab" id="heading#{index}">
-      <h4 class="panel-title #{ 'progress-indented' if progress_div.present? }">
-      <button type="button" title="Add section to playlist" aria-label="Add section to playlist" class="structure_add_to_playlist outline_on btn btn-primary" data-scope="master_file" data-masterfile-id="#{section.id}"></button>
-      <a title="Download" href="#{download_link}" target="_blank" class="section-download-link">
-        <i class="fa fa-download" aria-hidden="true"></i>
-      </a>
+       <div class="panel-heading" role="tab" id="heading#{index}" data-media-object-id="#{section.media_object_id}" data-section-id="#{section.id}">
+       <h4 class="panel-title #{ 'progress-indented' if progress_div.present? }">
+       #{playlist_btn}
+       #{download_link}
 EOF
        headerclose = <<EOF
-      #{progress_div}
-      </h4>
-    </div>
+       #{progress_div}
+       </h4>
+       </div>
 EOF
 
        data = {
@@ -158,7 +159,7 @@ EOF
        # If there is no structural metadata associated with this master_file return the stream info
        if section.structuralMetadata.empty?
          label = "#{index+1}. #{stream_label_for(section)} #{duration}".html_safe
-         link = link_to label, share_link_for( section ), data: data, class: 'playable wrap' + (current ? ' current-stream current-section' : '')
+         link = link_to label, share_link_for( section ), id: 'section-title-' + section.id, data: data, class: 'playable wrap' + (current ? ' current-stream current-section' : '')
          return "#{headeropen}<ul><li class='stream-li'>#{link}</li></ul>#{headerclose}"
        end
 
@@ -168,7 +169,7 @@ EOF
        if sectionnode.children.present?
          tracknumber = 0
          label = "#{index+1}. #{sectionnode.attribute('label').value} #{duration}".html_safe
-         link = link_to label, share_link_for( section ), data: data, class: 'playable wrap' + (current ? ' current-stream current-section' : '')
+         link = link_to label, share_link_for( section ), id: 'section-title-' + section.id, data: data, class: 'playable wrap' + (current ? ' current-stream current-section' : '')
          wrapperopen = <<EOF
           #{headeropen}
           <button class="fa fa-minus-square #{current ? '' : 'hidden'}" data-toggle="collapse" data-target="#section#{index}" aria-expanded="#{current ? 'true' : 'false' }" aria-controls="collapse#{index}"></button>
@@ -226,8 +227,9 @@ EOF
          start,stop = get_xml_media_fragment node, section
          native_url = "#{id_section_media_object_path(@media_object, section.id)}?t=#{start},#{stop}"
          url = "#{share_link_for( section )}?t=#{start},#{stop}"
-         data =  {segment: section.id, is_video: section.file_format != 'Sound', native_url: native_url, fragmentbegin: start, fragmentend: stop}
-         link = link_to label, url, data: data, class: 'playable wrap'+(is_current_section?(section) ? ' current-stream' : '' )
+         segment_id = "#{section.id}-#{tracknumber}"
+         data = {segment: section.id, is_video: section.file_format != 'Sound', native_url: native_url, fragmentbegin: start, fragmentend: stop}
+         link = link_to label, url, id: segment_id, data: data, class: 'playable wrap'+(is_current_section?(section) ? ' current-stream' : '' )
          return "<li class='stream-li'>#{link}</li>", tracknumber
        end
      end

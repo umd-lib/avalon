@@ -15,6 +15,8 @@ Rails.application.routes.draw do
 
   concern :exportable, Blacklight::Routes::Exportable.new
 
+  get '/mejs/:version', to: 'application#mejs'
+
   resources :solr_documents, only: [:show], path: '/catalog', controller: 'catalog' do
     concerns :exportable
   end
@@ -90,6 +92,7 @@ Rails.application.routes.draw do
       get 'section/:content', :action => :show, :as => :id_section
       get 'section/:content/download', :action => :download_section, :as => :section_download
       get 'section/:content/stream', :action => :show_stream_details, :as => :section_stream
+      get 'section/:content/embed', :to => redirect('/master_files/%{content}/embed')
       get 'tree', :action => :tree, :as => :tree
       get :confirm_remove
       get :add_to_playlist_form
@@ -127,7 +130,11 @@ Rails.application.routes.draw do
   match "/object/:id", to: 'objects#show', via: [:get]
 
   resources :playlists do
-    resources :playlist_items, path: 'items', only: [:create, :update]
+    resources :playlist_items, path: 'items', only: [:create, :update, :show] do
+      get 'markers'
+      get 'source_details'
+      get 'related_items'
+    end
     member do
       patch 'update_multiple'
       delete 'update_multiple'
@@ -137,7 +144,7 @@ Rails.application.routes.draw do
     collection do
       post 'duplicate'
       post 'paged_index'
-      if Avalon::Configuration.has_key?('variations')
+      if Settings['variations'].present?
         post 'import_variations_playlist'
       end
     end
