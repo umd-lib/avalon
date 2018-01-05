@@ -1,3 +1,7 @@
+# XXX: this file is named with a leading 00- to ensure that is is loaded first
+# since apparently some of the other initializer autoload magic depends on the
+# inflections being defined.
+
 # Be sure to restart your server when you modify this file.
 
 # Add new inflection rules using the following format. Inflections
@@ -10,7 +14,7 @@
 #   inflect.uncountable %w( fish sheep )
 # end
 
-# These inflection rules are supported but not enabled by default:
-# ActiveSupport::Inflector.inflections(:en) do |inflect|
-#   inflect.acronym 'RESTful'
-# end
+ActiveSupport::Inflector.inflections(:en) do |inflect|
+  # converts "umd_lib" to "UMDLib" instead of the default "UmdLib"
+  inflect.acronym 'UMD'
+end
