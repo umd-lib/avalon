@@ -1,52 +1,40 @@
-name: 'Avalon Media System' # used in page titles
+name: 'WTOP Broadcasting Content Management Pilot' # used in page titles
+fedora:
+  namespace: avalon
 domain:
-  host: localhost
-  port: 80
-  protocol: http
+  host:
+  port:
+  protocol:
 dropbox:
-  path: /srv/avalon/dropbox
-  upload_uri: sftp://avalon.example.edu
+  path: '/apps/bcast/avalon/dropbox/'
+  upload_uri:
 encoding:
   engine_adapter: matterhorn
 matterhorn:
   root: 'http://localhost:8080/'
   baseApplication: 'avalon'
   cleanup_log: 'log/cleanup_jobs.log'
+  media_path: '/apps/bcast/avalon/masterfiles/'
 mediainfo:
   path: '/usr/bin/mediainfo'
 ffmpeg:
   path: '/usr/local/bin/ffmpeg'
 email:
-  comments: 'avalon-comments@example.edu'
-  notification: 'avalon-notifications@example.edu'
-  support: 'avalon-support@example.edu'
-solr:
-  configset: avalon
-  configset_source_path: <%= File.join(Rails.root, 'solr', 'config') %>
-  collection_options:
-    async:
-    auto_add_replicas:
-    collection:
-      config_name: avalon
-    create_node_set:
-    max_shards_per_node:
-    num_shards: 1
-    replication_factor:
-    router:
-      name:
-      field:
-    rule:
-    shards:
-    snitch:
-zookeeper:
-  connection_str: "localhost:9983/configs"
+  comments:
+  notification:
+  support:
+  mailer:
+    smtp:
+      address: 'libsmtp.umd.edu'
+      port: 587
+      enable_starttls_auto: false
 streaming:
   server: :generic
   stream_token_ttl: 20 #minutes
-  content_path: '/srv/avalon/content'
-  rtmp_base: 'rtmp://localhost/avalon'
-  http_base: 'http://localhost:3000/streams'
-  default_quality: 'low'
+  rtmp_base:
+  http_base:
+  default_quality: 'medium'
+  content_path: '/apps/bcast/avalon/rtmp_streams'
 groups:
   system_groups: [administrator, group_manager, manager]
 master_file_management:
@@ -65,11 +53,3 @@ auth:
       :params:
         :fields:
         - :email
-          <% if ENV['LTI_AUTH_KEY'] %>
-    - :name: Avalon Lti OAuth
-      :provider: :lti
-      :hidden: true
-      :params:
-        :oauth_credentials:
-          <%= ENV['LTI_AUTH_KEY'] %>: <%= ENV['LTI_AUTH_SECRET'] %>
-            <% end %>
