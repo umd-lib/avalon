@@ -672,7 +672,7 @@ GEM
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
     retriable (3.1.1)
-    roo (2.7.1)
+    roo (2.6.0)
       nokogiri (~> 1)
       rubyzip (~> 1.1, < 2.0.0)
     rsolr (1.1.2)
@@ -915,7 +915,7 @@ DEPENDENCIES
   resque (~> 1.26.0)
   resque-scheduler (~> 4.3.0)
   rest-client
-  roo
+  roo (~> 2.6)
   rsolr (~> 1.0)
   rspec-rails
   rspec-retry
