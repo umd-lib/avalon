@@ -19,10 +19,11 @@ class MediaObjectsController < ApplicationController
   include Avalon::Controller::ControllerBehavior
   include ConditionalPartials
   include SecurityHelper
-  
+
   before_filter :authenticate_user!, except: [:show, :set_session_quality, :download_section, :show_stream_details]
   before_filter :authenticate_api!, only: [:show], if: proc{|c| request.format.json?}
-  load_and_authorize_resource except: [:destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist_form, :add_to_playlist]
+  load_and_authorize_resource except: [:destroy, :update_status, :download_section, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist_form, :add_to_playlist]
+  load_resource only: [:download_section]
   # authorize_resource only: [:create, :update]
 
   before_filter :inject_workflow_steps, only: [:edit, :update], unless: proc{|c| request.format.json?}
