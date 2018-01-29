@@ -19,6 +19,7 @@
 //= require browse_everything
 //= require modernizr
 //= require bootstrap-toggle
+//= require blacklight_date_range_limit
 
 // include all of our vendored js
 //= require_tree ../../../vendor/assets/javascripts/.
