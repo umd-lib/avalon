@@ -16,6 +16,7 @@
 class SearchBuilder < Blacklight::SearchBuilder
   include Blacklight::Solr::SearchBuilderBehavior
   include BlacklightRangeLimit::RangeLimitBuilder
+  include BlacklightDateRangeLimit::DateRangeLimitBuilder
 
   include Hydra::AccessControlsEnforcement
   include Hydra::MultiplePolicyAwareAccessControlsEnforcement
