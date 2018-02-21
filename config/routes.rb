@@ -85,7 +85,12 @@ Rails.application.routes.draw do
       get ':id/detail', action: :detail, as: 'detail'
       get ':id/report', action: :report, as: 'report'
     end
+    
+
+  
   end
+    
+  mount AvalonBatchEntryMonitor::Engine, at: '/'
 
   resources :vocabulary, except: [:create, :destroy, :new, :edit]
 

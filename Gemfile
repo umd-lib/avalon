@@ -77,6 +77,8 @@ gem 'mediaelement-skin-avalon', git:'https://github.com/avalonmediasystem/mediae
 gem 'mediaelement-title', git:'https://github.com/avalonmediasystem/mediaelement-title.git', tag: 'avalon-r4'
 gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/mediaelement-track-scrubber.git', tag: 'avalon-r6'
 
+gem 'avalon_batch_entry_monitor', git: "https://github.com/umd-lib/avalon_batch_entry_monitor.git", tag: '0.0.1'
+
 # Jobs
 gem 'redis-rails'
 gem 'resque', '~> 1.27.0'
