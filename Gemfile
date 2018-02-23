@@ -58,7 +58,7 @@ gem 'active_encode', '~> 0.1.1'
 gem 'browse-everything', '~> 0.13.0'
 gem 'mediainfo', git: "https://github.com/avalonmediasystem/mediainfo.git", branch: 'avalon_fixes'
 gem 'rest-client'
-gem 'roo'
+gem 'roo', '2.6.0'
 gem 'rubyhorn', git: "https://github.com/avalonmediasystem/rubyhorn.git", tag: 'avalon-r6'
 
 # Data Translation & Normalization
