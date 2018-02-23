@@ -129,7 +129,7 @@ GIT
 
 GIT
   remote: https://github.com/umd-lib/avalon_batch_entry_monitor.git
-  revision: 59fe85001a4c82f59db5f31495057ba47535a406
+  revision: 39b00b794c12117a60c4d52ae25edbb626344fad
   tag: 0.0.1
   specs:
     avalon_batch_entry_monitor (0.0.1)
@@ -226,16 +226,16 @@ GEM
     ast (2.4.0)
     autoprefixer-rails (8.0.0)
       execjs
-    aws-sdk (2.11.1)
-      aws-sdk-resources (= 2.11.1)
-    aws-sdk-core (2.11.1)
+    aws-sdk (2.11.3)
+      aws-sdk-resources (= 2.11.3)
+    aws-sdk-core (2.11.3)
       aws-sigv4 (~> 1.0)
       jmespath (~> 1.0)
     aws-sdk-rails (1.0.1)
       aws-sdk-resources (~> 2)
       railties (>= 3)
-    aws-sdk-resources (2.11.1)
-      aws-sdk-core (= 2.11.1)
+    aws-sdk-resources (2.11.3)
+      aws-sdk-core (= 2.11.3)
     aws-sigv4 (1.0.2)
     babel-source (5.8.35)
     babel-transpiler (0.7.0)
@@ -598,7 +598,7 @@ GEM
     orm_adapter (0.5.0)
     os (0.9.6)
     parallel (1.12.1)
-    parser (2.5.0.1)
+    parser (2.5.0.2)
       ast (~> 2.4.0)
     pg (0.20.0)
     poltergeist (1.17.0)
