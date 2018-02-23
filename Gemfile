@@ -55,7 +55,7 @@ gem 'active_encode', '~> 0.1.1'
 gem 'browse-everything', '~> 0.13.0'
 gem 'mediainfo', git: "https://github.com/avalonmediasystem/mediainfo.git", branch: 'avalon_fixes'
 gem 'rest-client'
-gem 'roo', '~> 2.6'
+gem 'roo', '2.6.0'
 gem 'rubyhorn', git: "https://github.com/avalonmediasystem/rubyhorn.git", tag: 'avalon-r6'
 
 # Data Translation & Normalization
@@ -73,6 +73,8 @@ gem 'mediaelement-qualityselector', git:'https://github.com/avalonmediasystem/me
 gem 'mediaelement-skin-avalon', git:'https://github.com/avalonmediasystem/mediaelement-skin-avalon.git', tag: 'avalon-r5'
 gem 'mediaelement-title', git:'https://github.com/avalonmediasystem/mediaelement-title.git', tag: 'avalon-r4'
 gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/mediaelement-track-scrubber.git', tag: 'avalon-r6'
+
+gem 'avalon_batch_entry_monitor', git: "https://github.com/umd-lib/avalon_batch_entry_monitor.git", tag: '0.0.1'
 
 gem 'dotenv-rails'
 gem 'pg', '0.20.0'
