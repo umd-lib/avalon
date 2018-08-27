@@ -33,8 +33,31 @@ streaming:
   stream_token_ttl: 20 #minutes
   rtmp_base:
   http_base:
-  default_quality: 'medium'
+  default_quality: 'auto'
   content_path: '/apps/bcast/avalon/rtmp_streams'
+solr:
+  configset: avalon
+  configset_source_path: <%= File.join(Rails.root, 'solr', 'config') %>
+  collection_options:
+    async:
+    auto_add_replicas:
+    collection:
+      config_name: avalon
+    create_node_set:
+    max_shards_per_node:
+    num_shards: 1
+    replication_factor:
+    router:
+      name:
+      field:
+    rule:
+    shards:
+    snitch:
+zookeeper:
+  connection_str: "localhost:9983/configs"
+redis:
+  host: localhost
+  port: 6379
 groups:
   system_groups: [administrator, group_manager, manager]
 master_file_management:
@@ -46,6 +69,11 @@ bib_retriever:
   query: rec.id='%s'
 controlled_vocabulary:
   path: config/controlled_vocabulary.yml
+encode_throttling:
+  create_jobs_throttle_threshold: 2
+  create_jobs_spacing: 5
+  update_jobs_throttle_threshold: 3
+  update_jobs_spacing: 10
 auth:
   configuration:
     - :name: Avalon Test Auth
