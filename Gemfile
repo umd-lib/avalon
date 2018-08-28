@@ -37,7 +37,7 @@ gem 'active_annotations', '~> 0.2.2'
 gem 'activerecord-session_store'
 gem 'acts_as_list'
 gem 'api-pagination'
-gem 'avalon-about', git: 'https://github.com/avalonmediasystem/avalon-about.git', tag: 'avalon-r6.4'
+gem 'avalon-about', git: 'https://github.com/avalonmediasystem/avalon-about.git', tag: 'avalon-r6'
 gem 'bootstrap-toggle-rails', git: 'https://github.com/rkallensee/bootstrap-toggle-rails.git', tag: 'v2.2.1.0'
 gem 'bootstrap_form'
 gem 'speedy-af', '~> 0.1.1'
@@ -85,6 +85,7 @@ gem 'redis-rails'
 gem 'resque', '~> 1.27.0'
 gem 'resque-scheduler', '~> 4.3.0'
 gem 'activejob-traffic_control'
+
 
 # Coding Patterns
 gem 'config'
