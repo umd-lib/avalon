@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2018, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *
@@ -12,6 +12,11 @@
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
  *   specific language governing permissions and limitations under the License.
  * ---  END LICENSE_HEADER BLOCK  ---
+
+ *
+ * Used by blacklight_range_limit
+ *= require  'blacklight_range_limit'
+ *
 */
 
 
@@ -41,6 +46,11 @@
  *= stub mediaelement/plugins/quality.css
 
  *= require_self
+
+ *
+ * Used by blacklight_range_limit
+ *= require  'blacklight_range_limit'
+ *= require  'blacklight_date_range_limit'
 */
 
 @import "bootstrap-sprockets";

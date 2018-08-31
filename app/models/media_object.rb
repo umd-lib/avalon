@@ -1,11 +1,11 @@
-# Copyright 2011-2017, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2018, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -21,8 +21,12 @@ class MediaObject < ActiveFedora::Base
   include Avalon::Workflow::WorkflowModelMixin
   include Permalink
   include Identifier
+  include MigrationTarget
   include SpeedyAF::OrderedAggregationIndex
   require 'avalon/controlled_vocabulary'
+  # Begin customization for LIBBCM-29
+  require 'date'
+  # End customization for LIBBCM-29
 
   include Kaminari::ActiveFedoraModelExtension
 
@@ -71,10 +75,17 @@ class MediaObject < ActiveFedora::Base
   end
 
   def validate_dates
-    [:date_created, :date_issued, :copyright_date].each do |d|
-      if self.send(d).present? && Date.edtf(self.send(d)).nil?
-        errors.add(d, I18n.t("errors.messages.dateformat", date: self.send(d)))
-      end
+    validate_date :date_created
+    validate_date :date_issued
+    validate_date :copyright_date
+  end
+
+  def validate_date(date_field)
+    date = send(date_field)
+    return if date.blank?
+    edtf_date = Date.edtf(date)
+    if edtf_date.nil? || edtf_date.class == EDTF::Unknown # remove second condition to allow 'uuuu'
+      errors.add(date_field, I18n.t("errors.messages.dateformat", date: date))
     end
   end
 
@@ -216,6 +227,30 @@ class MediaObject < ActiveFedora::Base
       solr_doc['section_physical_description_ssim'] = section_physical_descriptions
       solr_doc['avalon_resource_type_ssim'] = self.avalon_resource_type.map(&:titleize)
       solr_doc['identifier_ssim'] = self.identifier.map(&:downcase)
+
+      
+      # Begin customization for LIBBCM-29
+      # Add a trie date field
+      if solr_doc['date_ssi'] && '' !=  solr_doc['date_ssi']
+        solr_doc['date_dtti'] = solr_doc['date_ssi'] + 'T00:00:00Z'
+      end
+      
+      # Get the date object from temporal subject.
+      if solr_doc['time_sim'] && solr_doc['time_sim'][0]
+        dt = DateTime.strptime(solr_doc['time_sim'][0], '%Y-%m-%dT%H:%M')
+      end
+
+      if dt
+        # Add a string month field
+        solr_doc['month_si'] = dt.strftime('%B')
+
+        # Add an integer day field
+        solr_doc['day_ii'] = dt.day
+
+        # Add an integer hour field
+        solr_doc['hour_iti'] = dt.hour
+      end
+      # End customization for LIBBCM-29
 
       #Add all searchable fields to the all_text_timv field
       all_text_values = []

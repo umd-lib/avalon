@@ -1,4 +1,4 @@
-# Copyright 2011-2017, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2018, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -29,13 +29,13 @@ describe "Secure Routes" do
     it "should not provide access to regular users" do
       login_as user, scope: :user
       visit '/about'
-      page.should have_content('Sample Content')
+      page.should have_content('Using the System')
     end
 
     it "should not provide access to anonymous users" do
       login_as user, scope: :user
       visit '/about'
-      page.should have_content('Sample Content')
+      page.should have_content('Using the System')
     end
   end
 
@@ -49,13 +49,13 @@ describe "Secure Routes" do
     it "should not provide access to regular users" do
       login_as user, scope: :user
       visit '/about/health'
-      page.should have_content('Sample Content')
+      page.should have_content('Using the System')
     end
 
     it "should not provide access to anonymous users" do
       login_as user, scope: :user
       visit '/about/health'
-      page.should have_content('Sample Content')
+      page.should have_content('Using the System')
     end
   end
 end

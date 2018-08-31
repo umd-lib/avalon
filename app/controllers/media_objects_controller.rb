@@ -1,4 +1,4 @@
-# Copyright 2011-2017, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2018, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -18,10 +18,12 @@ class MediaObjectsController < ApplicationController
   include Avalon::Workflow::WorkflowControllerBehavior
   include Avalon::Controller::ControllerBehavior
   include ConditionalPartials
+  include SecurityHelper
 
-  before_filter :authenticate_user!, except: [:show, :set_session_quality, :show_stream_details]
+  before_filter :authenticate_user!, except: [:show, :set_session_quality, :download_section, :show_stream_details]
   before_filter :authenticate_api!, only: [:show], if: proc{|c| request.format.json?}
-  load_and_authorize_resource except: [:destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist_form, :add_to_playlist]
+  load_and_authorize_resource except: [:destroy, :update_status, :download_section, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist_form, :add_to_playlist]
+  load_resource only: [:download_section]
   # authorize_resource only: [:create, :update]
 
   before_filter :inject_workflow_steps, only: [:edit, :update], unless: proc{|c| request.format.json?}
@@ -195,7 +197,8 @@ class MediaObjectsController < ApplicationController
         if master_file.update_derivatives(file_spec[:files], false)
           @media_object.ordered_master_files += [master_file]
         else
-          error_messages += ["Problem saving MasterFile for #{file_spec[:file_location] rescue "<unknown>"}:"]+master_file.errors.full_messages
+          error_messages += ["Problem saving MasterFile for #{file_spec[:file_location] rescue "<unknown>"}:"]
+                            + master_file.errors.full_messages
           @media_object.destroy
           break
         end
@@ -282,6 +285,27 @@ class MediaObjectsController < ApplicationController
       end
       format.json do
         render json: @media_object.to_json
+      end
+    end
+  end
+
+  def download_section
+    raise CanCan::AccessDenied unless current_ability.can? :read, @media_object
+    if params[:content]
+      begin
+        location = MasterFile.find(params[:content]).absolute_location
+        if location.nil? || location.empty?
+          flash[:notice] = "Download failed: Oringal file not stored."
+          return redirect_to media_object_path(@media_object.id)
+        end
+        location = location[7..-1] # Remove 'file://' prefix
+        send_file location
+      rescue ActiveFedora::ObjectNotFoundError
+        flash[:notice] = "Download failed: Cannot find section."
+        redirect_to media_object_path(@media_object.id)
+      rescue ActionController::MissingFile
+        flash[:notice] = "Download failed: File not found." + location
+        redirect_to media_object_path(@media_object.id)
       end
     end
   end
@@ -435,8 +459,10 @@ class MediaObjectsController < ApplicationController
   def load_current_stream
     set_active_file
     set_player_token
-    @currentStreamInfo = @currentStream.nil? ? {} : @currentStream.stream_details(@token, default_url_options[:host])
+    @currentStreamInfo = @currentStream.nil? ? {} : secure_streams(@currentStream.stream_details)
     @currentStreamInfo['t'] = view_context.parse_media_fragment(params[:t]) # add MediaFragment from params
+    @currentStreamInfo['lti_share_link'] = view_context.lti_share_url_for(@currentStream)
+    @currentStreamInfo['link_back_url'] = view_context.share_link_for(@currentStream)
   end
 
   def load_player_context
@@ -501,12 +527,44 @@ class MediaObjectsController < ApplicationController
     note_type = mo_parameters.delete(:note_type) || []
     mo_parameters[:note] = note.zip(note_type).map{|a|{note: a[0],type: a[1]}}
 
-
     mo_parameters
   end
+
   def master_files_params
-    # TODO: Restrist permitted params!!!
-    params.permit!
-    params[:files]
+    params.permit(:files => [:file_location,
+                             :title,
+                             :label,
+                             :file_location,
+                             :file_checksum,
+                             :file_size,
+                             :duration,
+                             :display_aspect_ratio,
+                             :original_frame_size,
+                             :file_format,
+                             :poster_offset,
+                             :thumbnail_offset,
+                             :date_digitized,
+                             :structure,
+                             :captions,
+                             :captions_type,
+                             :workflow_name,
+                             :percent_complete,
+                             :percent_succeeded,
+                             :percent_failed,
+                             :status_code,
+                             :other_identifier,
+                             :structure,
+                             :files => [:label,
+                                       :id,
+                                       :url,
+                                       :duration,
+                                       :mime_type,
+                                       :audio_bitrate,
+                                       :audio_codec,
+                                       :video_bitrate,
+                                       :video_codec,
+                                       :width,
+                                       :height]])[:files]
   end
+
 end
