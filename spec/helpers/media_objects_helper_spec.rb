@@ -37,4 +37,43 @@ describe MediaObjectsHelper do
       expect(helper.current_quality(skip_transcoded_stream_info)).to eq 'high'
     end
   end
+
+  describe "#parse_hour_min_sec" do
+    it "returns a milliseconds representation" do
+      expect(helper.parse_hour_min_sec("00:00:01")).to eq 1.0
+      expect(helper.parse_hour_min_sec("00:00:01.259")).to eq 1.259
+      expect(helper.parse_hour_min_sec("00:01:01.259")).to eq 61.259
+      expect(helper.parse_hour_min_sec("00:10:11.259")).to eq 611.259
+      expect(helper.parse_hour_min_sec("1:10:11.259")).to eq 4211.259
+      expect(helper.parse_hour_min_sec("10:11.259")).to eq 611.259
+      expect(helper.parse_hour_min_sec("11.259")).to eq 11.259
+      expect(helper.parse_hour_min_sec("xx:11.259")).to eq 11.259
+      expect(helper.parse_hour_min_sec("hello")).to eq 0.0
+    end
+  end
+
+  describe "#get_duration_from_fragment" do
+    it "returns a human readable duration" do
+      expect(helper.get_duration_from_fragment(0, 100)).to eq "01:40"
+      expect(helper.get_duration_from_fragment(100, 200)).to eq "01:40"
+      expect(helper.get_duration_from_fragment(100, 20000)).to eq "5:31:40"
+    end
+  end
+
+  describe '#gather_all_comments' do
+    let(:media_object) { instance_double("MediaObject", comment: ['MO Comment']) }
+    let(:master_files) { [instance_double("MasterFile", comment: [])] }
+
+    it 'returns a list of unique comment strings' do
+      expect(helper.gather_all_comments(media_object, master_files)).to eq ["MO Comment"]
+    end
+
+    context 'with a master file comment' do
+      let(:master_files) { [instance_double("MasterFile", comment: ["MF Comment"], display_title: "MF1")] }
+
+      it 'returns a list of unique comment strings' do
+        expect(helper.gather_all_comments(media_object, master_files)).to eq ["MO Comment", "[MF1] MF Comment"]
+      end
+    end
+  end
 end

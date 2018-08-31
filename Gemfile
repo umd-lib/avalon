@@ -3,6 +3,8 @@ source 'https://rubygems.org'
 # Core rails
 gem 'rails', '4.2.9'
 gem 'sqlite3'
+gem 'bootsnap', require: false
+gem 'sprockets', '~>3.7.2'
 
 # Assets
 gem 'coffee-rails', '~> 4.1.0'
@@ -81,8 +83,10 @@ gem 'dotenv-rails'
 gem 'pg', '0.20.0'
 # Jobs
 gem 'redis-rails'
-gem 'resque', '~> 1.26.0'
+gem 'resque', '~> 1.27.0'
 gem 'resque-scheduler', '~> 4.3.0'
+gem 'activejob-traffic_control'
+
 
 # Coding Patterns
 gem 'config'
