@@ -986,7 +986,7 @@ DEPENDENCIES
   resque (~> 1.27.0)
   resque-scheduler (~> 4.3.0)
   rest-client
-  roo (= 2.6.0)
+  roo (= 2.7.1)
   rsolr (~> 1.0)
   rspec-rails
   rspec-retry
