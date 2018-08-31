@@ -139,6 +139,16 @@ GIT
       momentjs-rails (>= 2.9.0)
       rails (>= 3.0)
 
+GIT
+  remote: https://github.com/umd-lib/blacklight_date_range_limit.git
+  revision: 2fea99a0d7f9dcce723b54160f46ed5eee924d57
+  tag: 1.0.0
+  specs:
+    blacklight_date_range_limit (0.0.1)
+      blacklight (>= 6.0.2)
+      jquery-rails
+      rails (>= 3.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -725,7 +735,7 @@ GEM
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
     retriable (3.1.1)
-    roo (2.6.0)
+    roo (2.7.1)
       nokogiri (~> 1)
       rubyzip (~> 1.1, < 2.0.0)
     rsolr (1.1.2)
@@ -909,6 +919,7 @@ DEPENDENCIES
   aws-sdk-rails
   bixby
   blacklight (= 6.11.0)
+  blacklight_date_range_limit!
   blacklight_range_limit (~> 6.3.2)
   bootsnap
   bootstrap-toggle-rails!

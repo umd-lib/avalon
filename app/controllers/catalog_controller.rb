@@ -18,7 +18,7 @@ require 'blacklight/catalog'
 class CatalogController < ApplicationController
 
   include BlacklightRangeLimit::ControllerOverride
-
+  include BlacklightDateRangeLimit::ControllerOverride
   include Hydra::Catalog
   include Hydra::MultiplePolicyAwareAccessControlsEnforcement
   include BlacklightHelperReloadFix
@@ -83,6 +83,8 @@ class CatalogController < ApplicationController
     # Hide these facets if not a Collection Manager
     config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow", helper_method: :vgroup_display
     config.add_facet_field 'date_digitized_sim', label: 'Date Digitized', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"#, partial: 'blacklight/hierarchy/facet_hierarchy'
+    config.add_facet_field 'date_ssi', label: 'Publication Date' , date_range: true
+
 
     # Have BL send all facet field names to Solr, which has been the default
     # previously. Simply remove these lines if you'd rather use Solr request

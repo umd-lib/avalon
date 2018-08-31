@@ -28,6 +28,7 @@ gem 'rdf-rdfxml'
 # Samvera version pins
 gem 'blacklight', '=6.11.0'
 gem 'blacklight_range_limit', ' ~> 6.3.2'
+gem "blacklight_date_range_limit", git: "https://github.com/umd-lib/blacklight_date_range_limit.git", tag: "1.0.0"
 gem 'rdf', '~> 2.2'
 gem 'rsolr', '~> 1.0'
 
