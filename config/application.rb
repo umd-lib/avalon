@@ -13,6 +13,8 @@ module Avalon
   class Application < Rails::Application
     require 'avalon/configuration'
 
+    config.autoload_paths << Rails.root.join('lib')
+
     config.generators do |g|
       g.test_framework :rspec, :spec => true
     end
