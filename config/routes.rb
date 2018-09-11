@@ -36,7 +36,11 @@ Rails.application.routes.draw do
     end
   end
 
-  devise_for :users, :controllers => { :omniauth_callbacks => "users/omniauth_callbacks" }, format: false
+  devise_for :users, :controllers => {
+    :omniauth_callbacks => "users/omniauth_callbacks",
+    :passwords => "users/passwords"
+  }, format: false
+
   devise_scope :user do
     match '/users/sign_in', :to => "users/sessions#new", :as => :new_user_session, via: [:get]
     match '/users/sign_out', :to => "users/sessions#destroy", :as => :destroy_user_session, via: [:get]

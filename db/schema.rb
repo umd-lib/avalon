@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20171120190443) do
+ActiveRecord::Schema.define(version: 20180907123223) do
 
   create_table "annotations", force: :cascade do |t|
     t.string  "uuid"
@@ -188,16 +188,19 @@ ActiveRecord::Schema.define(version: 20171120190443) do
   end
 
   create_table "users", force: :cascade do |t|
-    t.string   "username",   null: false
-    t.string   "email",      null: false
+    t.string   "username",               null: false
+    t.string   "email",                  null: false
     t.datetime "created_at"
     t.datetime "updated_at"
     t.string   "provider"
     t.string   "uid"
     t.string   "guest"
+    t.datetime "reset_password_sent_at"
+    t.string   "reset_password_token"
   end
 
   add_index "users", ["email"], name: "index_users_on_email", unique: true
+  add_index "users", ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   add_index "users", ["username"], name: "index_users_on_username", unique: true
 
 end

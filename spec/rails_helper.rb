@@ -130,7 +130,8 @@ RSpec.configure do |config|
   # config.include FactoryGirl::Syntax::Methods
   config.include Devise::Test::ControllerHelpers, type: :controller
   config.include ControllerMacros, type: :controller
-  config.include Warden::Test::Helpers,type: :feature
+  config.include Warden::Test::Helpers, type: :feature
+  config.include Rack::Test::Methods, type: :feature
   config.include FixtureMacros, type: :controller
   config.include OptionalExample
 end
