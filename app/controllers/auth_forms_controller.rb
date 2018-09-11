@@ -22,13 +22,22 @@ class AuthFormsController < ApplicationController
     klass.phase = phase
     klass
   end
-  
+
   def render_form
     render html: omniauth_form(request.class.provider, request.class.phase).html_safe, layout: true
   end
-  
+
   private
-  def omniauth_form(strategy_name, phase=:request_phase)
+
+  def reset_request_links
+    Devise.mappings.collect do |name, mapping|
+      next unless mapping.recoverable?
+      view_context.link_to("Forgot your #{name} password?",
+                           new_password_path(mapping.name))
+    end.compact
+  end
+
+  def omniauth_form(strategy_name, phase = :request_phase)
     opts = Devise.omniauth_configs[strategy_name].options
     strategy_class = Devise.omniauth_configs[strategy_name].strategy_class
     strategy = strategy_class.new(opts)
@@ -40,6 +49,9 @@ class AuthFormsController < ApplicationController
       label.replace('<div class="form-group"/>').first.add_child(label).add_next_sibling(input)
     end
     form.xpath('button').each { |btn| btn['class'] = 'btn btn-primary' }
+    p = doc.at_xpath('//p')
+    p << reset_request_links.join('') if strategy_name == :identity && p
+
     %{<div class="omniauth-form container">#{form.to_html}</div>}
   end
 end
