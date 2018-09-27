@@ -9,26 +9,28 @@ volumes:
 
 services:
   db:
-    image: avalonmediasystem/db:fedora4
+    image: docker.lib.umd.edu/avalonmediasystem/db:6.4.2-ap-0
     volumes:
       - database:/data
     environment:
       - AVALON_DB_PASSWORD=avalondb
-      - FEDORA_DB_PASSWORD
+      - FEDORA_DB_PASSWORD=fedoradb
       - PGDATA=/data
       - POSTGRES_USER=postgres
     ports:
       - "5432:5432"
   fedora:
-    image: avalonmediasystem/fedora:4.7.x
+    image: docker.lib.umd.edu/avalonmediasystem/fedora:6.4.2-ap-0
     depends_on:
       - db
     volumes:
       - fedora:/data
+    environment:
+      - FEDORA_DB_PASSWORD=fedoradb
     ports:
       - "8984:8080"
   solr:
-    image: avalonmediasystem/solr:latest
+    image: docker.lib.umd.edu/avalonmediasystem/solr:6.4.2
     ports:
       - "8983:8983"
     volumes:
@@ -39,7 +41,7 @@ services:
       - avalon
       - /opt/solr/avalon_conf
   matterhorn:
-    image: avalonmediasystem/matterhorn
+    image: docker.lib.umd.edu/avalonmediasystem/matterhorn:6.4.2
     volumes:
       - ./masterfiles:/masterfiles
       - streaming:/streamfiles
@@ -47,7 +49,7 @@ services:
     ports:
       - "8080:8080"
   hls:
-    image: avalonmediasystem/nginx
+    image: docker.lib.umd.edu/avalonmediasystem/nginx:6.4.2
     volumes:
       - streaming:/data
     ports:

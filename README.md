@@ -37,8 +37,9 @@ explore the out-of-the-box functionality or do basic development.
 # Quickstart development with Docker
 Docker provides an alternative way of setting up an Avalon Media System Development Environment in minutes without installing any dependencies beside Docker itself. It should be noted that the docker-compose.yml provided here is for development only and will be updated continually.
 * Install [Docker](https://docs.docker.com/engine/installation/) and [docker-compose](https://docs.docker.com/compose/install/)
-* ```git clone https://github.com/avalonmediasystem/avalon```
+* ```git clone https://github.com/umd-lib/avalon```
 * ```cd avalon```
+* Switch to necessary branch.
 * ```cp config/controlled_vocabulary.yml.example config/controlled_vocabulary.yml```
 * ```docker-compose up```
 * Try loading Avalon in your browser: ```localhost:3000```
