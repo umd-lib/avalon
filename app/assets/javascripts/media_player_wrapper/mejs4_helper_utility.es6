@@ -36,7 +36,7 @@ class MEJSUtility {
       if (currentStreamInfo.poster_image) {
         node.setAttribute('poster', currentStreamInfo.poster_image);
       }
-      node.setAttribute('preload', 'true');
+      node.setAttribute('preload', 'auto');
       node.classList.add('mejs-avalon');
       node.classList.add('invisible');
 
@@ -60,7 +60,7 @@ class MEJSUtility {
       node.setAttribute('id', 'mejs-avalon-audio');
       node.setAttribute('controls', '');
       node.setAttribute('style', 'width: 100%;');
-      node.setAttribute('preload', 'true');
+      node.setAttribute('preload', 'auto');
       node.classList.add('mejs-avalon');
       node.classList.add('invisible');
 
@@ -83,6 +83,7 @@ class MEJSUtility {
    * <a> element's 'id' attribute
    */
   createSegmentsMap(el, currentStreamInfo) {
+    if (!el) { return }
     let segmentsMap = {};
     const segmentEls = el
       ? [].slice.call(
@@ -173,5 +174,15 @@ class MEJSUtility {
     return results === null
       ? ''
       : decodeURIComponent(results[1].replace(/\+/g, ' '));
+  }
+
+  /**
+   * Briefly show controls so users can see the scrubber
+   */
+  showControlsBriefly(player) {
+    if (player.isVideo) {
+      player.showControls();
+      player.startControlsTimer();
+    }
   }
 }

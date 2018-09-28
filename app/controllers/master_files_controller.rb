@@ -49,6 +49,8 @@ class MasterFilesController < ApplicationController
     @master_file = MasterFile.find(params[:id])
     if can? :read, @master_file
       @stream_info = secure_streams(@master_file.stream_details)
+      @stream_info['t'] = view_context.parse_media_fragment(params[:t]) # add MediaFragment from params
+      @stream_info['link_back_url'] = view_context.share_link_for(@master_file)
     end
 
     @player_width = "100%"
@@ -263,6 +265,12 @@ class MasterFilesController < ApplicationController
     end
   end
 
+  def hls_adaptive_manifest
+    master_file = MasterFile.find(params[:id])
+    authorize! :read, master_file
+    @hls_streams = gather_hls_streams(master_file)
+  end
+
 protected
   def ensure_readable_filedata
     if params[:Filedata].present?
@@ -275,5 +283,19 @@ protected
         end
       end
     end
+  end
+
+  def gather_hls_streams(master_file)
+    stream_info = secure_streams(master_file.stream_details)
+    hls_streams = stream_info[:stream_hls].reject { |stream| stream[:quality] == 'auto' }
+    hls_streams.each { |stream| unnest_wowza_stream(stream) } if Settings.streaming.server == "wowza"
+    hls_streams
+  end
+
+  def unnest_wowza_stream(stream)
+    playlist = Avalon::M3U8Reader.read(stream[:url], recursive: false).playlist
+    stream[:url] = playlist[:playlists][0]
+    bandwidth = playlist["stream_inf"].match(/BANDWIDTH=(\d*)/).try(:[], 1)
+    stream[:bitrate] = bandwidth if bandwidth
   end
 end

@@ -314,6 +314,7 @@ Object.assign(MediaElementPlayer.prototype, {
      */
     handleClick(el) {
       this.turnOffAutoplay();
+      this.mejsUtility.showControlsBriefly(this.player);
 
       // Clicked same item. Play from item start time and return
       if (this.isSamePlaylistItem(el)) {
@@ -621,23 +622,14 @@ Object.assign(MediaElementPlayer.prototype, {
       const liItems = this.$sidePlaylist[0].getElementsByTagName('li');
       let array = [...liItems];
       let clickedEl = el.parentNode;
-      const arrowNode = document.createElement('i');
-
-      arrowNode.className = `fa fa-arrow-circle-right`;
 
       // Loop through all children list items
       array.forEach(li => {
-        const children = [...li.children];
-        let arrow = children.find(e => e.nodeName === 'I');
         // Remove styles
         li.classList.remove('now_playing');
         li.classList.remove('queue');
-        if (arrow) {
-          li.removeChild(arrow);
-        }
         // Conditionally add styles to the item clicked
         if (li === clickedEl) {
-          li.insertBefore(arrowNode, el);
           li.classList.add('now_playing');
         } else {
           li.classList.add('queue');

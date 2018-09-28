@@ -9,26 +9,28 @@ volumes:
 
 services:
   db:
-    image: avalonmediasystem/db:fedora4
+    image: docker.lib.umd.edu/avalonmediasystem/db:6.4.2-ap-0
     volumes:
       - database:/data
     environment:
       - AVALON_DB_PASSWORD=avalondb
-      - FEDORA_DB_PASSWORD
+      - FEDORA_DB_PASSWORD=fedoradb
       - PGDATA=/data
       - POSTGRES_USER=postgres
     ports:
       - "5432:5432"
   fedora:
-    image: avalonmediasystem/fedora:4.7.x
+    image: docker.lib.umd.edu/avalonmediasystem/fedora:6.4.2-ap-0
     depends_on:
       - db
     volumes:
       - fedora:/data
+    environment:
+      - FEDORA_DB_PASSWORD=fedoradb
     ports:
       - "8984:8080"
   solr:
-    image: avalonmediasystem/solr:latest
+    image: docker.lib.umd.edu/avalonmediasystem/solr:6.4.2
     ports:
       - "8983:8983"
     volumes:
@@ -39,21 +41,15 @@ services:
       - avalon
       - /opt/solr/avalon_conf
   matterhorn:
-    image: avalonmediasystem/matterhorn
+    image: docker.lib.umd.edu/avalonmediasystem/matterhorn:6.4.2
     volumes:
       - ./masterfiles:/masterfiles
       - streaming:/streamfiles
       - work:/work
     ports:
       - "8080:8080"
-  rtmp:
-    image: avalonmediasystem/red5
-    volumes:
-      - streaming:/data
-    ports:
-      - "1935:1935"
   hls:
-    image: avalonmediasystem/nginx
+    image: docker.lib.umd.edu/avalonmediasystem/nginx:6.4.2
     volumes:
       - streaming:/data
     ports:
@@ -86,14 +82,15 @@ services:
       - FEDORA_BASE_PATH
       - FEDORA_NAMESPACE=avalon
       - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fedora/rest
-      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
       - MASTER_FILE_PATH
       - MASTER_FILE_STRATEGY=delete
       - MATTERHORN_URL=http://matterhorn_system_account:CHANGE_ME@matterhorn:8080/
       - SETTINGS__MATTERHORN__MEDIA_PATH=/masterfiles
       - MEDIAINFO_PATH=/usr/bin/mediainfo
       - RAILS_ENV=development
-      - REDIS_SERVER=redis:6379
+      - SETTINGS__REDIS__HOST=redis
+      - SETTINGS__REDIS__PORT=6379
       - SECRET_KEY_BASE=abcd
       - SMTP_ADDRESS
       - SMTP_AUTHENTICATION
@@ -107,7 +104,6 @@ services:
       - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
       - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
-      - SETTINGS__STREAMING__RTMP_BASE=rtmp://localhost/avalon
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - SYSTEM_GROUPS=administrator,group_manager,manager

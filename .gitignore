@@ -6,6 +6,7 @@
 
 # Ignore bundler config.
 /.bundle
+vendor/bundle
 
 # Ignore the default SQLite database.
 /db/*.sqlite3
@@ -21,7 +22,6 @@
 ## PROJECT::SPECIFIC
 config/authentication.yml
 config/avalon.yml
-config/controlled_vocabulary.yml
 config/matterhorn.yml
 config/role_map_development.yml
 config/initializers/rubyhorn.rb
@@ -44,3 +44,11 @@ migration_report
 config/settings.local.yml
 config/settings/*.local.yml
 config/environments/*.local.yml
+
+# Ignore the docker-compose override file
+docker-compose.override.yml
+
+# Emacs files
+*~
+\#*
+.\#*
