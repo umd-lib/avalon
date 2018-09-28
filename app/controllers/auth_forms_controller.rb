@@ -38,16 +38,27 @@ class AuthFormsController < ApplicationController
 
   private
 
+    def reset_request_links
+      Devise.mappings.collect do |name, mapping|
+        next unless mapping.recoverable?
+        view_context.link_to("Forgot your #{name} password?",
+                            new_password_path(mapping.name))
+      end.compact
+    end
+
     def add_errors_to_flash
       model = request.env["omniauth.#{strategy.name}"]
       flash[:error] = model.errors.to_a
     end
 
     def strategy
-      strategy_name = request.class.provider
       opts = Devise.omniauth_configs[strategy_name].options
       strategy_class = Devise.omniauth_configs[strategy_name].strategy_class
       strategy_class.new(opts)
+    end
+
+    def strategy_name
+      request.class.provider
     end
 
     def build_omniauth_form
@@ -60,6 +71,8 @@ class AuthFormsController < ApplicationController
       end
       form.at_xpath('//input[last()]').add_next_sibling view_context.hidden_field_tag(:authenticity_token, view_context.form_authenticity_token) 
       form.xpath('button').each { |btn| btn['class'] = 'btn btn-primary' }
+      p = doc.at_xpath('//p')
+      p << reset_request_links.join('') if strategy_name == :identity && p
       yield(%{<div class="omniauth-form container">#{form.to_html}</div>})
     end
 end
