@@ -40,7 +40,6 @@ Docker provides an alternative way of setting up an Avalon Media System Developm
 * ```git clone https://github.com/umd-lib/avalon```
 * ```cd avalon```
 * Switch to necessary branch.
-* ```cp config/controlled_vocabulary.yml.example config/controlled_vocabulary.yml```
 * ```docker-compose up```
 * Try loading Avalon in your browser: ```localhost:3000```
 
