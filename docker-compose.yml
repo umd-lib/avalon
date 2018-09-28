@@ -21,6 +21,8 @@ services:
       - "5432:5432"
   fedora:
     image: avalonmediasystem/fedora:4.7.x
+    environment:
+      - JAVA_OPTIONS=-Dfcrepo.modeshape.configuration=classpath:/config/file-simple/repository.json
     depends_on:
       - db
     volumes:
