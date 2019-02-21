@@ -54,7 +54,7 @@ solr:
     shards:
     snitch:
 zookeeper:
-  connection_str: "localhost:9983/configs"
+  connection_str: 'localhost:9983/configs'
 redis:
   host: localhost
   port: 6379
@@ -80,4 +80,13 @@ auth:
       :provider: :identity
       :params:
         :fields:
-        - :email
+          - :email
+            <% if ENV['LTI_AUTH_KEY'] %>
+    - :name: Avalon Lti OAuth
+      :provider: :lti
+      :hidden: true
+      :params:
+        :oauth_credentials:
+          <%= ENV['LTI_AUTH_KEY'] %>: <%= ENV['LTI_AUTH_SECRET'] %>
+            <% end %>
+# google_analytics_tracking_id: "someid"
