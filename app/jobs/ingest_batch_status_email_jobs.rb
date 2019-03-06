@@ -24,21 +24,20 @@ module IngestBatchStatusEmailJobs
         # Get the entries for the batch and see if they all complete
         complete = true
         errors = false
-        BatchEntries.where(batch_registries_id: br.id).each do |entry|
+        br.batch_entries.each do |entry|
           complete = false unless entry.complete || entry.error
           errors = true if entry.error
         end
 
         next unless complete
-        unless errors
-          BatchRegistriesMailer.batch_registration_finished_mailer(br).deliver_now
-          br.completed_email_sent = true
-          br.complete = true
-        end
+
+        BatchRegistriesMailer.batch_registration_finished_mailer(br).deliver_now
         if errors
-          BatchRegistriesMailer.batch_registration_finished_mailer(br).deliver_now
           br.error_email_sent = true
           br.error = true
+        else
+          br.completed_email_sent = true
+          br.complete = true
         end
         br.save
       end

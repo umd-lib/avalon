@@ -115,7 +115,6 @@ describe MasterFile do
     let!(:master_file) { FactoryGirl.create(:master_file) }
     # let(:encode_job) { ActiveEncodeJob::Create.new(master_file.id, nil, {}) }
     before do
-      ActiveJob::Base.queue_adapter = :test
       # allow(ActiveEncodeJob::Create).to receive(:new).and_return(encode_job)
       # allow(encode_job).to receive(:perform)
     end
@@ -194,11 +193,9 @@ describe MasterFile do
 
     describe "update images" do
       before do
-        ActiveJob::Base.queue_adapter = :test
         MasterFile.set_callback(:save, :after, :update_stills_from_offset!)
       end
       after do
-        ActiveJob::Base.queue_adapter = :inline
         MasterFile.skip_callback(:save, :after, :update_stills_from_offset!)
       end
       it "should update on save" do
@@ -320,7 +317,7 @@ describe MasterFile do
 
         it "should copy an uploaded file to the media path" do
           Settings.matterhorn.media_path = media_path
-          expect(subject.file_location).to eq(File.join(media_path,original))
+          expect(File.fnmatch("#{media_path}/*/#{original}", subject.working_file_path.first)).to be true
         end
       end
     end
@@ -481,6 +478,35 @@ describe MasterFile do
     it 'does not prepend the id if already present' do
       path = '/path/to/avalon_12345-video.mp4'
       expect(MasterFile.post_processing_move_filename(path, id: id).include?(id_prefix + '-' + id_prefix)).to be_falsey
+    end
+  end
+
+  context 'with a working directory' do
+    subject(:master_file) { FactoryGirl.create(:master_file) }
+    let(:working_dir) { Dir.mktmpdir }
+    before do
+      Settings.matterhorn.media_path = working_dir
+    end
+
+    after do
+      Settings.matterhorn.media_path = nil
+    end
+    describe 'post_processing_working_directory_file_management' do
+      it 'enqueues the working directory cleanup job' do
+        master_file.send(:post_processing_file_management)
+        expect(CleanupWorkingFileJob).to have_been_enqueued.with(master_file.id)
+      end
+    end
+    describe '#working_file_path' do
+      it 'returns blank when the working directory is invalid' do
+        expect(master_file.working_file_path).to be_blank
+      end
+
+      it 'returns a path when the working directory is valid' do
+        file = File.new(Rails.root.join('spec', 'fixtures', 'videoshort.mp4'))
+        master_file.setContent(file)
+        expect(master_file.working_file_path.first).to include(Settings.matterhorn.media_path)
+      end
     end
   end
 

@@ -17,6 +17,7 @@ mediainfo:
 ffmpeg:
   path: '/usr/local/bin/ffmpeg'
 email:
+  mailer: :smtp
   comments: 'avalon-comments@example.edu'
   notification: 'avalon-notifications@example.edu'
   support: 'avalon-support@example.edu'
@@ -81,3 +82,4 @@ auth:
         :oauth_credentials:
           <%= ENV['LTI_AUTH_KEY'] %>: <%= ENV['LTI_AUTH_SECRET'] %>
             <% end %>
+# google_analytics_tracking_id: "someid"
