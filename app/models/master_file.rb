@@ -120,6 +120,9 @@ class MasterFile < ActiveFedora::Base
     index.as :stored_sortable
   end
 
+  # For working file copy when Settings.matterhorn.media_path is set
+  property :working_file_path, predicate: Avalon::RDFVocab::MasterFile.workingFilePath, multiple: true
+
   validates :workflow_name, presence: true, inclusion: { in: proc { WORKFLOWS } }
   validates_each :date_digitized do |record, attr, value|
     unless value.nil?
@@ -167,8 +170,7 @@ class MasterFile < ActiveFedora::Base
   def setContent(file)
     case file
     when Hash #Multiple files for pre-transcoded derivatives
-      saveOriginal( (file.has_key?('quality-high') && File.file?( file['quality-high'] )) ? file['quality-high'] : (file.has_key?('quality-medium') && File.file?( file['quality-medium'] )) ? file['quality-medium'] : file.values[0] )
-      file.each_value {|f| f.close unless f.closed? }
+      saveDerivativesHash(file)
     when ActionDispatch::Http::UploadedFile #Web upload
       saveOriginal(file, file.original_filename)
     when URI, Addressable::URI
@@ -180,7 +182,7 @@ class MasterFile < ActiveFedora::Base
         self.file_size = FileLocator::S3File.new(file).object.size
       end
     else #Batch
-      saveOriginal(file)
+      saveOriginal(file, File.basename(file.path))
     end
     reloadTechnicalMetadata!
   end
@@ -249,14 +251,22 @@ class MasterFile < ActiveFedora::Base
 
     #Build hash for single file skip transcoding
     if !file.is_a?(Hash) && (self.workflow_name == 'avalon-skip-transcoding' || self.workflow_name == 'avalon-skip-transcoding-audio')
-      file = {'quality-high' => FileLocator.new(file_location).attachment}
+      if working_file_path.present?
+        file = {'quality-high' => FileLocator.new(working_file_path.first).attachment}
+      else
+        file = {'quality-high' => FileLocator.new(file_location).attachment}
+      end
     end
 
     input = if file.is_a? Hash
       file_dup = file.dup
       file_dup.each_pair {|quality, f| file_dup[quality] = FileLocator.new(f.to_path).uri.to_s }
     else
-      FileLocator.new(file_location).uri.to_s
+      if working_file_path.present?
+        FileLocator.new(working_file_path.first).uri.to_s
+      else
+        FileLocator.new(file_location).uri.to_s
+      end
     end
 
     ActiveEncodeJob::Create.perform_later(self.id, input, {preset: self.workflow_name})
@@ -501,6 +511,25 @@ class MasterFile < ActiveFedora::Base
     end
   end
 
+  def create_working_file!(full_path)
+    working_path = MasterFile.calculate_working_file_path(full_path)
+    return unless working_path.present?
+
+    self.working_file_path = [working_path]
+    FileUtils.mkdir(File.dirname(working_path))
+    FileUtils.cp(full_path, working_path)
+    working_path
+  end
+
+  def self.calculate_working_file_path(old_path)
+    config_path = Settings.matterhorn.media_path
+    if config_path.present? && File.directory?(config_path)
+      File.join(config_path, SecureRandom.uuid, File.basename(old_path))
+    else
+      nil
+    end
+  end
+
   protected
 
   def mediainfo
@@ -633,23 +662,35 @@ class MasterFile < ActiveFedora::Base
 
   def saveOriginal(file, original_name=nil)
     realpath = File.realpath(file.path)
+
     if original_name.present?
-      config_path = Settings.matterhorn.media_path
-      newpath = nil
-      if config_path.present? and File.directory?(config_path)
-        newpath = File.join(config_path, original_name)
-        FileUtils.cp(realpath, newpath)
-      else
-        newpath = File.join(File.dirname(realpath), original_name)
-        File.rename(realpath, newpath)
+      # If we have a temp name from an upload, rename to the original name supplied by the user
+      unless File.basename(realpath) == original_name
+        path = File.join(File.dirname(realpath), original_name)
+        File.rename(realpath, path)
+        realpath = path
       end
-      self.file_location = newpath
-    else
-      self.file_location = realpath
+
+      create_working_file!(realpath)
     end
+    self.file_location = realpath
     self.file_size = file.size.to_s
   ensure
     file.close
+  end
+
+  def saveDerivativesHash(derivative_hash)
+    usable_files = derivative_hash.select { |quality, file| File.file?(file) }
+    self.working_file_path = usable_files.values.collect { |file| create_working_file!(File.realpath(file)) }.compact
+
+    %w(quality-high quality-medium quality-low).each do |quality|
+      next unless usable_files.has_key?(quality)
+      self.file_location = File.realpath(usable_files[quality])
+      self.file_size = usable_files[quality].size.to_s
+      break
+    end
+  ensure
+    derivative_hash.values.map { |file| file.close }
   end
 
   def reloadTechnicalMetadata!
@@ -698,6 +739,7 @@ class MasterFile < ActiveFedora::Base
     else
       # Do nothing
     end
+    CleanupWorkingFileJob.perform_later(self.id) unless Settings.matterhorn.media_path.blank?
   end
 
   def update_ingest_batch
