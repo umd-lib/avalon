@@ -165,6 +165,9 @@ en:
   contact:
     title: 'Contact Us - %{application_name}'
 
+  users:
+    title: 'Users - %{application_name}'
+
   groups:
     title: 'Groups - %{application_name}'
     show:
