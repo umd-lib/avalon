@@ -1,0 +1,41 @@
+<%#
+Copyright 2011-2018, The Trustees of Indiana University and Northwestern
+  University.  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+  under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+  CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  specific language governing permissions and limitations under the License.
+---  END LICENSE_HEADER BLOCK  ---
+%>
+<% @page_title = t('users.title', :application_name => application_name) %>
+
+<div class="row col-md-9 col-lg-8">
+  <div class="container-fluid">
+    <h3>Users</h3>
+      <table class="table table-striped ">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Created</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @users.each do |user|%>
+            <tr>
+              <td><%= user.username %></td>
+              <td><%= user.created_at %></td>
+              <td><%= user.updated_at %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+  </div>
+</div>
+

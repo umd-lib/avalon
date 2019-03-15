@@ -23,6 +23,9 @@ Unless required by applicable law or agreed to in writing, software distributed
     <% if can? :manage, Admin::Group %>
     <li class=<%= active_for_controller('admin/groups') %>><%= link_to 'Manage Groups', admin_groups_path, target: '_admin' %></li>
     <% end %>
+    <% if can? :read, User %>
+    <li class=<%= active_for_controller('admin/users') %>><%= link_to 'View Users', admin_users_path, target: '_admin' %></li>
+    <% end %>
     <% if user_session && user_session[:lti_group] %>
     <li><%= link_to(vgroup_display(user_session[:lti_group]), search_catalog_path('f[read_access_virtual_group_ssim][]' => user_session[:lti_group])) %></li>
     <% end %>
