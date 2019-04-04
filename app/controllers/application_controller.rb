@@ -121,6 +121,21 @@ class ApplicationController < ActionController::Base
     @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.remote_ip))
   end
 
+  def impersonating?
+    session[:admin_id].present?
+  end
+  helper_method :impersonating?
+  
+  def impersonating_admin_id
+    session[:admin_id]
+  end
+  helper_method :impersonating_admin_id
+  
+  def can_login_as?(user)
+    (can? :login_as, user) && (user.id != current_user.id)
+  end
+  helper_method :can_login_as?
+
   rescue_from CanCan::AccessDenied do |exception|
     if current_user
       redirect_to root_path, flash: { notice: 'You are not authorized to perform this action.' }

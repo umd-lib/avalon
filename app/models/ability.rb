@@ -38,13 +38,16 @@ class Ability
         can :inspect, MediaObject
         can :manage, Admin::Group
         can :manage, Admin::Collection
-        can :read, User
         can :manage, Resque
         can :read, :about_page
         can :read, MigrationStatus
         can :manage, Playlist
         can :manage, PlaylistItem
         can :manage, AvalonMarker
+        can :read, User
+        can :login_as, User do |user|
+          (user.respond_to? :groups) && ! (user.groups.include?("administrator"))
+        end
       end
 
       if @user_groups.include? "group_manager"

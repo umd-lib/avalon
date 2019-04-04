@@ -14,7 +14,7 @@
 
 # -*- encoding : utf-8 -*-
 class Admin::UsersController < ApplicationController
-  before_filter :auth
+  before_filter :auth, except: [:login_as]
 
   # TODO: finer controls
   def auth
@@ -29,5 +29,21 @@ class Admin::UsersController < ApplicationController
 
   def index
     @users = User.all
+  end
+
+  def login_as
+    user = User.find(params[:user_id])
+    if impersonating? && impersonating_admin_id == user.id
+      sign_in(:user, user)
+      session.delete(:admin_id)
+    else
+      if user && (can? :login_as, user)
+        session[:admin_id] = current_user.id
+        sign_in(:user, user)
+      else
+        flash[:notice] = "You do not have permission to access this page"
+      end
+    end
+    redirect_to root_url # or user_root_url
   end
 end

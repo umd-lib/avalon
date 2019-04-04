@@ -21,6 +21,7 @@ Unless required by applicable law or agreed to in writing, software distributed
       <table class="table table-striped ">
         <thead>
           <tr>
+            <th></th>
             <th>Username</th>
             <th>Created</th>
             <th>Updated</th>
@@ -29,6 +30,11 @@ Unless required by applicable law or agreed to in writing, software distributed
         <tbody>
           <% @users.each do |user|%>
             <tr>
+              <td>
+                <% if can_login_as?(user) %>
+                <%= link_to 'Sign In As', admin_user_login_as_path(user.id) %>
+                <% end %>
+              </td>
               <td><%= user.username %></td>
               <td><%= user.created_at %></td>
               <td><%= user.updated_at %></td>
