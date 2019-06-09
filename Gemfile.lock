@@ -121,6 +121,15 @@ GIT
       chronic (>= 0.6.3)
 
 GIT
+  remote: https://github.com/mohideen/active-elastic-job.git
+  revision: f8b6fd1cced947ca07112b28b3e35b508f8cf478
+  branch: feature/LIBBCM-131
+  specs:
+    active_elastic_job (2.0.1)
+      aws-sdk (~> 2)
+      rails (>= 4.2)
+
+GIT
   remote: https://github.com/rkallensee/bootstrap-toggle-rails.git
   revision: b85df8ea25ab71628fcec1504c7182dd5d7d3606
   tag: v2.2.1.0
@@ -190,9 +199,6 @@ GEM
     active_annotations (0.2.2)
       json-ld
       rdf-vocab (~> 2.1.0)
-    active_elastic_job (2.0.1)
-      aws-sdk (~> 2)
-      rails (>= 4.2)
     active_encode (0.1.1)
       activesupport
     active_fedora-datastreams (0.1.0)
@@ -735,7 +741,7 @@ GEM
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
     retriable (3.1.1)
-    roo (2.7.1)
+    roo (2.6.0)
       nokogiri (~> 1)
       rubyzip (~> 1.1, < 2.0.0)
     rsolr (1.1.2)
@@ -904,7 +910,7 @@ DEPENDENCIES
   about_page!
   active-fedora (~> 11.2)
   active_annotations (~> 0.2.2)
-  active_elastic_job (~> 2.0)
+  active_elastic_job!
   active_encode (~> 0.1.1)
   active_fedora-datastreams
   active_fedora-noid (~> 2.0.2)
@@ -986,7 +992,7 @@ DEPENDENCIES
   resque (~> 1.27.0)
   resque-scheduler (~> 4.3.0)
   rest-client
-  roo (= 2.7.1)
+  roo (= 2.6.0)
   rsolr (~> 1.0)
   rspec-rails
   rspec-retry
