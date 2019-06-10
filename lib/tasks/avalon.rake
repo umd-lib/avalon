@@ -308,10 +308,14 @@ EOC
   # @example RAILS_ENV=production bundle exec rake avalon:reindex would do a single threaded production environment reindex
   # @example RAILS_ENV=production bundle exec rake avalon:reindex[2] would do a dual threaded production environment reindex
   task :reindex, [:threads] => :environment do |t, args|
+    # Temp solution to get indexing to work
+    # Can be revereted after upgrade to ActiveFedora 12.x
+    ActiveFedora.fedora.connection.http.options['timeout'] = 1200 
     descendants = ActiveFedora::Base.descendant_uris(ActiveFedora.fedora.base_uri)
     descendants.shift # remove the root
     Parallel.map(descendants, in_threads: args[:threads].to_i || 1) do |uri|
       begin
+        puts "Processing: #{uri}"
         ActiveFedora::Base.find(ActiveFedora::Base.uri_to_id(uri)).update_index
         puts "#{uri} reindexed"
       rescue
@@ -466,6 +470,94 @@ EOC
       puts " Created #{new_playlist_count} new playlists (#{playlist_errors.length} errors)"
       puts " Created #{new_item_count} new playlist items (#{item_errors.length} errors)"
       puts " Created #{new_bookmark_count} new bookmarks (#{bookmark_errors.length} errors)"
+    end
+  end
+
+  namespace :aws_migration do
+    desc "Get a list items to be transferred from VM filesystem to S3"
+    task :s3_transfer_list, [:masterfile_id] => [:environment] do |t, args|
+      masterfile_id = args[:masterfile_id]
+      out_file_name = "/tmp/s3_transfer_list_" + Time.now.strftime('%Y%m%dT%H%M%S') + ".txt"
+      File.open(out_file_name, "w") do |out_file|
+        if masterfile_id
+          add_to_s3_transfer_list(MasterFile.find(masterfile_id), out_file)
+        else
+          MasterFile.find_each({},{batch_size:100}) do |mf|
+            add_to_s3_transfer_list(mf, out_file)
+          end
+        end
+      end
+      puts "Transfer list created at #{out_file_name}!"
+    end
+
+    desc "Update the content paths on the objects from VM filesystem to S3"
+    task :update_content_paths, [:masterfile_id] => [:environment] do |t, args|
+      masterfile_id = args[:masterfile_id]
+      if masterfile_id
+        set_s3_content_path(MasterFile.find(masterfile_id))
+      else
+        MasterFile.find_each({},{batch_size:100}) do |mf|
+          set_s3_content_path(mf)
+        end
+      end
+    end
+
+    def add_to_s3_transfer_list(masterfile, out_file)
+      if masterfile.file_location.starts_with?("s3://")
+        puts "Masterfile (#{masterfile.id}) already has s3 based path. Skipping!"
+      else
+        out_file.puts("#{masterfile.file_location} #{calculate_masterfile_s3_path(masterfile)}")
+        base_path = "s3://#{Settings.encoding.derivative_bucket}/#{masterfile.id}"
+        masterfile.derivatives.each do |d|
+          file_path = strip_file_prefix(d.derivativeFile)
+          out_file.puts("#{file_path} #{calculate_derivative_s3_path(d, base_path)}")
+          out_file.puts("#{File.dirname(file_path).sub!('/rtmp_streams/', '/hls_streams/')}/ #{calculate_hls_derivatives_s3_path(d, base_path)}")
+        end
+        puts "Masterfile (#{masterfile.id}) and its derivatives added to transfer list!"
+      end
+    end
+
+    def set_s3_content_path(masterfile)
+      rails_root = ENV['RAILS_ROOT'] || File.dirname(__FILE__) + '/../..'
+      migration_logger = Logger.new(rails_root + "/log/aws_migration.log")
+      if masterfile.file_location.starts_with?("s3://")
+        migration_logger.info "Masterfile (#{masterfile.id}) already has s3 based path. Skipping!"
+      else
+        masterfile.file_location = calculate_masterfile_s3_path(masterfile)
+        base_path = "s3://#{Settings.encoding.derivative_bucket}/#{masterfile.id}"
+        masterfile.derivatives.each do |d|
+          d.derivativeFile = calculate_derivative_s3_path(d, base_path)
+          d.location_url = d.derivativeFile
+          d.hls_url = calculate_hls_m3u8_s3_path(d, base_path)
+          d.save!
+        end
+        masterfile.save!
+        migration_logger.info "Completed updating masterfile (#{masterfile.id}) and its derivatives"
+      end
+    end
+
+    def strip_file_prefix(str)
+      return str[7..-1] if str.starts_with?("file://")
+      str
+    end
+
+    def calculate_masterfile_s3_path(master_file)
+      return "#{Settings.dropbox.path}#{master_file.file_location.partition('/dropbox/').last}"
+    end
+
+    def calculate_derivative_s3_path(derivative, _base_path=nil)
+      base_path = _base_path || "s3://#{Settings.encoding.derivative_bucket}/#{derivative.master_file_id}"
+      return "#{base_path}/quality-#{derivative.quality}/#{File.basename(derivative.derivativeFile)}"
+    end
+
+    def calculate_hls_derivatives_s3_path(derivative, _base_path=nil)
+      base_path = _base_path || "s3://#{Settings.encoding.derivative_bucket}/#{derivative.master_file_id}"
+      return "#{base_path}/quality-#{derivative.quality}/hls/"
+    end
+
+    def calculate_hls_m3u8_s3_path(derivative, _base_path=nil)
+      base_path = _base_path || "s3://#{Settings.encoding.derivative_bucket}/#{derivative.master_file_id}"
+      return "#{base_path}/quality-#{derivative.quality}/hls/#{File.basename(derivative.hls_url)}"
     end
   end
 end
