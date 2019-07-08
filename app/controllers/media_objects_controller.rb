@@ -349,8 +349,7 @@ class MediaObjectsController < ApplicationController
           flash[:notice] = "Download failed: Oringal file not stored."
           return redirect_to media_object_path(@media_object.id)
         end
-        location = location[7..-1] # Remove 'file://' prefix
-        send_file location
+        send_data FileLocator.new(location).reader.read, download_file_details(location)
       rescue ActiveFedora::ObjectNotFoundError
         flash[:notice] = "Download failed: Cannot find section."
         redirect_to media_object_path(@media_object.id)
@@ -626,6 +625,16 @@ class MediaObjectsController < ApplicationController
                                      :hls_track_id,
                                      :managed,
                                      :derivativeFile]])[:files]
+  end
+
+  def download_file_details(path)
+    {
+      filename: File.basename(path), 
+      type: 'audio/mpeg', 
+      disposition: 'attachment', 
+      stream: 'true', 
+      buffer_size: '4096'
+    }
   end
 
   def api_params
