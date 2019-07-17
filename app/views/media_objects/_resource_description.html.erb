@@ -82,6 +82,12 @@ Unless required by applicable law or agreed to in writing, software distributed
              locals: {form: form, field: :genre,
                       options: {display_label: 'Genre(s)', multivalued: true}} %>
   <%= render partial: 'text_field',
+             locals: {form: form, field: :person,
+                      options: {display_label: 'Person(s)', multivalued: true}} %>
+  <%= render partial: 'text_field',
+             locals: {form: form, field: :organization,
+                      options: {display_label: 'Organization(s)', multivalued: true}} %>
+  <%= render partial: 'text_field',
              locals: {form: form, field: :topical_subject,
                       options: {display_label: 'Subject(s)', multivalued: true}} %>
   <%= render partial: 'text_field',
