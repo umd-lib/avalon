@@ -37,6 +37,8 @@ FactoryGirl.define do
         genre { [Faker::Lorem.word] }
         topical_subject { [Faker::Lorem.word] }
         temporal_subject { [Faker::Lorem.word] }
+        person { [Faker::Name.name] }
+        organization { [Faker::Company.name] }
         geographic_subject { [Faker::Address.country] }
         physical_description { [Faker::Lorem.word] }
         table_of_contents { [Faker::Lorem.paragraph] }
