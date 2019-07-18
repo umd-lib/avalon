@@ -237,6 +237,8 @@ describe MediaObjectsController, type: :controller do
       :genre,
       :subject,
       :related_item_url,
+      :person,
+      :organizaation,
       :geographic_subject,
       :temporal_subject,
       :topical_subject,

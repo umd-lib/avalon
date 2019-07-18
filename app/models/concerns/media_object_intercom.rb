@@ -39,6 +39,8 @@ module MediaObjectIntercom
           publisher: publisher,
           genre: genre,
           subject: subject,
+          person: person,
+          organization: organization,
           geographic_subject: geographic_subject,
           temporal_subject: temporal_subject,
           topical_subject: topical_subject,
