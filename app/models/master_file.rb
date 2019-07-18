@@ -49,6 +49,15 @@ class MasterFile < ActiveFedora::Base
   # Don't pass the block here since we save the original_name when the user uploads the captions file
   has_subresource 'captions', class_name: 'IndexedFile'
 
+  # Burli file corresponding to the audio
+  has_subresource 'burli', class_name: 'IndexedFile'
+
+  # Original output from the audio transcription service
+  has_subresource 'transcript', class_name: 'IndexedFile'
+
+  # Original output from the NLP Entities detection service
+  has_subresource 'entities', class_name: 'IndexedFile'
+
   property :title, predicate: ::RDF::Vocab::EBUCore.title, multiple: false do |index|
     index.as :stored_searchable
   end
@@ -480,9 +489,21 @@ class MasterFile < ActiveFedora::Base
   def has_captions?
     !captions.empty?
   end
-
+  
   def caption_type
     has_captions? ? captions.mime_type : nil
+  end
+
+  def has_burli?
+    !burli.empty?
+  end
+
+  def has_transcript?
+    !transcript.empty?
+  end
+
+  def has_entities?
+    !entities.empty?
   end
 
   def has_structuralMetadata?
@@ -495,6 +516,9 @@ class MasterFile < ActiveFedora::Base
       solr_doc['has_captions?_bs'] = has_captions?
       solr_doc['has_poster?_bs'] = has_poster?
       solr_doc['has_thumbnail?_bs'] = has_thumbnail?
+      solr_doc['has_burli?_bsi'] = has_burli?
+      solr_doc['has_transcript?_bsi'] = has_transcript?
+      solr_doc['has_entities?_bsi'] = has_entities?
       solr_doc['has_structuralMetadata?_bs'] = has_structuralMetadata?
       solr_doc['caption_type_ss'] = caption_type
       solr_doc['identifier_ssim'] = identifier.map(&:downcase)
