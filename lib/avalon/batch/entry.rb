@@ -189,6 +189,24 @@ module Avalon
           master_file.captions.mime_type='text/vtt'
           master_file.captions.original_name = captions_file
         end
+        transcript_file = "#{filename}.transcript.json"
+        if FileLocator.new(transcript_file).exist?
+          master_file.transcript.content=FileLocator.new(transcript_file).reader
+          master_file.transcript.mime_type='application/json'
+          master_file.transcript.original_name = transcript_file
+        end
+        burli_file = "#{filename}.burli.xml"
+        if FileLocator.new(burli_file).exist?
+          master_file.burli.content=FileLocator.new(burli_file).reader
+          master_file.burli.mime_type='text/xml'
+          master_file.burli.original_name = burli_file
+        end
+        entities_file = "#{filename}.entities"
+        if FileLocator.new(entities_file).exist?
+          master_file.entities.content=FileLocator.new(entities_file).reader
+          master_file.entities.mime_type='text/csv'
+          master_file.entities.original_name = "#{entities_file}.csv"
+        end
       end
 
       def process!
