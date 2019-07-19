@@ -189,6 +189,24 @@ module Avalon
           master_file.captions.mime_type='text/vtt'
           master_file.captions.original_name = captions_file
         end
+        transcript_file = "#{filename}.transcript.json"
+        if FileLocator.new(transcript_file).exist?
+          master_file.transcript.content=FileLocator.new(transcript_file).reader
+          master_file.transcript.mime_type='application/json'
+          master_file.transcript.original_name = transcript_file
+        end
+        burli_file = "#{filename}.burli.xml"
+        if FileLocator.new(burli_file).exist?
+          master_file.burli.content=FileLocator.new(burli_file).reader
+          master_file.burli.mime_type='text/xml'
+          master_file.burli.original_name = burli_file
+        end
+        nlp_file = "#{filename}.nlp_data.json"
+        if FileLocator.new(nlp_file).exist?
+          master_file.nlp_data.content=FileLocator.new(nlp_file).reader
+          master_file.nlp_data.mime_type='application/json'
+          master_file.nlp_data.original_name = "#{nlp_file}"
+        end
       end
 
       def process!

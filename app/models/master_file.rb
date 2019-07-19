@@ -29,6 +29,7 @@ class MasterFile < ActiveFedora::Base
   include Identifier
   include MigrationTarget
   include MasterFileBehavior
+  include MasterFileIntercom
 
   belongs_to :media_object, class_name: 'MediaObject', predicate: ActiveFedora::RDF::Fcrepo::RelsExt.isPartOf
   has_many :derivatives, class_name: 'Derivative', predicate: ActiveFedora::RDF::Fcrepo::RelsExt.isDerivationOf, dependent: :destroy
@@ -47,6 +48,15 @@ class MasterFile < ActiveFedora::Base
 
   # Don't pass the block here since we save the original_name when the user uploads the captions file
   has_subresource 'captions', class_name: 'IndexedFile'
+
+  # Burli file corresponding to the audio
+  has_subresource 'burli', class_name: 'IndexedFile'
+
+  # Original output from the audio transcription service
+  has_subresource 'transcript', class_name: 'IndexedFile'
+
+  # Original output from the NLP service
+  has_subresource 'nlp_data', class_name: 'IndexedFile'
 
   property :title, predicate: ::RDF::Vocab::EBUCore.title, multiple: false do |index|
     index.as :stored_searchable
@@ -85,6 +95,9 @@ class MasterFile < ActiveFedora::Base
   property :masterFile, predicate: ::RDF::Vocab::EBUCore.filename, multiple: false
   property :identifier, predicate: ::RDF::Vocab::Identifiers.local, multiple: true do |index|
     index.as :symbol
+  end
+  property :comment, predicate: ::RDF::Vocab::EBUCore.comments, multiple: true do |index|
+    index.as :stored_searchable
   end
 
   # Workflow status properties
@@ -476,9 +489,21 @@ class MasterFile < ActiveFedora::Base
   def has_captions?
     !captions.empty?
   end
-
+  
   def caption_type
     has_captions? ? captions.mime_type : nil
+  end
+
+  def has_burli?
+    !burli.empty?
+  end
+
+  def has_transcript?
+    !transcript.empty?
+  end
+
+  def has_nlp_data?
+    !nlp_data.empty?
   end
 
   def has_structuralMetadata?
@@ -491,10 +516,20 @@ class MasterFile < ActiveFedora::Base
       solr_doc['has_captions?_bs'] = has_captions?
       solr_doc['has_poster?_bs'] = has_poster?
       solr_doc['has_thumbnail?_bs'] = has_thumbnail?
+      solr_doc['has_burli?_bsi'] = has_burli?
+      solr_doc['has_transcript?_bsi'] = has_transcript?
+      solr_doc['has_nlp_data?_bsi'] = has_nlp_data?
       solr_doc['has_structuralMetadata?_bs'] = has_structuralMetadata?
       solr_doc['caption_type_ss'] = caption_type
       solr_doc['identifier_ssim'] = identifier.map(&:downcase)
     end
+  end
+
+  def working_file_path
+    path = nil
+    config_path = Settings.matterhorn.media_path
+    path = File.join(config_path, File.basename(self.file_location)) if config_path.present? && File.directory?(config_path)
+    path
   end
 
   protected
@@ -536,22 +571,29 @@ class MasterFile < ActiveFedora::Base
   def extract_frame(options={})
     return unless is_video?
 
-    base = id.gsub(/\//,'_')
     offset = options[:offset].to_i
     unless offset.between?(0,self.duration.to_i)
       raise RangeError, "Offset #{offset} not in range 0..#{self.duration}"
     end
 
-    ffmpeg = Settings.ffmpeg.path
     frame_size = (options[:size].nil? or options[:size] == 'auto') ? self.original_frame_size : options[:size]
 
     (new_width,new_height) = frame_size.split(/x/).collect(&:to_f)
     new_height = (new_width/self.display_aspect_ratio.to_f).floor
     new_height += 1 if new_height.odd?
-    aspect = new_width/new_height
-
     frame_source = find_frame_source(offset: offset)
-    data = nil
+    data = get_ffmpeg_frame_data(frame_source, new_width, new_height)
+    raise RuntimeError, "Frame extraction failed. See log for details." if data.empty?
+    data
+  end
+
+  def get_ffmpeg_frame_data frame_source, new_width, new_height
+    ffmpeg = Settings.ffmpeg.path
+    unless File.executable?(ffmpeg)
+      raise RuntimeError, "FFMPEG not at configured location: #{ffmpeg}"
+    end
+    base = id.gsub(/\//,'_')
+    aspect = new_width/new_height
     Tempfile.open([base,'.jpg']) do |jpeg|
       file_source = frame_source[:source]
       unless file_source =~ %r(https?://)
@@ -589,8 +631,6 @@ class MasterFile < ActiveFedora::Base
         File.unlink(file_source) unless file_source =~ %r(https?://)
       end
     end
-    raise RuntimeError, "Frame extraction failed. See log for details." if data.empty?
-    data
   end
 
   def calculate_percent_complete matterhorn_response
@@ -624,20 +664,20 @@ class MasterFile < ActiveFedora::Base
 
   def saveOriginal(file, original_name=nil)
     realpath = File.realpath(file.path)
+
     if original_name.present?
-      config_path = Settings.matterhorn.media_path
-      newpath = nil
-      if config_path.present? and File.directory?(config_path)
-        newpath = File.join(config_path, original_name)
-        FileUtils.cp(realpath, newpath)
-      else
-        newpath = File.join(File.dirname(realpath), original_name)
-        File.rename(realpath, newpath)
+      # If we have a temp name from an upload, rename to the original name supplied by the user
+      unless File.basename(realpath) == original_name
+        path = File.join(File.dirname(realpath), original_name)
+        File.rename(realpath, path)
+        realpath = path
+        self.file_location = realpath
       end
-      self.file_location = newpath
-    else
-      self.file_location = realpath
+
+      newpath = working_file_path
+      FileUtils.cp(realpath, newpath) unless newpath.blank?
     end
+    self.file_location = realpath
     self.file_size = file.size.to_s
   ensure
     file.close
@@ -689,6 +729,7 @@ class MasterFile < ActiveFedora::Base
     else
       # Do nothing
     end
+    CleanupWorkingFileJob.perform_later(self.id) unless Settings.matterhorn.media_path.blank?
   end
 
   def update_ingest_batch

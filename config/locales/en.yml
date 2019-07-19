@@ -66,6 +66,12 @@ en:
       consistency and to allow for sorting and aggregating, use terms from the <a
       href="http://metadataregistry.org/concept/list/vocabulary_id/148.html"
       target="_blank">Open Metadata Registry labels for PBCore: pbcoreGenre</a>.
+    person: |
+      Person should be used for the person or people associated with the content.
+      This is an alias to mods subject name of type "personal".
+    organization: |
+      Organization should be used for the organization(s) associated with the content.
+      This is an alias to mods subject name of type "corporate".
     geographic_subject: |
       Location should be used for the geographic subject of the content. For
       consistency and to allow for sorting and aggregating, use terms from the
@@ -190,6 +196,7 @@ en:
     publicAltText: "This playlist can be viewed by anyone on the web."
     private-with-tokenAltText: "This playlist can only be viewed by users who have the unique link."
 
+    visibility: "Visibility"
     privateText: "Private"
     publicText: "Public"
     private-with-tokenText: "Share by link"

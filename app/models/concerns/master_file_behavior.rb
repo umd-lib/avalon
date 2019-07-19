@@ -13,8 +13,8 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 module MasterFileBehavior
-  QUALITY_ORDER = { "high" => 1, "medium" => 2, "low" => 3 }
-  EMBED_SIZE = {:medium => 600}
+  QUALITY_ORDER = { "auto" => 1, "high" => 2, "medium" => 3, "low" => 4 }.freeze
+  EMBED_SIZE = { medium: 600 }.freeze
   AUDIO_HEIGHT = 50
 
   def status?(value)
@@ -36,10 +36,17 @@ module MasterFileBehavior
 
     derivatives.each do |d|
       common = { quality: d.quality,
+                 bitrate: d.bitrate,
                  mimetype: d.mime_type,
                  format: d.format }
       flash << common.merge(url: d.streaming_url(false))
       hls << common.merge(url: d.streaming_url(true))
+    end
+    if hls.length > 1
+      hls << { quality: 'auto',
+               mimetype: hls.first[:mimetype],
+               format: hls.first[:format],
+               url: adaptive_master_file_url(id: id, format: :m3u8) }
     end
 
     # Sorts the streams in order of quality, note: Hash order only works in Ruby 1.9 or later
@@ -61,6 +68,7 @@ module MasterFileBehavior
       embed_code: embed_code(EMBED_SIZE[:medium], {urlappend: '/embed'}),
       stream_flash: flash,
       stream_hls: hls,
+      cookie_auth: cookie_auth?,
       captions_path: captions_path,
       captions_format: captions_format,
       duration: (duration.to_f / 1000),
@@ -71,7 +79,7 @@ module MasterFileBehavior
   def display_title
     mf_title = structuralMetadata.section_title unless structuralMetadata.blank?
     mf_title ||= title if title.present?
-    mf_title ||= file_location.split("/").last if file_location.present? && (media_object.ordered_master_files.to_a.size > 1)
+    mf_title ||= file_location.split("/").last if file_location.present? && (media_object.master_file_ids.size > 1)
     mf_title.blank? ? nil : mf_title
   end
 
@@ -95,6 +103,10 @@ module MasterFileBehavior
 
   def is_video?
     self.file_format != "Sound"
+  end
+
+  def cookie_auth?
+    Settings.streaming.server == "aws"
   end
 
   def sort_streams array

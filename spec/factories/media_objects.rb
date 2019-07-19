@@ -37,12 +37,17 @@ FactoryGirl.define do
         genre { [Faker::Lorem.word] }
         topical_subject { [Faker::Lorem.word] }
         temporal_subject { [Faker::Lorem.word] }
+        person { [Faker::Name.name] }
+        organization { [Faker::Company.name] }
         geographic_subject { [Faker::Address.country] }
         physical_description { [Faker::Lorem.word] }
         table_of_contents { [Faker::Lorem.paragraph] }
-        note { [{note: Faker::Lorem.paragraph, type: 'general'}] }
-        other_identifier { [{id: Faker::Lorem.word, source: ['local']}] }
+        note { [{ note: Faker::Lorem.paragraph, type: 'general' }] }
+        other_identifier { [{ id: Faker::Lorem.word, source: 'local' }] }
         language { ['eng'] }
+        related_item_url { [{ url: Faker::Internet.url, label: Faker::Lorem.sentence }]}
+        bibliographic_id { { id: Faker::Lorem.word, source: 'local' } }
+        comment { ['MO comment'] }
         # after(:create) do |mo|
         #   mo.update_datastream(:descMetadata, {
         #     note: {note[Faker::Lorem.paragraph],

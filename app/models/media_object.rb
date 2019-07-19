@@ -23,6 +23,7 @@ class MediaObject < ActiveFedora::Base
   include Identifier
   include MigrationTarget
   include SpeedyAF::OrderedAggregationIndex
+  include MediaObjectIntercom
   require 'avalon/controlled_vocabulary'
   # Begin customization for LIBBCM-29
   require 'date'
@@ -103,6 +104,9 @@ class MediaObject < ActiveFedora::Base
   end
   property :identifier, predicate: ::RDF::Vocab::Identifiers.local, multiple: true do |index|
     index.as :symbol
+  end
+  property :comment, predicate: ::RDF::Vocab::EBUCore.comments, multiple: true do |index|
+    index.as :stored_searchable
   end
 
   ordered_aggregation :master_files, class_name: 'MasterFile', through: :list_source
@@ -191,6 +195,14 @@ class MediaObject < ActiveFedora::Base
     self.set_resource_types!
   end
 
+  def all_comments
+    comment.sort + ordered_master_files.to_a.compact.collect do |mf|
+      mf.comment.reject(&:blank?).collect do |c|
+        mf.display_title.present? ? "[#{mf.display_title}] #{c}" : c
+      end.sort
+    end.flatten.uniq
+  end
+
   def section_labels
     all_labels = master_files.collect{|mf|mf.structural_metadata_labels << mf.title}
     all_labels.flatten.uniq.compact
@@ -252,6 +264,7 @@ class MediaObject < ActiveFedora::Base
       end
       # End customization for LIBBCM-29
 
+      solr_doc['all_comments_sim'] = all_comments
       #Add all searchable fields to the all_text_timv field
       all_text_values = []
       all_text_values << solr_doc["title_tesi"]
@@ -262,6 +275,8 @@ class MediaObject < ActiveFedora::Base
       all_text_values << solr_doc["summary_ssi"]
       all_text_values << solr_doc["publisher_sim"]
       all_text_values << solr_doc["subject_topic_sim"]
+      all_text_values << solr_doc["subject_person_ssim"]
+      all_text_values << solr_doc["subject_corporate_ssim"]
       all_text_values << solr_doc["subject_geographic_sim"]
       all_text_values << solr_doc["subject_temporal_sim"]
       all_text_values << solr_doc["genre_sim"]

@@ -1,11 +1,11 @@
 # Copyright 2011-2018, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -22,15 +22,25 @@ module ApplicationHelper
     "#{application_name} #{t(:release_label)} #{Avalon::VERSION}"
   end
 
-  def share_link_for(obj)
+  def share_link_for(obj, only_path: false)
     if obj.nil?
       I18n.t('media_object.empty_share_link')
     elsif obj.permalink.present?
       obj.permalink
     else
       case obj
-      when MediaObject then media_object_url(obj)
-      when MasterFileBehavior then id_section_media_object_url(obj.media_object.id, obj.id)
+      when MediaObject
+        if only_path
+          media_object_path(obj)
+        else
+          media_object_url(obj)
+        end
+      when MasterFileBehavior
+        if only_path
+          id_section_media_object_path(obj.media_object_id, obj.id)
+        else
+          id_section_media_object_url(obj.media_object_id, obj.id)
+        end
       end
     end
   end

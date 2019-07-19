@@ -3,6 +3,8 @@ source 'https://rubygems.org'
 # Core rails
 gem 'rails', '4.2.9'
 gem 'sqlite3'
+gem 'bootsnap', require: false
+gem 'sprockets', '~>3.7.2'
 
 # Assets
 gem 'coffee-rails', '~> 4.1.0'
@@ -56,7 +58,7 @@ gem 'active_encode', '~> 0.1.1'
 gem 'browse-everything', '~> 0.13.0'
 gem 'mediainfo', git: "https://github.com/avalonmediasystem/mediainfo.git", branch: 'avalon_fixes'
 gem 'rest-client'
-gem 'roo', '~> 2.6'
+gem 'roo', '2.6.0'
 gem 'rubyhorn', git: "https://github.com/avalonmediasystem/rubyhorn.git", tag: 'avalon-r6'
 
 # Data Translation & Normalization
@@ -75,12 +77,16 @@ gem 'mediaelement-skin-avalon', git:'https://github.com/avalonmediasystem/mediae
 gem 'mediaelement-title', git:'https://github.com/avalonmediasystem/mediaelement-title.git', tag: 'avalon-r4'
 gem 'mediaelement-track-scrubber', git: 'https://github.com/avalonmediasystem/mediaelement-track-scrubber.git', tag: 'avalon-r6'
 
+gem 'avalon_batch_entry_monitor', git: "https://github.com/umd-lib/avalon_batch_entry_monitor.git", tag: '0.0.1'
+
 gem 'dotenv-rails'
 gem 'pg', '0.20.0'
 # Jobs
 gem 'redis-rails'
-gem 'resque', '~> 1.26.0'
+gem 'resque', '~> 1.27.0'
 gem 'resque-scheduler', '~> 4.3.0'
+gem 'activejob-traffic_control'
+
 
 # Coding Patterns
 gem 'config'
@@ -141,7 +147,7 @@ group :aws, optional: true do
   gem 'aws-sdk-rails'
   gem 'cloudfront-signer'
   gem 'zk'
-  gem 'active_elastic_job', '~> 2.0'
+  gem 'active_elastic_job', git: 'https://github.com/mohideen/active-elastic-job.git', branch: 'feature/LIBBCM-131'
 end
 
 # Install the bundle --with zoom to use the Z39.50 bib retriever

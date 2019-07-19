@@ -18,7 +18,7 @@ Devise.setup do |config|
   # config.mailer = 'Devise::Mailer'
 
   # Configure the parent class responsible to send e-mails.
-  # config.parent_mailer = 'ActionMailer::Base'
+  config.parent_mailer = 'ApplicationMailer'
 
   # ==> ORM configuration
   # Load and configure the ORM. Supports :active_record (default) and
@@ -257,7 +257,8 @@ Devise.setup do |config|
     if provider[:provider] == :identity
       provider[:params].merge!({
         on_login: AuthFormsController.action(:render_form, AuthFormsController.dispatcher(:identity, :request_phase)),
-        on_registration: AuthFormsController.action(:render_form, AuthFormsController.dispatcher(:identity, :registration_form))
+        on_registration: AuthFormsController.action(:render_form, AuthFormsController.dispatcher(:identity, :registration_form)),
+        on_failed_registration: AuthFormsController.action(:render_form_with_errors, AuthFormsController.dispatcher(:identity, :registration_form)),
       })
     end
 

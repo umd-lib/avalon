@@ -46,12 +46,6 @@ services:
       - work:/work
     ports:
       - "8080:8080"
-  rtmp:
-    image: avalonmediasystem/red5
-    volumes:
-      - streaming:/data
-    ports:
-      - "1935:1935"
   hls:
     image: avalonmediasystem/nginx
     volumes:
@@ -86,14 +80,15 @@ services:
       - FEDORA_BASE_PATH
       - FEDORA_NAMESPACE=avalon
       - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fedora/rest
-      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
       - MASTER_FILE_PATH
       - MASTER_FILE_STRATEGY=delete
       - MATTERHORN_URL=http://matterhorn_system_account:CHANGE_ME@matterhorn:8080/
       - SETTINGS__MATTERHORN__MEDIA_PATH=/masterfiles
       - MEDIAINFO_PATH=/usr/bin/mediainfo
       - RAILS_ENV=development
-      - REDIS_SERVER=redis:6379
+      - SETTINGS__REDIS__HOST=redis
+      - SETTINGS__REDIS__PORT=6379
       - SECRET_KEY_BASE=abcd
       - SMTP_ADDRESS
       - SMTP_AUTHENTICATION
@@ -107,7 +102,6 @@ services:
       - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
       - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
-      - SETTINGS__STREAMING__RTMP_BASE=rtmp://localhost/avalon
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - SYSTEM_GROUPS=administrator,group_manager,manager

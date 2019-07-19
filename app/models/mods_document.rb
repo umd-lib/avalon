@@ -128,9 +128,12 @@ class ModsDocument < ActiveFedora::OmDatastream
     t.geographic_subject(:proxy => [:subject, :geographic])
     t.temporal_subject(:proxy => [:subject, :temporal])
     t.occupation_subject(:proxy => [:subject, :occupation])
-    t.person_subject(:proxy => [:subject, :name, :name_part], :path => 'subject/oxns:name[@type="personal"]/oxns:namePart')
-    t.corporate_subject(:proxy => [:subject, :name, :name_part], :path => 'subject/oxns:name[@type="corporate"]/oxns:namePart')
-    t.family_subject(:proxy => [:subject, :name, :name_part], :path => 'subject/oxns:name[@type="family"]/oxns:namePart')
+    t._person_subject(:ref => [:name], :path => 'subject/oxns:name[@type="personal"]')
+    t.person_subject(:proxy => [:_person_subject, :name_part])
+    t._corporate_subject(:ref => [:name], :path => 'subject/oxns:name[@type="corporate"]')
+    t.corporate_subject(:proxy => [:_corporate_subject, :name_part])
+    t._family_subject(:ref => [:name], :path => 'subject/oxns:name[@type="family"]')
+    t.family_subject(:proxy => [:_family_subject, :name_part])
     t.title_subject(:proxy => [:subject, :title_info, :title])
 
     t.related_item(:path => 'relatedItem[not(@type)]') do

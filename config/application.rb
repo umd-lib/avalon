@@ -8,10 +8,12 @@ require 'resolv-replace'
 Bundler.require(*Rails.groups)
 
 module Avalon
-  VERSION = '6.3.0-bcm-0-SNAPSHOT'
+  VERSION = '6.4.3-bcm-0'
 
   class Application < Rails::Application
     require 'avalon/configuration'
+
+    config.autoload_paths << Rails.root.join('lib')
 
     config.generators do |g|
       g.test_framework :rspec, :spec => true
@@ -34,18 +36,6 @@ module Avalon
     config.active_record.raise_in_transactional_callbacks = true
 
     config.active_job.queue_adapter = :resque
-
-    if ENV['REDIS_HOST']
-      redis_host = ENV['REDIS_HOST']
-      redis_port = ENV['REDIS_PORT'] || 6379
-
-      config.cache_store = :redis_store, {
-        host: redis_host,
-        port: redis_port,
-        db: 0,
-        namespace: 'avalon'
-      }
-    end
 
     config.action_dispatch.default_headers = { 'X-Frame-Options' => 'ALLOWALL' }
   end

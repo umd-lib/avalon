@@ -36,10 +36,16 @@ Rails.application.routes.draw do
       post 'unpublish'#, as: :unpublish_bookmarks
       get 'add_to_playlist'
       post 'add_to_playlist'
+      get 'intercom_push'
+      post 'intercom_push'
     end
   end
 
-  devise_for :users, :controllers => { :omniauth_callbacks => "users/omniauth_callbacks" }, format: false
+  devise_for :users, :controllers => {
+    :omniauth_callbacks => "users/omniauth_callbacks",
+    :passwords => "users/passwords"
+  }, format: false
+
   devise_scope :user do
     match '/users/sign_in', :to => "users/sessions#new", :as => :new_user_session, via: [:get]
     match '/users/sign_out', :to => "users/sessions#destroy", :as => :destroy_user_session, via: [:get]
@@ -76,7 +82,12 @@ Rails.application.routes.draw do
       get ':id/detail', action: :detail, as: 'detail'
       get ':id/report', action: :report, as: 'report'
     end
+    
+
+  
   end
+    
+  mount AvalonBatchEntryMonitor::Engine, at: '/'
 
   resources :vocabulary, except: [:create, :destroy, :new, :edit]
 
@@ -97,6 +108,7 @@ Rails.application.routes.draw do
       get :confirm_remove
       get :add_to_playlist_form
       post :add_to_playlist
+      patch :intercom_push
     end
     collection do
       post :create, action: :create, constraints: { format: 'json' }
@@ -105,6 +117,7 @@ Rails.application.routes.draw do
       put :update_status
       # 'delete' has special signifigance so use 'remove' for now
       delete :remove, :action => :destroy
+      get :intercom_collections
     end
   end
 
@@ -120,6 +133,7 @@ Rails.application.routes.draw do
       post 'attach_structure'
       post 'attach_captions'
       get :captions
+      get 'adaptive', to: 'master_files#hls_adaptive_manifest'
     end
   end
 

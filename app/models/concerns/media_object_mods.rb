@@ -252,6 +252,27 @@ module MediaObjectMods
     Array(value).each { |val| descMetadata.add_topical_subject(val) if val.present? }
   end
 
+
+  # has_attributes :person, datastream: :descMetadata, at: [:person_subject], multiple: true
+  def person
+    descMetadata.person_subject
+  end
+
+  def person=(value)
+    delete_all_values(:person_subject)
+    Array(value).each { |val| descMetadata.add_person_subject(val) if val.present? }
+  end
+
+  # has_attributes :organization, datastream: :descMetadata, at: [:corporate_subject], multiple: true
+  def organization
+    descMetadata.corporate_subject
+  end
+
+  def organization=(value)
+    delete_all_values(:corporate_subject)
+    Array(value).each { |val| descMetadata.add_corporate_subject(val) if val.present? }
+  end
+
   # has_attributes :geographic_subject, datastream: :descMetadata, at: [:geographic_subject], multiple: true
   def geographic_subject
     descMetadata.geographic_subject
@@ -338,7 +359,7 @@ module MediaObjectMods
 
   # has_attributes :related_item_url, datastream: :descMetadata, at: [:related_item_url], multiple: true
   def related_item_url
-    descMetadata.related_item_url.zip(descMetadata.related_item_label).map{|a|{url: a[0],label: a[1]}}
+    descMetadata.related_item_url.zip(descMetadata.related_item_label).map{|a|{url: a[0].strip, label: a[1]}}
   end
 
   def related_item_url=(value_hashes)

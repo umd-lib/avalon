@@ -48,3 +48,5 @@
 // this:
 //= require 'blacklight_range_limit'
 
+
+//= require 'avalon_batch_entry_monitor'

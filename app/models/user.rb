@@ -25,10 +25,13 @@ class User < ActiveRecord::Base
   # :confirmable, :lockable, :timeoutable and :omniauthable
   # devise :database_authenticatable, :registerable,
   #        :recoverable, :rememberable, :trackable, :validatable
-  devise :omniauthable
+  devise :omniauthable, :recoverable
+
+  include UserRecoverable
 
   validates :username, presence: true, uniqueness: { case_sensitive: false }
   validates :email, presence: true, uniqueness: { case_sensitive: false }
+
 
   # Method added by Blacklight; Blacklight uses #to_s on your
   # user class to get a user-displayable login/identifier for
@@ -36,6 +39,8 @@ class User < ActiveRecord::Base
   def to_s
     user_key
   end
+
+
 
   def destroy
     Bookmark.where(user_id: self.id).destroy_all
