@@ -201,11 +201,11 @@ module Avalon
           master_file.burli.mime_type='text/xml'
           master_file.burli.original_name = burli_file
         end
-        entities_file = "#{filename}.entities"
-        if FileLocator.new(entities_file).exist?
-          master_file.entities.content=FileLocator.new(entities_file).reader
-          master_file.entities.mime_type='text/csv'
-          master_file.entities.original_name = "#{entities_file}.csv"
+        nlp_file = "#{filename}.nlp_data.json"
+        if FileLocator.new(nlp_file).exist?
+          master_file.nlp_data.content=FileLocator.new(nlp_file).reader
+          master_file.nlp_data.mime_type='application/json'
+          master_file.nlp_data.original_name = "#{nlp_file}"
         end
       end
 

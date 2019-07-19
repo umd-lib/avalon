@@ -55,8 +55,8 @@ class MasterFile < ActiveFedora::Base
   # Original output from the audio transcription service
   has_subresource 'transcript', class_name: 'IndexedFile'
 
-  # Original output from the NLP Entities detection service
-  has_subresource 'entities', class_name: 'IndexedFile'
+  # Original output from the NLP service
+  has_subresource 'nlp_data', class_name: 'IndexedFile'
 
   property :title, predicate: ::RDF::Vocab::EBUCore.title, multiple: false do |index|
     index.as :stored_searchable
@@ -502,8 +502,8 @@ class MasterFile < ActiveFedora::Base
     !transcript.empty?
   end
 
-  def has_entities?
-    !entities.empty?
+  def has_nlp_data?
+    !nlp_data.empty?
   end
 
   def has_structuralMetadata?
@@ -518,7 +518,7 @@ class MasterFile < ActiveFedora::Base
       solr_doc['has_thumbnail?_bs'] = has_thumbnail?
       solr_doc['has_burli?_bsi'] = has_burli?
       solr_doc['has_transcript?_bsi'] = has_transcript?
-      solr_doc['has_entities?_bsi'] = has_entities?
+      solr_doc['has_nlp_data?_bsi'] = has_nlp_data?
       solr_doc['has_structuralMetadata?_bs'] = has_structuralMetadata?
       solr_doc['caption_type_ss'] = caption_type
       solr_doc['identifier_ssim'] = identifier.map(&:downcase)
