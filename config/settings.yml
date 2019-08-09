@@ -33,7 +33,7 @@ streaming:
   stream_token_ttl: 20 #minutes
   rtmp_base:
   http_base:
-  default_quality: 'auto'
+  default_quality: 'high'
   content_path: '/apps/bcast/avalon/rtmp_streams'
 solr:
   configset: avalon
