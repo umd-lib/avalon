@@ -10,6 +10,7 @@ class SolrCollectionAdmin
     optimize = !!opts[:optimize]
     timestamp = Time.now.strftime('%Y%m%d%H%M%S')
     backup_name = "#{@collection}_backup_#{timestamp}"
+    puts "Backup Name: #{backup_name}"
     @conn.get("#{@collection}/update", optimize: 'true') if optimize
     response = @conn.get('admin/collections', action: 'BACKUP', name: backup_name, collection: @collection, location: location, wt: 'json')
     response.body
