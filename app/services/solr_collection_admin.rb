@@ -22,4 +22,9 @@ class SolrCollectionAdmin
     response.body
   end
 
+  def delete
+    params = { action: 'DELETE', name: @collection, wt: 'json' }
+    response = @conn.get('admin/collections', params)
+    response.body
+  end
 end
