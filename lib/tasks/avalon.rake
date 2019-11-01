@@ -202,6 +202,19 @@ EOC
      FileUtils.rm(Dir['public/stylesheets/cache/[^.]*'])
    end
   end
+
+  namespace :masterfile do
+    # Create derivative for masterfiles if missing
+    task :create_derivatives => :environment do
+      MasterFile.find_each({},{batch_size:5}) do |masterfile|
+        if masterfile.derivatives.blank?
+          ActiveEncodeJob::Create.perform_later(masterfile.id, masterfile.file_location, {preset: masterfile.workflow_name})
+          puts "Enqueued ActiveEncodeJob for masterfile #{masterfile.id} located at #{masterfile.file_location}"
+          sleep(5)
+        end
+      end
+    end
+  end
   namespace :derivative do
    desc "Sets streaming urls for derivatives based on configured content_path in avalon.yml"
    task :set_streams => :environment do
@@ -509,6 +522,7 @@ EOC
         out_file.puts("#{masterfile.file_location} #{calculate_masterfile_s3_path(masterfile)}")
         base_path = "s3://#{Settings.encoding.derivative_bucket}/#{masterfile.id}"
         masterfile.derivatives.each do |d|
+
           file_path = strip_file_prefix(d.derivativeFile)
           out_file.puts("#{file_path} #{calculate_derivative_s3_path(d, base_path)}")
           out_file.puts("#{File.dirname(file_path).sub!('/rtmp_streams/', '/hls_streams/')}/ #{calculate_hls_derivatives_s3_path(d, base_path)}")
@@ -524,15 +538,21 @@ EOC
         migration_logger.info "Masterfile (#{masterfile.id}) already has s3 based path. Skipping!"
       else
         masterfile.file_location = calculate_masterfile_s3_path(masterfile)
-        base_path = "s3://#{Settings.encoding.derivative_bucket}/#{masterfile.id}"
-        masterfile.derivatives.each do |d|
+        masterfile.save!
+      end
+      base_path = "s3://#{Settings.encoding.derivative_bucket}/#{masterfile.id}"
+      masterfile.derivatives.each do |d|
+        if d.derivativeFile.starts_with?("s3://")
+          migration_logger.info "Derivativefile (#{d.id}) already has s3 based path. Skipping!"
+        else
           d.derivativeFile = calculate_derivative_s3_path(d, base_path)
           d.location_url = d.derivativeFile
           d.hls_url = calculate_hls_m3u8_s3_path(d, base_path)
           d.save!
+          migration_logger.info "Updated derivativefile to (#{d.derivativeFile})"
         end
-        masterfile.save!
-        migration_logger.info "Completed updating masterfile (#{masterfile.id}) and its derivatives"
+      end
+      migration_logger.info "Completed updating masterfile (#{masterfile.id}) and its derivatives"
       end
     end
 
