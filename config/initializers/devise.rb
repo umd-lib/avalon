@@ -308,6 +308,9 @@ Devise.setup do |config|
                                  on_failed_registration: AuthFormsController.action(:render_form_with_errors)
                                })
     end
+    if provider[:provider] == :saml
+      OneLogin::RubySaml::Attributes.single_value_compatibility = false
+    end
     params = provider[:params]
     params = [params] unless params.is_a?(Array)
     begin

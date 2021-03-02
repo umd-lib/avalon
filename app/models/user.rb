@@ -68,6 +68,38 @@ class User < ActiveRecord::Base
     Timeline.where(user_id:id).collect(&:tags).flatten.reject(&:blank?).uniq.sort
   end
 
+  def self.sanitize_saml_roles(roles)
+    roles.map do |role|
+      role.downcase.sub(/^avalon-/, '').gsub(/-/, '_')
+    end
+  end
+
+  def self.add_user_to_group(group_name, username)
+    users = Avalon::RoleControls.users(group_name)
+    return if users.include?(username)
+    users.append(username)
+    Avalon::RoleControls.assign_users(users, group_name)
+    Avalon::RoleControls.save_changes
+  end
+
+  def self.remove_user_from_group(group_name, username)
+    users = Avalon::RoleControls.users(group_name)
+    return unless users.include?(username)
+    users.delete(username)
+    Avalon::RoleControls.assign_users(users, group_name)
+    Avalon::RoleControls.save_changes
+  end
+
+  def self.update_local_roles(username, roles)
+    Admin::Group.all.each do |group|
+      if roles.include?(group.name)
+        add_user_to_group(group.name, username)
+      else
+        remove_user_from_group(group.name, username)
+      end
+    end
+  end
+
   def self.find_and_verify_by_username(username)
     user = User.find_by(username: username)
     if user&.deleted_at
@@ -111,9 +143,13 @@ class User < ActiveRecord::Base
   end
 
   def self.find_for_saml(auth_hash, signed_in_resource=nil)
-    email = auth_hash.info.email
+    email = auth_hash.info.email.first
     username = email
     find_or_create_by_username_or_email(username, email, 'saml')
+    roles = sanitize_saml_roles(auth_hash.info.roles)
+    update_local_roles(username, roles)
+    Rails.logger.debug "SAML Roles for user #{username}: #{roles.inspect}"
+    user
   end
 
   def self.find_for_identity(access_token, signed_in_resource=nil)
