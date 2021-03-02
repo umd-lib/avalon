@@ -145,7 +145,7 @@ class User < ActiveRecord::Base
   def self.find_for_saml(auth_hash, signed_in_resource=nil)
     email = auth_hash.info.email.first
     username = email
-    find_or_create_by_username_or_email(username, email, 'saml')
+    user = find_or_create_by_username_or_email(username, email, 'saml')
     roles = sanitize_saml_roles(auth_hash.info.roles)
     update_local_roles(username, roles)
     Rails.logger.debug "SAML Roles for user #{username}: #{roles.inspect}"
