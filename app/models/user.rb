@@ -27,9 +27,10 @@ class User < ActiveRecord::Base
   # :confirmable, :lockable, :timeoutable
   # Registration is controlled via settings.yml
   devise_list = [ :database_authenticatable, :invitable, :omniauthable,
-                  :recoverable, :rememberable, :trackable, :validatable ]
+                  :recoverable, :rememberable, :trackable, :validatable,
+                  :timeoutable ]
   devise_list << :registerable if Settings.auth.registerable
-  devise_list << { authentication_keys: [:login] }
+  devise_list << { authentication_keys: [:login], omniauth_providers: [:saml] }
 
   devise(*devise_list)
 
@@ -107,6 +108,12 @@ class User < ActiveRecord::Base
     username = access_token.uid
     email = access_token.info.email
     find_or_create_by_username_or_email(username, email, 'generic')
+  end
+
+  def self.find_for_saml(auth_hash, signed_in_resource=nil)
+    email = auth_hash.info.email
+    username = email
+    find_or_create_by_username_or_email(username, email, 'saml')
   end
 
   def self.find_for_identity(access_token, signed_in_resource=nil)

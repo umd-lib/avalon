@@ -29,6 +29,7 @@ module Samvera
     end
 
     before_action :load_user, only: [:edit, :update, :destroy]
+    before_action :reject_saml_user, only: [:edit, :update, :destroy]
     before_action :app_view_path
     # NOTE: User creation/invitations handled by devise_invitable
     def index
@@ -108,6 +109,12 @@ module Samvera
       else
         @user = User.find(params[:id])
       end
+    end
+
+    def reject_saml_user
+      return if @user.provider.to_s != "saml"
+      flash[:error] = "Updating remote user is not permitted!"
+      redirect_to main_app.persona_users_path
     end
 
     def app_view_path
