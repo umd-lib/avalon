@@ -1,6 +1,44 @@
 # Avalon
 
-To be updated!
+## Development Setup
+
+```
+docker-compose pull
+docker-compose up avalon
+```
+
+Avalon should be available at: http://avalon-local:3000
+
+See [Readme](./README.md#Development) for more information.
+
+## SAML Environment Specific Configuration
+
+The following varaibles were added to facilate configuring environment
+specific SAML configuration. These environment varaibles will take
+precedence over the configuration in the [settings.yml](./config/settings.yml).
+
+- `SAML_ISSUER`: Overrides the `issuer` configuration.
+- `SAML_SP_PRIVATE_KEY`: Overrides the `private_key` configuration.
+- `SAML_SP_CERTIFICATE`: Overrides the `certificate` configuration.
+
+### SAML Local Development environment setup
+
+The SAML SP signing certificates needs to be configured for SAML to work
+on the local development environment.
+
+```
+# Copy the env_example to .env
+cp env_template .env
+
+# Get the private_key from avalon test environemnt
+kubectl get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_PRIVATE_KEY}' | base64 --decode
+
+# Get the certificate from avalon test environemnt
+kubectl get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_CERTIFICATE}' | base64 --decode
+
+# Update .env file with values retrieved from the test environment
+vim .env
+```
 
 ## Docker Build for K8s Deployment
 
