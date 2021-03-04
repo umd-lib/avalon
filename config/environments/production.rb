@@ -78,10 +78,11 @@ config.webpacker.check_yarn_integrity = false
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
   config.log_level = :info
+  config.log_level = ENV["LOG_LEVEL"] if ENV["LOG_LEVEL"].present?
 
   # Suppress logger output for asset requests.
   config.assets.quiet = true
-  
+
   # Prepend all log lines with the following tags.
   # config.log_tags = [ :subdomain, :uuid ]
 
