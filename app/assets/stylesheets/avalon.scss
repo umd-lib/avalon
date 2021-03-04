@@ -1090,3 +1090,29 @@ td {
 .btn-light {
   background-color: $btn-light-bg;
 }
+
+// UMD CSS Classes & Overrides
+
+.block {
+  display: inline;
+}
+.lib-logo {
+  margin: 5px 40px 10px 3px;
+  float: left;
+  width: 180px;
+}
+.avalon-logo {
+  width: 130px;
+}
+
+
+/* ----       For mobile device  ------------ */
+@media (max-width: 414px){
+  .lib-logo {
+    width:120px;
+    margin-right: 15px;
+  }
+  #header-navbar .navbar-brand {
+    width: 90px;
+  }
+}
