@@ -18,14 +18,9 @@ Unless required by applicable law or agreed to in writing, software distributed
   <footer class="container">
     <div class="separator"></div>
     <ul>
-      <li class="footer-logo">
-        <%= image_tag "AvalonMediaSystem_Logo_A.png", alt: "Avalon Media System - #{t(:release_label)} #{Avalon::VERSION}" %>
-      <li><a href="http://www.avalonmediasystem.org">Avalon Media System Project Website</a> </li>
-      <li><%= link_to "Contact Us", main_app.comments_path %></li>
+      <li><a href="//giving.umd.edu/giving/showSchool.php?name=libraries">Give Now</a></li> |
+      <li><a href="/about/privacy">Privacy Policy</a></li> |
+      <li><a href="https://www.umd.edu/web-accessibility">Web Accessibility</a></li>
     </ul>
-    <div class="release">
-      <%=release_text%>
-      <%= git_commit_info(" (%s %s [%s])") if Rails.env == 'development' %>
-    </div>
   </footer>
 </div>

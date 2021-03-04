@@ -846,7 +846,7 @@ h5.panel-title {
       font-weight: bold;
     }
   }
-  
+
   div.file_view {
     margin: 15px 0 0 20px;
 
@@ -1116,3 +1116,9 @@ td {
     width: 90px;
   }
 }
+
+#footer .container {
+  display: flex;
+  justify-content: center;
+}
+
