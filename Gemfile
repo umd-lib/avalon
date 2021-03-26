@@ -93,6 +93,7 @@ gem 'activejob-uniqueness'
 gem 'redis-rails'
 gem 'sidekiq', '~> 5.2.7'
 gem 'sidekiq-cron', '~> 1.2'
+gem 'sidekiq-limit_fetch'
 
 # Coding Patterns
 gem 'config'

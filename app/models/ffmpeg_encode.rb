@@ -19,6 +19,10 @@ class FfmpegEncode < WatchedEncode
     encode.options.merge!(outputs: ffmpeg_outputs(encode.options))
   end
 
+  after_create do |encode|
+    Process.wait encode.input.id
+  end
+
   private
 
     def presets
