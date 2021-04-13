@@ -23,3 +23,5 @@ begin
 rescue Redis::CannotConnectError => e
   Rails.logger.warn "Cannot create sidekiq-cron jobs: #{e.message}"
 end
+
+require 'sidekiq-limit_fetch'
