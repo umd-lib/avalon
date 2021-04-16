@@ -81,7 +81,7 @@ services:
     build:
       context: .
       target: dev
-    command: bash -c "/docker_init.sh && rails server -b 0.0.0.0"
+    command: bash -c "/docker_init.sh && bin/rails server -b 0.0.0.0"
     depends_on:
       - db
       - fedora
@@ -121,7 +121,7 @@ services:
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - SYSTEM_GROUPS=administrator,group_manager,manager
-      - SAML_ISSUER=avalon-local:3000
+      - SAML_ISSUER=av-local:3000
     volumes:
       - .:/home/app/avalon
       - npms:/home/app/avalon/node_modules
