@@ -543,6 +543,16 @@ class MasterFile < ActiveFedora::Base
     end
   end
 
+  # Start LIBAVALON-128
+  def move_file_to_path(desination_path)
+    return false if (File.exists?(desination_path))
+    old_path = file_location;
+    FileUtils.mkdir_p(File.dirname(desination_path))
+    FileUtils.mv(old_path, desination_path)
+    self.file_location = desination_path
+  end
+  # End LIBAVALON-128
+
   protected
 
   def mediainfo
