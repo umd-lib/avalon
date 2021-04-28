@@ -102,6 +102,8 @@ gem 'jbuilder', '~> 2.0'
 gem 'parallel'
 gem 'with_locking'
 
+gem 'health_check'
+
 group :development do
   gem 'capistrano', '~>3.6'
   gem 'capistrano-passenger', require: false
@@ -153,7 +155,6 @@ group :production do
   gem 'lograge'
   gem 'okcomputer'
   gem 'puma'
-  gem 'health_check'
 end
 
 # Install the bundle --with aws when running on Amazon Elastic Beanstalk

@@ -49,7 +49,7 @@ The k8s-avalon stack uses the avalon image built from the repository.
     ```
     # Substitute IMAGE_TAG with appropriate value
     # Example IMAGE_TAG values for differnt scenarios:
-    #    Dev Build: docker.lib.umd.edu/avalon:7.1-umd-0-alpha4
+    #    Dev Build: docker.lib.umd.edu/avalon:latest
     #    RC Build: docker.lib.umd.edu/avalon:7.1-umd-0-rc2
     #    Release Build: docker.lib.umd.edu/avalon:7.1-umd-0
     #    Hotfix Build: docker.lib.umd.edu/avalon:7.1-umd-0.1

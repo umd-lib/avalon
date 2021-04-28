@@ -3,6 +3,6 @@ domain:
 timeliner: 
   timeliner_url: http://localhost:3000/timeliner
 supplemental_files:
-  proxy: true
+  proxy: false
 active_storage:
-  service: :minio
+  service: :local
