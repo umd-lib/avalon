@@ -69,7 +69,7 @@ module Permalink
         prefix: handle_prefix,
         url: local_url,
         repo: handle_repo,
-        repo_id: object.id,
+        repo_id: "/media_objects/#{object.id}",
         description: object.title,
         notes: ''
       }.to_json
