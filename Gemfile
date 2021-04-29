@@ -102,6 +102,7 @@ gem 'jbuilder', '~> 2.0'
 gem 'parallel'
 gem 'with_locking'
 
+# Health Check
 gem 'health_check'
 
 group :development do

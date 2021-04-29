@@ -7,7 +7,7 @@ docker-compose pull
 docker-compose up avalon
 ```
 
-Avalon should be available at: http://avalon-local:3000
+Avalon should be available at: http://av-local:3000
 
 See [Readme](./README.md#Development) for more information.
 
