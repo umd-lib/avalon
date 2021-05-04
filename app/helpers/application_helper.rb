@@ -86,6 +86,12 @@ module ApplicationHelper
     end
   end
 
+  def alt_for_thumbnail(image_url)
+    return "sound recording icon" if image_url == asset_path('audio_icon.png')
+    return "video clip and sound recording icon" if image_url == asset_path('hybrid_icon.png')
+    "video clip icon"
+  end
+
   def avalon_image_tag(document, image_options)
     image_url = image_for(document)
     link_to(media_object_path(document[:id]), {class: 'result-thumbnail'}) do
