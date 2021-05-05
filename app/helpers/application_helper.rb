@@ -269,4 +269,12 @@ module ApplicationHelper
       nil
     end
   end
+
+  include ActionView::Helpers::FormTagHelper
+  alias rails_default_check_box_tag check_box_tag
+
+  def check_box_tag(*args, **kwargs)
+    kwargs[:role] = 'checkbox' unless kwargs[:role]
+    rails_default_check_box_tag(*args, **kwargs)
+  end
 end
