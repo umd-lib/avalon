@@ -1,0 +1,11 @@
+<%= form_tag 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23', :id => 'aeon_request_sub', :target => 'aeon_request' do |f| %>
+  
+  <input type='hidden' name='ItemTitle' value='<%= @media_object.title %>' />
+  <input type='hidden' name='ItemDate' value='<%= @media_object.date_issued %>' />
+  <input type='hidden' name='Location' value='<%= @media_object.collection.name %>' />
+  <input type='hidden' name='CallNumber' value='<%= @media_object.other_identifier.pluck(:id).join(', ') %>' />
+  <input type='hidden' name='ReferenceNumber' value='<%= @media_object.permalink %>' />
+
+  <button type="submit" class="btn btn-default" title="Request from Special Collections">Request from Special Collections
+  </button>
+<% end %>
