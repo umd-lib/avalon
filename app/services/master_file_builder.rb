@@ -41,6 +41,16 @@ module MasterFileBuilder
       master_file = MasterFile.new()
       master_file.setContent(spec.content)
       master_file.set_workflow(spec.workflow)
+      
+      # Start LIBAVALON-128
+      collection_path = media_object.collection.dropbox_absolute_path
+      desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), spec.content.original_filename)
+      unless master_file.move_file_to_path(desination_path)
+        response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
+        master_file.destroy
+        next
+      end
+      # End LIBAVALON-128
 
       if 'Unknown' == master_file.file_format
         response[:flash][:error] << "The file was not recognized as audio or video - %s (%s)" % [spec.original_filename, spec.content_type]
