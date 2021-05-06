@@ -1104,6 +1104,23 @@ td {
 .avalon-logo {
   width: 130px;
 }
+h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets .facets-heading small, h4 .small, .facets .facets-heading .small, h5 small, #documents .document .document-title-heading small, h5 .small, #documents .document .document-title-heading .small, h6 small, h6 .small, .h1 small, .h1 .small, .h2 small, .h2 .small, .h3 small, .h3 .small, .h4 small, .h4 .small, .h5 small, span.constraints-label small, .h5 .small, span.constraints-label .small, .h6 small, .h6 .small {
+  color: #333;
+}
+.btn-danger{
+  background: #DA190B;
+  border-color: #DA190B;
+}
+.pagination>.disabled>span, .pagination>.disabled>span:hover, .pagination>.disabled>span:focus, .pagination>.disabled>a, .pagination>.disabled>a:hover, .pagination>.disabled>a:focus {
+  color: #333;
+}
+.pagination>.active>a, .pagination>.active>a:hover, .pagination>.active>a:focus, .pagination>.active>span, .pagination>.active>span:hover, .pagination>.active>span:focus{
+  color: #333;
+}
+.pagination>li>a, .pagination>li>span {
+  color: #035e8c;
+  font-weight: 800;
+}
 .request-special{
   margin: 0 0 1em 0;
 }
@@ -1143,14 +1160,62 @@ td {
 .navbar-default {
   background: rgba(0, 0, 0, 0.66);
 }
-a, a:hover {
+a.btn{
+  text-decoration: none;
+}
+p a, l a, div a {
+  color: #035e8c;
+  font-weight: 800;
+  text-decoration: none;
+}  
+a, a:hover, #skip-to-content a{
     color: #035e8c;
+    text-decoration: underline;
+}
+a#skip-to-content {
+  padding: 6px;
+  position: absolute;
+  top: -40px;
+  left: 0px;
+  color: white;
+  border-right: 1px solid white;
+  border-bottom: 1px solid white;
+  border-bottom-right-radius: 8px;
+  background: transparent;
+  -webkit-transition: top 1s ease-out, background 1s linear;
+  transition: top 1s ease-out, background 1s linear;
+  z-index: 100;
+}
+a:focus#skip-to-content {
+  position:absolute;
+	left:80px;
+	top:155px;
+	background:#222;
+	outline:0;
+	-webkit-transition: top .1s ease-in, background .5s linear;
+  transition: top .1s ease-in, background .5s linear;
+}
+.dl-invert dt {
+  color: #333;
 }
 .btn-info {
   color: #000;
   background-color: #f0ad4e;
   border-color: #f0ad4e;
   font-weight: 500px;
+}
+.btn-info:hover{
+  color: #fff;
+  background-color: #000;
+  border-color: #000;
+}
+.btn-link{
+  color: #035e8c;
+  font-weight: 800;
+}
+.btn-link:hover{
+  text-decoration: underline;
+  color: #035e8c;
 }
 .navbar-default .navbar-nav > li > a:hover {
   background: #000;
@@ -1206,6 +1271,13 @@ div.alert-danger {
   border-color: #17612b;
   color: #000;
   font-weight: 500;
+}
+.close {
+  color: #fff;
+  opacity: 1;
+}
+.text-muted{
+  color: #333;
 }
 .headline {
   color: #a40404;

@@ -86,6 +86,12 @@ module ApplicationHelper
     end
   end
 
+  def alt_for_thumbnail(image_url)
+    return "sound recording icon" if image_url == asset_path('audio_icon.png')
+    return "video clip and sound recording icon" if image_url == asset_path('hybrid_icon.png')
+    "video clip icon"
+  end
+
   def avalon_image_tag(document, image_options)
     image_url = image_for(document)
     link_to(media_object_path(document[:id]), {class: 'result-thumbnail'}) do
@@ -262,5 +268,13 @@ module ApplicationHelper
     else
       nil
     end
+  end
+
+  include ActionView::Helpers::FormTagHelper
+  alias rails_default_check_box_tag check_box_tag
+
+  def check_box_tag(*args, **kwargs)
+    kwargs[:role] = 'checkbox' unless kwargs[:role]
+    rails_default_check_box_tag(*args, **kwargs)
   end
 end

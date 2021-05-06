@@ -14,7 +14,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 ---  END LICENSE_HEADER BLOCK  ---
 %>
 <% # container for all documents in index list view -%>
-<div id="documents" class="documents-<%= document_index_view_type %>">
+<div id="documents" class="documents-<%= document_index_view_type %>" role="group" aria-label="selections">
   <% if render_bookmarks_control? && documents.count>1 %> 
     <%= render "select_all" %>
   <% end %>
