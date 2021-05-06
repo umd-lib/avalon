@@ -1151,9 +1151,28 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
   display: flex;
   justify-content: center;
 }
+footer a {
+  color: #f0ad4e!important;
+  text-decoration: underline;
+}
+footer {
+  color: #fff;
+  line-height: 2.5rem;
+}
+.subfooter{
+  background: #272727;
+  padding: 20px;
+}
+.copyright{
+  margin: 15px;
+  text-align: center;
+}
+.copyright a{
+  margin: 0 20px;
+}
 
 #footer.homepage-footer {
-  background: #222;
+  background: #333;
 }
 
 // Style Changes
@@ -1235,6 +1254,10 @@ a:focus#skip-to-content {
 }
 .sidenav .top-panel-heading h2 {
   color: #fff;
+}
+.digital .headline h1, .headline h2, .headline h3, .headline h4 {
+  border-bottom: 2px solid #a40404;
+  color: #e4e4e4;
 }
 .facet_limit-active > .panel-heading {
   color: #3c763d;

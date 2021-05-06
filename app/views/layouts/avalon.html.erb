@@ -24,6 +24,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= csrf_meta_tags %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%= favicon_link_tag %>
+  <%= stylesheet_link_tag "//www.lib.umd.edu/unify-1.7/assets/css/app.css" %>
   <%= stylesheet_link_tag "application", media: "all" %>
   <%= stylesheet_pack_tag 'application' %>
   <%= javascript_pack_tag 'application' %>
@@ -34,7 +35,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <body data-mountpoint="<%=main_app.root_path%>">
   <div class="page-container">
-    <div class="content-wrapper">
+    <div class="content-wrapper" style="padding-bottom: 60px;">
       <a id="skip-to-content" class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
       <%= render partial: 'shared/ajax_modal' %>
       <% if defined?(Samvera::Persona) %>
