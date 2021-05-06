@@ -13,7 +13,7 @@ Rails.application.config.assets.paths << Rails.root.join('node_modules')
 # folder are already added.
 # Rails.application.config.assets.precompile += %w( admin.js admin.css )
 
-Rails.application.config.assets.precompile += %w( embed.css )
+Rails.application.config.assets.precompile += %w( embed.css custom.css )
 
 # MediaElement 4 files
 Rails.application.config.assets.precompile += %w( mejs4_player.js mejs4_player.scss select2.min.js select2.min.css )
