@@ -1117,10 +1117,12 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 .pagination>.active>a, .pagination>.active>a:hover, .pagination>.active>a:focus, .pagination>.active>span, .pagination>.active>span:hover, .pagination>.active>span:focus{
   color: #333;
 }
-
 .pagination>li>a, .pagination>li>span {
   color: #035e8c;
   font-weight: 800;
+}
+.request-special{
+  margin: 0 0 1em 0;
 }
 
 /* ----      for Tablet display  ---------- */
@@ -1139,6 +1141,9 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
   }
   #header-navbar .navbar-brand {
     width: 90px;
+  }
+  .request-special{
+    margin: 1em 0 1em 0;
   }
 }
 

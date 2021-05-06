@@ -39,6 +39,11 @@ Unless required by applicable law or agreed to in writing, software distributed
                  activeStream: @currentStream } %>
   </div>
   <div class="col-sm-4" id="right-column">
+    <%# LIBAVALON-93 - Start Aeon button. %>
+    <div class="request-special">
+      <%= render partial: 'aeon_request_form', locals: { mediaobject: @media_object} %>
+    </div>
+    <%# LIBAVALON-93 - End %>
     <div id="metadata_container" class="">
       <section id="metadata"><%= render "metadata_display" %></section>
     </div>
