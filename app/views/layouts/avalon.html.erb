@@ -75,7 +75,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= yield :page_scripts %>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-G2Y2X2MS0L"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=<%= ENV['GTAG_ID'] %>"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
