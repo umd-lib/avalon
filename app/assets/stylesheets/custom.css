@@ -12,6 +12,9 @@
 .header-logo img {
   display: inline;
 }
+.homepage-splash-top-section {
+  background-image: url('homepage-splash-umd.jpg');
+}
 .brand {
   color: #000;
   padding: 15px 10px;
