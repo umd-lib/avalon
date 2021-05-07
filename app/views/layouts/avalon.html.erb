@@ -44,7 +44,9 @@ Unless required by applicable law or agreed to in writing, software distributed
       <% end %>
       <%= render 'modules/header' %>
       <%= render :partial => 'modules/global_navigation' %>
-      <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= "content" unless controller.controller_name == 'catalog'%>">
+      <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
+      <% main_id = "content" if controller.controller_name == 'catalog' && action_name == 'index' %>
+      <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= main_id %>">
 
         <!-- Homepage -->
         <% if current_page?(main_app.root_path) %>
