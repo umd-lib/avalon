@@ -212,7 +212,6 @@ div.alert-danger {
 .alert-success {
   background-color: #17612b;
   border-color: #17612b;
-  color: #000;
   font-weight: 500;
 }
 .close {
