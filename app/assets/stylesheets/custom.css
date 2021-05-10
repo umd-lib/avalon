@@ -110,7 +110,7 @@ p a, l a, div a {
   font-weight: 800;
   text-decoration: none;
 }  
-a, a:hover, #skip-to-content a{
+a, a:hover, a:active, a:focus, #skip-to-content a{
     color: #035e8c;
     text-decoration: underline;
 }
