@@ -57,6 +57,7 @@ RUN         apt-get update && apt-get install -y --no-install-recommends --allow
             zip \
             dumb-init \
             libyaz-dev \
+            shared-mime-info \
          && ln -s /usr/bin/lsof /usr/sbin/
 
 
