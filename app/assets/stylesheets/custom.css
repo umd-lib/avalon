@@ -41,7 +41,7 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 .pagination>.active>a, .pagination>.active>a:hover, .pagination>.active>a:focus, .pagination>.active>span, .pagination>.active>span:hover, .pagination>.active>span:focus{
   color: #333;
 }
-.pagination>li>a, .pagination>li>span {
+.pagination>li>a, .pagination>li>span, pagination>li>a:focus {
   color: #035e8c;
   font-weight: 800;
 }
@@ -152,10 +152,23 @@ a:focus#skip-to-content {
   border-color: #f0ad4e;
   font-weight: 500px;
 }
-.btn-info:hover{
+.btn-info:hover, .btn-info:focus {
   color: #fff;
   background-color: #000;
   border-color: #000;
+}
+/* Carousel */
+.homepage-splash-collections-title a {
+  color: #035e8c;
+  
+}
+.homepage-splash-collections {
+    background: #F0F0F0;
+}
+.collection-carousel a {
+    color: #035e8c;
+    font-weight: 800;
+    font-size: 16px;
 }
 .btn-link{
   color: #035e8c;

@@ -45,8 +45,8 @@ Unless required by applicable law or agreed to in writing, software distributed
   <% if Settings.home_page&.carousel_collections&.present? %>
   <section class="homepage-splash-collections">
     <div class="container">
-      <h3 class="homepage-splash-collections-title serif-font"><a href="<%= collections_url %>">view all collections</a>
-      </h3>
+      <h2 class="homepage-splash-collections-title serif-font"><a href="<%= collections_url %>">view all collections</a>
+      </h2>
     </div>
     <div class="container-fluid">
       <%= react_component("CollectionCarousel", { baseUrl: collections_url(format: :json, only: :carousel, limit: 10) }) %>
