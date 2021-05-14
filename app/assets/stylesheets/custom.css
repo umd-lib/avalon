@@ -15,6 +15,12 @@
 .homepage-splash-top-section {
   background-image: url('homepage-splash-umd.jpg');
 }
+/* keyboard access highlight */
+a:focus, button:focus {
+  outline: auto 2px Highlight !important; /* for Firefox */
+  outline: -webkit-focus-ring-color auto 5px !important; /* for Safari, Chrome */
+  text-decoration: underline;
+}
 .brand {
   color: #000;
   padding: 15px 10px;
