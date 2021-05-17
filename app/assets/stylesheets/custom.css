@@ -1,5 +1,5 @@
-
-/* UMD CSS Classes & Overrides */
+@charset "UTF-8";
+/* Library cusotm css to overwrite Avalon default css stytles */
 
 .block {
   display: inline;
@@ -11,9 +11,6 @@
 }
 .header-logo img {
   display: inline;
-}
-.homepage-splash-top-section {
-  background-image: url('homepage-splash-umd.jpg');
 }
 /* keyboard access highlight */
 a:focus, button:focus {
@@ -28,85 +25,12 @@ a:focus, button:focus {
   vertical-align: middle;
   font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 }
-h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets .facets-heading small, h4 .small, .facets .facets-heading .small, h5 small, #documents .document .document-title-heading small, h5 .small, #documents .document .document-title-heading .small, h6 small, h6 .small, .h1 small, .h1 .small, .h2 small, .h2 .small, .h3 small, .h3 .small, .h4 small, .h4 .small, .h5 small, span.constraints-label small, .h5 .small, span.constraints-label .small, .h6 small, .h6 .small {
-  color: #333;
-}
-.btn-danger{
-  background: #DA190B;
-  border-color: #DA190B;
-}
-.pagination>.disabled>span, .pagination>.disabled>span:hover, .pagination>.disabled>span:focus, .pagination>.disabled>a, .pagination>.disabled>a:hover, .pagination>.disabled>a:focus {
-  color: #333;
-}
-.pagination>.active>a, .pagination>.active>a:hover, .pagination>.active>a:focus, .pagination>.active>span, .pagination>.active>span:hover, .pagination>.active>span:focus{
-  color: #333;
-}
-.pagination>li>a, .pagination>li>span, pagination>li>a:focus {
-  color: #035e8c;
-  font-weight: 800;
-}
-.request-special{
-  margin: 0 0 1em 0;
-}
-
-/* ----      for Tablet display  ---------- */
-
-@media screen and (max-width: 767px){
-  #header-navbar .navbar-toggle, #header-navbar .facets-toggle {
-      background: #a40404;
-  }
-}
-
-/* ----       For mobile device  ------------ */
-@media (max-width: 540px){
-  .brand{
-    font-size: 24px;
-  }
-}
-@media (max-width: 414px){
-  .lib-logo {
-    width:120px;
-    margin-right: 15px;
-  }
-  #header-navbar .navbar-brand {
-    width: 90px;
-  }
-  .request-special{
-    margin: 1em 0 1em 0;
-  }
-}
-
-#footer .container {
-  display: flex;
-  justify-content: center;
-}
-footer a {
-  color: #f0ad4e!important;
-  text-decoration: underline;
-}
-footer {
-  color: #fff;
-  line-height: 2.5rem;
-}
-.subfooter{
-  background: #272727;
-  padding: 20px;
-}
-.copyright{
-  margin: 15px;
-  text-align: center;
-}
-.copyright a{
-  margin: 0 20px;
-}
-
-#footer.homepage-footer {
-  background: #333;
-}
-
-/* Style Changes */
 .navbar-default {
   background: rgba(0, 0, 0, 0.66);
+}
+.btn-group .dropdown-menu > li > a {
+  padding-top: 15px;
+  padding-bottom: 15px;
 }
 a.btn{
   text-decoration: none;
@@ -115,10 +39,10 @@ p a, l a, div a {
   color: #035e8c;
   font-weight: 800;
   text-decoration: none;
-}  
+}
 a, a:hover, a:active, a:focus, #skip-to-content a{
-    color: #035e8c;
-    text-decoration: underline;
+  color: #035e8c;
+  text-decoration: underline;
 }
 a#skip-to-content {
   padding: 6px;
@@ -148,7 +72,7 @@ a:focus#skip-to-content {
 }
 .btn-info {
   color: #000;
-  background-color: #f0ad4e;
+  background-color: #f0ad4e; 
   border-color: #f0ad4e;
   font-weight: 500px;
 }
@@ -190,7 +114,6 @@ a:focus#skip-to-content {
 .homepage-splash-lead-copy{
   background: rgba(000, 0, 0, 0.8);
 }
-
 .sidenav .top-panel-heading {
   background-color: #333;
 }
@@ -219,9 +142,8 @@ a:focus#skip-to-content {
 .text-success, .facet-values li .selected{
   color: #a40404;
 }
-
-div.alert-danger {
-  color: #8a6d3b !important;
+.alert-danger {
+  color: #8a6d3b;
   background-color: #fcf8e3 !important;
   border-color: #faebcc !important;
 }
@@ -234,6 +156,7 @@ div.alert-danger {
 .alert-success {
   background-color: #17612b;
   border-color: #17612b;
+  color: #fff;
   font-weight: 500;
 }
 .close {
@@ -251,4 +174,83 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
 }
 .collection-unit-wrapper {
   border-top: 2px solid #222;
+}
+#footer.homepage-footer {
+  background: #333;
+}
+#footer .container {
+  display: flex;
+  justify-content: center;
+}
+footer a {
+  color: #f0ad4e!important;
+  text-decoration: underline;
+}
+footer {
+  color: #fff;
+  line-height: 2.5rem;
+}
+.subfooter{
+  background: #272727;
+  padding: 20px;
+}
+.copyright{
+  margin: 15px;
+  text-align: center;
+}
+.copyright a{
+  margin: 0 20px;
+}
+.request-special{
+  margin: 0 0 1em 0;
+}
+
+h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets .facets-heading small, h4 .small, .facets .facets-heading .small, h5 small, #documents .document .document-title-heading small, h5 .small, #documents .document .document-title-heading .small, h6 small, h6 .small, .h1 small, .h1 .small, .h2 small, .h2 .small, .h3 small, .h3 .small, .h4 small, .h4 .small, .h5 small, span.constraints-label small, .h5 .small, span.constraints-label .small, .h6 small, .h6 .small {
+  color: #333;
+}
+.btn-danger{
+  background: #DA190B;
+  border-color: #DA190B;
+}
+.pagination>.disabled>span, .pagination>.disabled>span:hover, .pagination>.disabled>span:focus, .pagination>.disabled>a, .pagination>.disabled>a:hover, .pagination>.disabled>a:focus {
+  color: #333;
+}
+.pagination>.active>a, .pagination>.active>a:hover, .pagination>.active>a:focus, .pagination>.active>span, .pagination>.active>span:hover, .pagination>.active>span:focus{
+  color: #333;
+}
+
+.pagination>li>a, .pagination>li>span, pagination>li>a:focus {
+  color: #035e8c;
+  font-weight: 800;
+}
+/* ----      for Tablet display  ---------- */
+
+@media screen and (max-width: 767px){
+#header-navbar .navbar-toggle, #header-navbar .facets-toggle {
+    background: #a40404;
+}
+}
+
+/* ----       For mobile device  ------------ */
+@media (max-width: 540px){
+  .brand{
+    font-size: 24px;
+  }
+  .request-special{
+  margin: 1em 0 1em 0;
+ }
+}
+@media (max-width: 414px){
+  .lib-logo {
+    width:120px;
+    height: auto;
+    margin: 10px 10px 10px 0;
+  }
+  #header-navbar .navbar-brand {
+    width: 90px;
+  }
+  .brand {
+    font-size: 16px;
+    padding: 0;
+  }
 }
