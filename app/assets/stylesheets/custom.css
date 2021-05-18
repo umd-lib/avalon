@@ -219,9 +219,14 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
   color: #333;
 }
 
-.pagination>li>a, .pagination>li>span, pagination>li>a:focus {
+.pagination>li>a, .pagination>li>span, pagination>li>a:hover {
   color: #035e8c;
   font-weight: 800;
+  background-color: #fff;
+}
+.pagination>li>a:focus, .pagination>li>a:hover {
+  text-decoration: underline;
+  color: #035e8c;
 }
 /* ----      for Tablet display  ---------- */
 
