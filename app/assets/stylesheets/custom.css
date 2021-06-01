@@ -81,6 +81,10 @@ a:focus#skip-to-content {
   background-color: #000;
   border-color: #000;
 }
+/* Homepage image */
+.homepage-splash-top-section {
+  background-image: url('homepage-splash-umd.jpg');
+}
 /* Carousel */
 .homepage-splash-collections-title a {
   color: #035e8c;
