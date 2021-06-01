@@ -24,7 +24,9 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= csrf_meta_tags %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%= favicon_link_tag %>
+  <%= stylesheet_link_tag "//www.lib.umd.edu/unify-1.7/assets/css/app.css" %>
   <%= stylesheet_link_tag "application", media: "all" %>
+  <%= stylesheet_link_tag 'custom' %>
   <%= stylesheet_pack_tag 'application' %>
   <%= javascript_pack_tag 'application' %>
   <%= yield :page_styles %>
@@ -34,7 +36,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <body data-mountpoint="<%=main_app.root_path%>">
   <div class="page-container">
-    <div class="content-wrapper">
+    <div class="content-wrapper" style="padding-bottom: 60px;">
       <a id="skip-to-content" class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
       <%= render partial: 'shared/ajax_modal' %>
       <% if defined?(Samvera::Persona) %>
@@ -42,7 +44,9 @@ Unless required by applicable law or agreed to in writing, software distributed
       <% end %>
       <%= render 'modules/header' %>
       <%= render :partial => 'modules/global_navigation' %>
-      <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>">
+      <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
+      <% main_id = "content" if current_page?(main_app.root_path) %>
+      <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= main_id %>">
 
         <!-- Homepage -->
         <% if current_page?(main_app.root_path) %>
@@ -69,6 +73,16 @@ Unless required by applicable law or agreed to in writing, software distributed
          from a CDN -->
   <%= javascript_include_tag "application" %>
   <%= yield :page_scripts %>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=<%= ENV['GTAG_ID'] %>"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '<%= ENV['GTAG_ID'] %>');
+  </script> 
 
   <!-- UMD Wrapper -->
   <script src="https://umd-header.umd.edu/build/bundle.js?search=0&search_domain=&events=0&news=0&schools=0&admissions=0&support=1&support_url=https%253A%252F%252Fwww.lib.umd.edu%252Fabout%252Fgiving&wrapper=1160&sticky=0"></script>

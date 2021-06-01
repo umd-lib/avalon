@@ -13,7 +13,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
-<div id="header-navbar" class="navbar navbar-default navbar-static-top" role="navigation">
+<div id="header-navbar" class="navbar navbar-default navbar-static-top" role="menu" aria-label="main menu">
   <div class="container">
     <div class="navbar-header">
       <div class="row">
@@ -26,10 +26,8 @@ Unless required by applicable law or agreed to in writing, software distributed
           </button>
         </div>
         <div class="col">
-          <%= link_to "//www.lib.umd.edu/", class: "desktop-hidden" do %>
-          <%= image_tag "liblogo.png", class: "img-responvies lib-logo", alt: "University Libraries Homepage" %>
-          <% end %>
-          <%= link_to application_name, main_app.root_path, class: "navbar-brand desktop-hidden" %>
+          <%= link_to "//www.lib.umd.edu/", class: "desktop-hidden" do %><%= image_tag "liblogo.png", class: "img-responvies lib-logo", alt: "University Libraries Homepage" %><% end %>
+          <%= link_to "Digital Collections", main_app.root_path, class: "brand desktop-hidden" %>
         </div>
       </div>
     </div>

@@ -15,7 +15,8 @@ Unless required by applicable law or agreed to in writing, software distributed
 %>
 <% # main container for facets/limits menu -%>
 <% if has_facet_values? facet_field_names(groupname) %>
-<div id="facets<%= "-#{groupname}" unless groupname.nil? %>" class="facets sidenav">
+<% title = groupname.blank? ? t('blacklight.search.facets.title') : t("blacklight.search.facets-#{groupname}.title", default: groupname.titleize) %>
+<div id="facets<%= "-#{groupname}" unless groupname.nil? %>" class="facets sidenav" role="navigation" aria-label="Side navigation: <%= title %>">
 
   <div class="top-panel-heading panel-heading">
     <button type="button" class="facets-toggle" data-toggle="collapse" data-target="#facet-panel<%= "-#{groupname}" unless groupname.nil? %>-collapse">
@@ -26,7 +27,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     </button>
 
   <h2>
-  	<%= groupname.blank? ? t('blacklight.search.facets.title') : t("blacklight.search.facets-#{groupname}.title", default: groupname.titleize) %>
+  	<%= title %>
   </h2>
     </div>
 

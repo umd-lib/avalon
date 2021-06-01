@@ -5,7 +5,7 @@
 ---
 file_system:
   :name: 'File Dropbox'
-  :home: /srv/avalon/dropbox
+  :home: /masterfiles/dropbox
 # drop_box:
 #   :app_key: YOUR_DROPBOX_APP_KEY
 #   :app_secret: YOUR_DROPBOX_APP_SECRET

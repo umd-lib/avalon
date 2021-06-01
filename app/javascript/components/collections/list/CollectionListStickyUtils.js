@@ -37,6 +37,7 @@ const CollectionListStickyUtils = ({
               onChange={handleFilterChange}
               name="q"
               className="form-control input-lg"
+              aria-label="Search collections"
               placeholder="Search collections..."
               autoFocus="autofocus"
             />
