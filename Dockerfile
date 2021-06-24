@@ -30,7 +30,7 @@ RUN         curl https://chromedriver.storage.googleapis.com/2.46/chromedriver_l
          && chmod +x /usr/local/bin/chromedriver
 RUN         curl https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /chrome.deb
 RUN         mkdir -p /tmp/ffmpeg && cd /tmp/ffmpeg \
-         && curl https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar xJ \
+         && curl https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz | tar xJ \
          && cp `find . -type f -executable` /usr/bin/
 
 
