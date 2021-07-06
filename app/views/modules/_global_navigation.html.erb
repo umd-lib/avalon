@@ -27,7 +27,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         </div>
         <div class="col">
           <%= link_to "//www.lib.umd.edu/", class: "desktop-hidden" do %><%= image_tag "liblogo.png", class: "img-responvies lib-logo", alt: "University Libraries Homepage" %><% end %>
-          <%= link_to "Digital Collections", main_app.root_path, class: "brand desktop-hidden" %>
+          <%= link_to "Digital Collections", ENV['DIGITAL_COLLECTIONS_URL'], class: "brand desktop-hidden" %>
         </div>
       </div>
     </div>
