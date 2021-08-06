@@ -144,7 +144,7 @@ class Ability
 
       cannot :update, MediaObject do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
-          ( media_object.published? && !@user.in?(media_object.collection.managers) )
+          ( media_object.published? && !(@user.in?(media_object.collection.managers) || @user.in?(media_object.collection.editors)) )
       end
 
       cannot :destroy, MediaObject do |media_object|
