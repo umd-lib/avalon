@@ -44,7 +44,8 @@ module MasterFileBuilder
       
       # Start LIBAVALON-128
       collection_path = media_object.collection.dropbox_absolute_path
-      desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), spec.content.original_filename)
+      original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
+      desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), original_filename)
       unless master_file.move_file_to_path(desination_path)
         response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
         master_file.destroy
