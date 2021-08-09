@@ -1,8 +1,5 @@
 name: 'Avalon Media System' # used in page titles
-domain:
-  host: av-local
-  port: 3000
-  protocol: http
+domain: http://av-local:3000
 dropbox:
   path: /masterfiles/dropbox
   upload_uri: /masterfiles/dropbox
