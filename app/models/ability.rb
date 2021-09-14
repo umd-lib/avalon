@@ -128,7 +128,7 @@ class Ability
           is_member_of?(media_object.collection)
         end
 
-        can [:edit, :destroy], MasterFile do |master_file|
+        can [:edit, :update, :destroy], MasterFile do |master_file|
           can? :edit, master_file.media_object
         end
 
@@ -144,7 +144,7 @@ class Ability
 
       cannot :update, MediaObject do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
-          ( media_object.published? && !@user.in?(media_object.collection.managers) )
+          ( media_object.published? && !(@user.in?(media_object.collection.managers) || @user.in?(media_object.collection.editors)) )
       end
 
       cannot :destroy, MediaObject do |media_object|

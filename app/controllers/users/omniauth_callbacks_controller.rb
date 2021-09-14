@@ -25,6 +25,22 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     end
   end
 
+  def saml
+    @user = User.find_for_saml(request.env["omniauth.auth"], current_user)
+    if @user.persisted?
+      flash[:success] = I18n.t "devise.omniauth_callbacks.success", :kind => :saml
+      sign_in @user, :event => :authentication
+      user_session[:virtual_groups] = @user.ldap_groups
+      user_session[:full_login] = true
+    end
+    relay_state = request.env["action_dispatch.request.parameters"]["RelayState"]
+    if relay_state.nil?
+      redirect_to(root_path)
+    else
+      redirect_to(relay_state)
+    end 
+  end
+
   def after_omniauth_failure_path_for(scope)
     case failed_strategy.name
     when 'lti'
