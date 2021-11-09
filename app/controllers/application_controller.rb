@@ -151,7 +151,7 @@ class ApplicationController < ActionController::Base
   def current_ability
     session_opts ||= user_session
     session_opts ||= {}
-    @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.remote_ip))
+    @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.ip))
   end
 
   rescue_from CanCan::AccessDenied do |exception|
