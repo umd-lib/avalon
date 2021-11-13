@@ -8,6 +8,7 @@ identifier_types:
   matrix number: Matrix Number
   music publisher: Music Publisher/Label
   videorecording identifier: Videorecording Identifier
+  handle: Handle Identifier
   other: Other
 note_types:
   general: General Note

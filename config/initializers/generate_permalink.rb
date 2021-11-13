@@ -1,9 +1,21 @@
 Permalink.on_generate do |object,target|
   if object.is_a? MediaObject
-    # Setup POST request
-    request = Net::HTTP::Post.new(handle_service_uri, handle_request_headers)
-    # POST request body as defined in umd-handle API v1.0.0.
-    request.body = handle_request_body(object, target)
+    handle = nil
+    if object.other_identifier.present?
+      hdl_id = object.other_identifier.find { |id| id[:source] == "handle" }
+      if hdl_id.present?
+        handle_id = hdl_id[:id]
+        if is_valid_hdl?(handle_id)
+          handle = handle_id.delete_prefix("hdl:")
+          Rails.logger.debug("Found valid handle: #{handle}. Updating handle metadata!")
+        else
+          Rails.logger.error("Found invalid handle identifier: #{handle_id}. Cannot update handle metadata!")
+          return nil
+        end
+      end
+    end
+
+    request = create_handle_request(object, target, handle)
 
     # Make request
     use_ssl = (handle_service_uri.scheme == "https")
@@ -21,10 +33,23 @@ Permalink.on_generate do |object,target|
       # Log an error for unsuccessful response
       Rails.logger.error("Could not mint handle for object: #{object.id}")
       Rails.logger.error("Received a response status code of '#{response.code} - #{response.message}' from '#{handle_service_uri}'")
+      return nil
     end
   else
     return nil
   end
+end
+
+def create_handle_request(object, target, handle)
+  request = handle.nil? ?
+    Net::HTTP::Post.new(handle_service_uri, handle_request_headers) :
+    Net::HTTP::Patch.new(handle_service_patch_uri(handle), handle_request_headers)
+  request.body = handle_request_body(object, target)
+  request  
+end
+
+def is_valid_hdl?(hdl_id)
+  hdl_id =~ /\Ahdl:[a-z0-9\.]*\/[a-z0-9\.]*\z/
 end
 
 
@@ -49,6 +74,10 @@ end
 
 def handle_service_uri
   URI(ENV['UMD_HANDLE_SERVER_URL'])
+end
+
+def handle_service_patch_uri(handle)
+  URI(ENV['UMD_HANDLE_SERVER_URL'] + "/" + handle)
 end
 
 def handle_jwt_token
