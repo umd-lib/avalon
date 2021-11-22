@@ -22,6 +22,14 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% f_start, f_end = parse_media_fragment params['t'] %>
 <div class="row">
   <div class="col-sm-8" id="left_column">
+    <% if @playback_restricted %>
+    <div class="restricted-video">
+      <div class="restricted-video-message">
+        <h3>Playback Restricted</h3>
+        The content playback is restricted!
+      </div>
+    </div>
+    <% else %>
     <%= render partial: "modules/player/section", locals: {section: @currentStream, section_info: @currentStreamInfo, f_start: @f_start, f_end: @f_end} %>
 
     <%= render file: '_track_scrubber.html.erb' if is_mejs_2? %>
@@ -37,6 +45,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         locals: { mediaobject: @media_object,
                  sections: @masterFiles,
                  activeStream: @currentStream } %>
+    <% end %>
   </div>
   <div class="col-sm-4" id="right-column">
     <%# LIBAVALON-93 - Start Aeon button. %>

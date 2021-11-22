@@ -324,6 +324,7 @@ class MediaObjectsController < ApplicationController
   end
 
   def show
+    @playback_restricted = cannot? :full_read, @media_object
     respond_to do |format|
       format.html do
         if (not @masterFiles.empty? and @currentStream.blank?) then
