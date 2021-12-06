@@ -25,14 +25,25 @@ Unless required by applicable law or agreed to in writing, software distributed
     <% if @playback_restricted %>
     <div class="restricted-video">
       <div class="restricted-video-message">
-        <h3>Playback Restricted</h3>
-        The content playback is restricted!
+      <h3>Playback Restricted</h3>
+      <% if @media_object.collection.name.starts_with?('The Jim Henson Works') %>
+      Digital videos from The Jim Henson Works are available for viewing only from public computers at these locations:
+      <ul>
+        <li><a href="https://www.lib.umd.edu/mspal">Michelle Smith Performing Arts Library</a></li>
+        <li><a href="https://www.lib.umd.edu/hornbake">Hornbake Library</a></li>
+        <li><a href="https://www.lib.umd.edu/mckeldin">McKeldin Library</a></li>
+      </ul>
+      <% else %>
+      This content is available for streaming only at the University of Maryland's College Park campus or through a <a href="https://digital.lib.umd.edu/help_video#vpn">VPN connection</a>. This content may be accessed from public computers at any of the UMD Libraries on the College Park campus.
+      <br/>
+      <br/>
+      <% end %>
+      <span>Questions? <a href="https://www.lib.umd.edu/digital/contact/digital-feedback">Contact Us</a></span>
       </div>
     </div>
     <% else %>
     <%= render partial: "modules/player/section", locals: {section: @currentStream, section_info: @currentStreamInfo, f_start: @f_start, f_end: @f_end} %>
 
-    <%= render file: '_track_scrubber.html.erb' if is_mejs_2? %>
     <%= render file: '_add_to_playlist.html.erb' if current_user.present? && is_mejs_2? %>
     <%# Partial view for MEJS4 Add To Playlist plugin %>
     <%= render partial: 'mejs4_add_to_playlist' if current_user.present? && is_mejs_4? %>
