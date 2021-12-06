@@ -17,10 +17,10 @@ Edit the "/etc/hosts" file and add
     cd avalon
     ```
 
-2) Copy the "env_example" file to ".env":
+2) Copy the "env_template" file to ".env":
 
     ``` bash
-    cp env_example .env
+    cp env_template .env
     ```
 
     Determine the values for the "SAML_SP_PRIVATE_KEY" and "SAML_SP_CERTIFICATE"
@@ -53,13 +53,13 @@ Edit the "/etc/hosts" file and add
 
 Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
-**Known issue**:  Both, umd-handle web app and avalon web app use SAML certificates that require them to run on port 3000. When testing Avalon integration with umd-handle, run the umd-handle server on a different port (e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST API, the umd-handle integartion can be tested without requiring a working SAML setup for umd-handle.
+**Known issue**:  Both, umd-handle web app and avalon web app use SAML certificates that require them to run on port 3000. When testing Avalon integration with umd-handle, run the umd-handle server on a different port (e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST API, the umd-handle integration can be tested without requiring a working SAML setup for umd-handle.
 
 See [Readme](./README.md#Development) for more information.
 
 ## SAML Environment Specific Configuration
 
-The following varaibles were added to facilate configuring environment
+The following variables were added to facilate configuring environment
 specific SAML configuration. These environment varaibles will take
 precedence over the configuration in the [settings.yml](./config/settings.yml).
 
