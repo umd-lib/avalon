@@ -167,6 +167,9 @@ a:focus#skip-to-content {
   color: #fff;
   opacity: 1;
 }
+.remove {
+  color: #333;
+}
 .text-muted{
   color: #333;
 }
