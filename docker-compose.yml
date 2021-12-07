@@ -96,6 +96,7 @@ services:
       - ENCODE_WORK_DIR=/streamfiles
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
       - DATABASE_URL=postgres://postgres:password@db/avalon
+      - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
       - FEDORA_NAMESPACE=avalon
       - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fedora/rest
       - RAILS_ENV=development
@@ -119,7 +120,7 @@ services:
       - streaming:/streamfiles
       - npms:/home/app/avalon/node_modules
     ports:
-      - '3001:3000'
+      - '3000:3000'
     networks:
       internal:
       external:
