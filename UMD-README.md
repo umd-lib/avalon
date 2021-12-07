@@ -48,7 +48,7 @@ Edit the "/etc/hosts" file and add
 
     ```bash
     docker-compose pull
-    docker-compose up
+    docker-compose up avalon worker
     ```
 
 Avalon should be available at: [http://av-local:3000](http://av-local:3000)
