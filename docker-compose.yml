@@ -119,7 +119,7 @@ services:
       - streaming:/streamfiles
       - npms:/home/app/avalon/node_modules
     ports:
-      - '3001:3000'
+      - '3000:3000'
     networks:
       internal:
       external:
