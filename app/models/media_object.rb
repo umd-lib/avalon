@@ -230,6 +230,8 @@ class MediaObject < ActiveFedora::Base
       solr_doc['read_access_ip_group_ssim'] = collect_ips_for_index(ip_read_groups + leases('ip').map(&:inherited_read_groups).flatten)
       solr_doc[Hydra.config.permissions.read.group] ||= []
       solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
+      solr_doc[Hydra.config.permissions.discover.group] ||= [] # Customization for LIBAVALON-168
+      solr_doc[Hydra.config.permissions.discover.group] += ['public'] # Customization for LIBAVALON-168
       solr_doc["title_ssort"] = self.title
       solr_doc["creator_ssort"] = Array(self.creator).join(', ')
       solr_doc["date_digitized_sim"] = master_files.collect {|mf| mf.date_digitized }.compact.map {|t| Time.parse(t).strftime "%F" }
