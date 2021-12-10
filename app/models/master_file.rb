@@ -318,6 +318,18 @@ class MasterFile < ActiveFedora::Base
     save
   end
 
+  def set_default_thumbnail
+    if is_video?
+      thumbnail.content=StringIO.new(File.read('app/assets/images/video_icon.png', encoding: 'BINARY'))
+      thumbnail.mime_type='image/png'
+      thumbnail.original_name='video_icon.png'
+      thumbnail.save
+      save
+      reload
+      thumbnail.reload
+    end
+  end
+
   alias_method :'_poster_offset', :'poster_offset'
   def poster_offset
     _poster_offset.to_i
@@ -387,6 +399,7 @@ class MasterFile < ActiveFedora::Base
         unless options[:preview]
           file.mime_type = 'image/jpeg'
           file.content = StringIO.new(result)
+          file.original_name = 'thumbnail.jpg' if type == 'thumbnail'
         end
       end
     end

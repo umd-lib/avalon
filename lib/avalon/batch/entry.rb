@@ -220,6 +220,9 @@ module Avalon
             master_file.media_object = media_object
             media_object.save
             master_file.process(files)
+
+            # Replace thumbnail (for videos) with default thumbnail
+            master_file.set_default_thumbnail
           else
             Rails.logger.error "Problem saving MasterFile(#{master_file.id}): #{master_file.errors.full_messages.to_sentence}"
           end

@@ -65,6 +65,10 @@ module MasterFileBuilder
       if master_file.save
         media_object.save
         master_file.process
+
+        # Replace thumbnail (for videos) with default thumbnail
+        master_file.set_default_thumbnail
+
         response[:master_files] << master_file
       else
         response[:flash][:error] << "There was a problem storing the file"
