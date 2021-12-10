@@ -535,9 +535,18 @@ describe MasterFile do
   end
 
   describe 'thumbnail' do
-    let(:master_file) { FactoryBot.create(:master_file) }
-    it 'sets original_name to default value' do
-      expect(master_file.thumbnail.original_name).to eq 'thumbnail.jpg'
+    let(:master_file) { FactoryBot.create(:master_file, :with_thumbnail) }
+    it 'uses a default icon for videos' do
+      expect(master_file.thumbnail.original_name).to eq 'video_icon.png'
+    end
+    it 'uses a default icon for audio' do
+      master_file.file_format = 'Sound'
+      master_file.set_workflow
+      master_file.thumbnail.original_name = 'audio_icon.png'
+
+      # Setting default thumbnail should not change the current thumbnail
+      master_file.set_default_thumbnail
+      expect(master_file.thumbnail.original_name).to eq 'audio_icon.png'
     end
   end
 

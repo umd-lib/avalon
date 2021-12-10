@@ -49,8 +49,7 @@ FactoryBot.define do
     end
     trait :with_thumbnail do
       after(:create) do |mf|
-        mf.thumbnail.mime_type = 'image/jpeg'
-        mf.thumbnail.content = 'fake image content'
+        mf.set_default_thumbnail
         mf.save
       end
     end

@@ -310,8 +310,8 @@ describe MasterFilesController do
 
       it "returns thumbnail" do
         get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar' }
-        expect(response.body).to eq('fake image content')
-        expect(response.headers['Content-Type']).to eq('image/jpeg')
+        # get_frame returns default "video_icon.png"
+        expect(response.headers['Content-Type']).to eq('image/png')
       end
 
       it "returns offset thumbnail" do
@@ -645,10 +645,10 @@ describe MasterFilesController do
 
   describe "#update" do
     let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
-    subject { put('update', params: { id: master_file.id, 
-                                      master_file: { title: "New label", 
-                                                    poster_offset: "00:00:03", 
-                                                    date_digitized: "2020-08-27", 
+    subject { put('update', params: { id: master_file.id,
+                                      master_file: { title: "New label",
+                                                    poster_offset: "00:00:03",
+                                                    date_digitized: "2020-08-27",
                                                     permalink: "https://perma.link" }})}
 
     before do
