@@ -48,12 +48,14 @@ describe 'homepage' do
 end
 describe 'checks navigation to external links' do
   it 'checks navigation to Avalon Website' do
+    pending('UMD LIBAVALON-178')
     visit '/'
     click_link('Avalon Media System Project Website')
     expect(page.status_code).to eq(200)
     expect(page.current_url).to eq('http://www.avalonmediasystem.org/')
   end
   it 'checks navigation to Contact us page' do
+    pending('UMD LIBAVALON-178')
     visit '/'
     click_link('Contact Us')
     expect(page.current_url).to eq('http://www.example.com/comments')
@@ -80,6 +82,7 @@ end
 
 describe 'Sign in page' do
   it 'validates presence of items on login page' do
+    pending('UMD LIBAVALON-178')
     visit 'http://localhost:3000/users/auth/identity'
     #expect(page).to have_content('Identity Verification')
     expect(page).to have_content('Login:')
@@ -90,12 +93,14 @@ describe 'Sign in page' do
     # expect(page).to have_content('Successfully logged into the system')
   end
   it 'validates presence of items on register page' do
+    pending('UMD LIBAVALON-178')
     visit 'http://localhost:3000/users/auth/identity/register'
     expect(page).to have_content('Email:')
     expect(page).to have_content('Password:')
     expect(page).to have_content('Confirm Password:')
   end
   it 'is able to create new account' do
+    pending('UMD LIBAVALON-178')
     hide_const('Avalon::GROUP_LDAP')
     visit '/users/auth/identity/register'
     fill_in 'email', with: 'user1@example.com'

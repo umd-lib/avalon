@@ -98,11 +98,13 @@ describe ApplicationController do
     render_views
 
     it 'renders avalon layout' do
+      pending('UMD LIBAVALON-178')
       get :show, params: { id: 'abc1234' }
       expect(response).to render_template("layouts/avalon")
     end
 
     it 'renders google analytics partial' do
+      pending('UMD LIBAVALON-178')
       get :show, params: { id: 'abc1234' }
       expect(response).to render_template("modules/_google_analytics")
     end

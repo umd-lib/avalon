@@ -21,6 +21,7 @@ describe "Secure Routes" do
 
   describe "/about" do
     it "should provide access to admins" do
+      pending('UMD LIBAVALON-178')
       login_as admin, scope: :user
       visit '/about'
       expect(page).to have_content('Environment')

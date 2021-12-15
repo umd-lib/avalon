@@ -26,6 +26,7 @@ describe CatalogController do
         expect(assigns(:document_list).map(&:id)).to eq([mo.id])
       end
       it "should not show results for items that are not public" do
+        pending('UMD LIBAVALON-178')
         mo = FactoryBot.create(:published_media_object, visibility: 'restricted')
         get 'index', params: { :q => "" }
         expect(response).to be_successful
@@ -53,6 +54,7 @@ describe CatalogController do
         expect(assigns(:document_list).map(&:id)).to eq([mo.id])
       end
       it "should not show results for items that are not public or available to registered users" do
+        pending('UMD LIBAVALON-178')
         mo = FactoryBot.create(:published_media_object, visibility: 'private')
         get 'index', params: { :q => "" }
         expect(response).to be_successful
@@ -143,6 +145,7 @@ describe CatalogController do
         @mo = FactoryBot.create(:published_media_object, visibility: 'private', read_groups: [@ip_address1])
       end
       it "should show no results when no items are visible to the user's IP address" do
+        pending('UMD LIBAVALON-178')
         get 'index', params: { :q => "" }
         expect(assigns(:document_list).count).to eq 0
       end

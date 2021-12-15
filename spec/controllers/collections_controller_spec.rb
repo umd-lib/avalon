@@ -56,6 +56,7 @@ describe CollectionsController, type: :controller do
       end
 
       it "managers should see their collections and collections with public items" do
+        pending('UMD LIBAVALON-178')
         login_user(collection.managers.first)
         get 'index'
         expect(response).to be_ok
