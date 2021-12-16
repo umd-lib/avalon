@@ -17,7 +17,6 @@ require 'rails_helper'
 describe 'Identity' do
   after { Warden.test_reset! }
   it 'returns error when a user is created twice' do
-    pending('UMD LIBAVALON-178')
     test_username = 'Identity User'
     test_email = 'identity_user_1@example.com'
     test_password = 'identity'

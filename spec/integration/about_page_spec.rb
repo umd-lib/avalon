@@ -21,7 +21,6 @@ describe 'AboutPage' do
         allow_any_instance_of(Avalon::Routing::CanConstraint).to receive(:matches?).and_return(true)
       end
       it "can access /about" do
-        pending('UMD LIBAVALON-178')
         get about_page_path
         expect(response).to have_http_status(200)
       end
