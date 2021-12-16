@@ -605,7 +605,7 @@ describe MasterFile do
     end
 
     it 'returns a sorted hash of hls streams' do
-      pending('UMD LIBAVALON-178')
+#      pending('UMD LIBAVALON-178')
       expect(master_file.hls_streams).to eq streams
     end
   end
