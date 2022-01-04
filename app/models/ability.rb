@@ -60,17 +60,28 @@ class Ability
   def custom_permissions(user=nil, session=nil)
 
     unless (full_login? || is_api_request?) and is_administrator?
-      cannot :read, MediaObject do |media_object|
-        !(test_read(media_object.id) && media_object.published?) && !test_edit(media_object.id)
+      # Begin customization for LIBAVALON-168
+      can :read, MediaObject do |media_object|
+        media_object.published? || test_edit(media_object.id)
+      end
+
+      # For media playback
+      can :full_read, MediaObject do |media_object|
+        (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
       end
 
       can :read, MasterFile do |master_file|
+        can? :full_read, master_file.media_object
+      end
+
+      can :minimal_read, MasterFile do |master_file|
         can? :read, master_file.media_object
       end
 
       can :read, Derivative do |derivative|
-        can? :read, derivative.masterfile.media_object
+        can? :full_read, derivative.masterfile.media_object
       end
+      # End customization for LIBAVALON-168
 
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
