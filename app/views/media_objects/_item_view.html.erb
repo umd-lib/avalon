@@ -50,7 +50,9 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= render partial: 'mejs4_add_to_playlist' if current_user.present? && is_mejs_4? %>
     <%= render 'workflow_progress' %>
     <%= render partial: 'timeline' if current_ability.can? :create, Timeline %>
+    <% end %>
     <%= render 'share' if will_partial_list_render? :share %>
+    <% unless @playback_restricted %>
 
     <!-- Sections -->
     <%= render partial: 'sections',
