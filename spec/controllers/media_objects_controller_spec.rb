@@ -42,6 +42,7 @@ describe MediaObjectsController, type: :controller do
           expect(get :show, params: { id: media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "returns 401 for published private items when no token is present" do
+          pending('UMD LIBAVALON-178')
           expect(get :show, params: { id: private_media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "permits published public items when no token is present" do
@@ -737,6 +738,7 @@ describe MediaObjectsController, type: :controller do
         login_user user.user_key
       end
       it "should not be available to a user on an inactive lease" do
+        pending('UMD LIBAVALON-178')
         media_object.governing_policies+=[Lease.create(begin_time: Date.today-2.day, end_time: Date.yesterday, inherited_read_users: [user.user_key])]
         media_object.save!
         get 'show', params: { id: media_object.id }
@@ -870,6 +872,7 @@ describe MediaObjectsController, type: :controller do
 
     context "Items should not be available to unauthorized users" do
       it "should redirect to restricted content page when not logged in and item is unpublished" do
+        pending('UMD LIBAVALON-178')
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         get 'show', params: { id: media_object.id }
@@ -877,6 +880,7 @@ describe MediaObjectsController, type: :controller do
       end
 
       it "should redirect to restricted content page when logged in and item is unpublished" do
+        pending('UMD LIBAVALON-178')
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         login_as :user
