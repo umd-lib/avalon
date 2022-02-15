@@ -461,6 +461,17 @@ class MasterFile < ActiveFedora::Base
     is_video? ? 'dctypes:MovingImage' : 'dctypes:Sound'
   end
 
+  def self.post_processing_move_relative_filepath(oldpath, options = {})
+    # LIBAVALON-196 - Move files to path based on media object id
+    file_name = File.basename(oldpath)
+
+    relative_path_and_file_prefix = Noid::Rails.treeify(options[:id])
+    relative_path = File.dirname(relative_path_and_file_prefix)
+
+    move_filename = self.post_processing_move_filename(oldpath, options)
+    File.join(relative_path, move_filename)
+  end
+
   def self.post_processing_move_filename(oldpath, options = {})
     prefix = options[:id].tr(':', '_')
     if File.basename(oldpath).start_with?(prefix)
@@ -775,7 +786,7 @@ class MasterFile < ActiveFedora::Base
     when 'move'
       move_path = Settings.master_file_management.path
       raise '"path" configuration missing for master_file_management strategy "move"' if move_path.blank?
-      newpath = File.join(move_path, MasterFile.post_processing_move_filename(file_location, id: id))
+      newpath = File.join(move_path, MasterFile.post_processing_move_relative_filepath(file_location, id: id))
       MasterFileManagementJobs::Move.perform_later self.id, newpath
     else
       # Do nothing
