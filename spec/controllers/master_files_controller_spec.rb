@@ -234,6 +234,76 @@ describe MasterFilesController do
     end
   end
 
+  describe "#download" do
+    it "fails if invalid id is provided" do
+      get(:download, params: { id: 'invalid_id'})
+      expect(flash[:alert]).to match(I18n.t('master_file.error_id_not_found', id:  'invalid_id'))
+
+      # Redirects back to application home page when no referrer
+      expect(response).to redirect_to(root_url)
+
+      # Redirects back to referrer if "HTTP_REFERER" is set
+      request.env["HTTP_REFERER"] = "/referring_url"
+      get(:download, params: { id: 'invalid_id'})
+      expect(response).to redirect_to(root_url + "referring_url")
+    end
+
+    it "fails if download is not permitted" do
+      master_file = FactoryBot.create(:master_file, :with_media_object)
+      master_file_id = master_file.id
+
+      login_as :user
+      get(:download, params: { id: master_file_id})
+
+      expect(flash[:notice]).to match(I18n.t('master_file.download_not_permitted'))
+      expect(response).to redirect_to(root_url)
+    end
+
+    it "fails if master_file has no file_location" do
+      master_file = FactoryBot.create(:master_file, :with_media_object)
+      master_file.file_location = nil
+      master_file.save!
+      master_file_id = master_file.id
+
+      login_as :administrator
+      get(:download, params: { id: master_file_id})
+
+      expect(flash[:alert]).to match(I18n.t('master_file.error_no_file'))
+      expect(response).to redirect_to(root_url)
+    end
+
+    it "fails if file not found at master_file.file_location" do
+      master_file = FactoryBot.create(:master_file, :with_media_object)
+      master_file_id = master_file.id
+      master_file.file_location = '/file/location/does/not/exist.mp4'
+      master_file.save!
+
+      login_as :administrator
+      get(:download, params: { id: master_file_id})
+
+      expect(flash[:alert]).to match(I18n.t('master_file.error_file_not_found', location: master_file.file_location))
+      expect(response).to redirect_to(root_url)
+    end
+
+    it "provides the file for download, if permitted" do
+      fixture_file_dir = Rails.root.join('spec', 'fixtures')
+      fixture_filename = 'videoshort.mp4'
+      with_temporary_copy_of_file(fixture_file_dir, fixture_filename) do |tmp_file_pathname|
+        master_file = FactoryBot.create(:master_file, :with_media_object)
+        master_file.file_location = tmp_file_pathname.to_s
+        master_file.save!
+        master_file_id = master_file.id
+        editor_username = master_file.media_object.collection.editors.first
+        login_user editor_username
+
+        expect(@controller).to receive(:send_file).with(tmp_file_pathname.to_s).and_call_original
+
+        get(:download, params: { id: master_file_id})
+      end
+    end
+
+
+  end
   describe "#show" do
     let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
 
