@@ -834,6 +834,27 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    context "master_file_download" do
+      it "should not display when there is no master file" do
+        login_as(:administrator)
+        get :show, params: { id: media_object.id }
+        expect(controller.instance_variable_get('@master_file_download_allowed')).to be false
+      end
+
+      let(:media_object_with_master_file) { FactoryBot.create(:published_media_object, :with_master_file) }
+
+      it "should display when permitted" do
+        login_as(:administrator)
+        get :show, params: { id: media_object_with_master_file.id }
+        expect(controller.instance_variable_get('@master_file_download_allowed')).to be true
+      end
+      it "should not display when not permitted" do
+        login_as :public
+        get :show, params: { id: media_object_with_master_file.id }
+        expect(controller.instance_variable_get('@master_file_download_allowed')).to be false
+      end
+    end
+
     context "correctly handle unfound streams/sections" do
       subject(:mo){FactoryBot.create(:media_object, :with_master_file)}
       before do

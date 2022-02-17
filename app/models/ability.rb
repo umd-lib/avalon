@@ -83,6 +83,13 @@ class Ability
       end
       # End customization for LIBAVALON-168
 
+      # Begin customization for LIBAVALON-196
+      can :master_file_download, MasterFile do |master_file|
+        collection = master_file&.media_object&.collection
+        is_member_of?(collection) unless collection.nil?
+      end
+      # End customization for LIBAVALON-196
+
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
       if full_login? || is_api_request?

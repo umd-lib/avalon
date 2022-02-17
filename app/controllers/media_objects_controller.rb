@@ -323,8 +323,22 @@ class MediaObjectsController < ApplicationController
     end
   end
 
+  # Begin customization for LIBAVALON-196
+  def master_file_download_allowed?
+    return false if @masterFiles.empty?
+
+    download_allowed = true
+    @masterFiles.each do |master_file|
+      master_file = master_file.real_object if master_file.is_a? SpeedyAF::Proxy::MasterFile
+      download_allowed = download_allowed && can?(:master_file_download, master_file)
+    end
+    download_allowed
+  end
+  # End customization for LIBAVALON-196
+
   def show
     @playback_restricted = cannot? :full_read, @media_object
+    @master_file_download_allowed = master_file_download_allowed?
     respond_to do |format|
       format.html do
         if (not @masterFiles.empty? and @currentStream.blank?) then
