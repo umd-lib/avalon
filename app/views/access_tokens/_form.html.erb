@@ -1,0 +1,40 @@
+<%= form_with model: @access_token, local: true do |form| %>
+  <%= form.hidden_field :user %>
+  <%= form.hidden_field :token %>
+  <dl>
+    <dt>
+      <%= form.label :media_object_id, 'Media object ID:' %>
+    </dt>
+    <dd>
+      <%= form.text_field :media_object_id %>
+      <%= render partial: 'error_messages', locals: {obj: @access_token, key: :media_object_id} %>
+    </dd>
+    <dt>
+      <%= form.label 'Access' %>
+    </dt>
+    <dd>
+      <%= form.select :access_mode, options_for_select(AccessTokensController::ACCESS_MODES, @access_token.access_mode) %>
+    </dd>
+    <% if @access_token.new_record? %>
+      <dt>
+        <%= form.label :expiration %>
+      </dt>
+      <dd>
+        <%= form.datetime_local_field :expiration %>
+        <%= render partial: 'error_messages', locals: {obj: @access_token, key: :expiration} %>
+      </dd>
+    <% end %>
+    <% unless @access_token.new_record? %>
+      <dt>
+        <%= form.label :revoked %>
+      </dt>
+      <dd>
+        <%= form.check_box :revoked %>
+      </dd>
+    <% end %>
+  </dl>
+  <%= form.button class: 'btn btn-success' do %>
+    <i class="fa fa-save"></i> Save
+  <% end %>
+  <%= link_to 'Cancel', @access_token, class: 'btn btn-default' %>
+<% end %>

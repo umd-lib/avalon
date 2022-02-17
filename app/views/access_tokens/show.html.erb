@@ -1,0 +1,61 @@
+<dl class="access-token-metadata">
+  <dt>
+    Media Object
+  </dt>
+  <dd>
+    <%= media_object_link(@access_token) %>
+  </dd>
+  <dt>
+    Token
+  </dt>
+  <dd>
+    <%= media_object_with_token_link(@access_token) %>
+  </dd>
+  <dt>
+    Allows streaming?
+  </dt>
+  <dd>
+    <%= yes_no(@access_token.allow_streaming?) %>
+  </dd>
+  <dt>
+    Allows download?
+  </dt>
+  <dd>
+    <%= yes_no(@access_token.allow_download?) %>
+  </dd>
+  <dt>
+    Status
+  </dt>
+  <dd>
+    <%= status(@access_token) %>
+  </dd>
+  <dt>
+    Expiration
+  </dt>
+  <dd>
+    <%= @access_token.expiration %>
+    (<%= approximate_time_distance(@access_token) %>)
+  </dd>
+  <dt>
+    Created by:
+  </dt>
+  <dd>
+    <%= @access_token.user.username %>
+  </dd>
+</dl>
+
+<% unless @access_token.expired? %>
+  <%= form_with model: @access_token, local: true do |form| %>
+    <%= link_to edit_access_token_url(@access_token), class: "btn btn-default" do %>
+      <i class="fa fa-edit"></i> Edit
+    <% end %>
+
+    <% if @access_token.revoked? %>
+      <%= form.hidden_field :revoked, value: false %>
+      <%= form.submit 'Un-revoke', class: 'btn btn-default' %>
+    <% else %>
+      <%= form.hidden_field :revoked, value: true %>
+      <%= form.submit 'Revoke', class: 'btn btn-danger' %>
+    <% end %>
+  <% end %>
+<% end %>

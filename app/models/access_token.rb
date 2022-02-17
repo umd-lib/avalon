@@ -4,10 +4,16 @@ class AccessToken < ApplicationRecord
   after_initialize :generate_token
   after_initialize :set_defaults
 
+  validates :media_object_id, presence: true
   validate :media_object_must_exist
   validates :expiration, presence: true
+  validate :expiration_must_be_future
 
   after_create :add_read_group
+
+  scope :expired, ->{ where('expiration <= NOW()')}
+  scope :revoked, ->{ where(revoked: true) }
+  scope :active, ->{ where('expiration > NOW() AND NOT revoked')}
 
   # Convenience method for accessing instance version of "allow_streaming_of?"
   # with just a token string and media object id
@@ -74,9 +80,16 @@ class AccessToken < ApplicationRecord
     MediaObject.exists? self.media_object_id
   end
 
+  # Validation method to check whether the expiration is in the future
+  def expiration_must_be_future
+    errors.add(:expiration, 'is in the past') unless expiration.future?
+  end
+
   # Validation method to check whether the target media object exists
   def media_object_must_exist
-    errors.add(:media_object, 'does not exist') unless media_object_exists?
+    if media_object_id.present?
+      errors.add(:media_object_id, 'does not exist') unless media_object_exists?
+    end
   end
 
   # Adds read group to the media_object, using the token as the group identifier
@@ -97,6 +110,16 @@ class AccessToken < ApplicationRecord
     if media_object && media_object.read_groups.include?(self.token)
       media_object.read_groups -= [self.token]
       media_object.save!
+    end
+  end
+
+  def access_mode
+    if allow_streaming? && allow_download?
+      :streaming_and_download
+    elsif allow_streaming?
+      :streaming_only
+    elsif allow_download?
+      :download_only
     end
   end
 end
