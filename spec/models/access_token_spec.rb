@@ -46,4 +46,22 @@ RSpec.describe AccessToken, type: :model do
       expect(media_object.read_groups).to include(access_token.token)
     end
   end
+  describe 'the active? flag' do
+    let(:access_token) { FactoryBot.create(:access_token) }
+    it 'returns false if the token has expired' do
+      access_token.expiration = 1.day.ago
+      expect(access_token.active?).to be (false)
+    end
+
+    it 'returns false if the token has been revoked' do
+      access_token.revoked = true
+      expect(access_token.active?).to be (false)
+    end
+
+    it 'returns true if not expired and not revoked' do
+      expect(access_token.should_expire?).to be(false)
+      expect(access_token.revoked).to be(false)
+      expect(access_token.active?).to be (true)
+    end
+  end
 end
