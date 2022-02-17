@@ -7,6 +7,7 @@ class AccessToken < ApplicationRecord
   validate :media_object_must_exist
 
   before_save :set_expired_flag
+  after_create :add_read_group
 
   # Generates a URL-safe base64 encoded 12 byte token.
   def generate_token
@@ -33,11 +34,18 @@ class AccessToken < ApplicationRecord
 
   # Checks whether the target media object exists
   def media_object_exists?
-    MediaObject.exists? self.media_object
+    MediaObject.exists? self.media_object_id
   end
 
   # Validation method to check whether the target media object exists
   def media_object_must_exist
     errors.add(:media_object, 'does not exist') unless media_object_exists?
+  end
+
+  # Adds read group to the media_object, using the token as the group identifier
+  def add_read_group
+    media_object = MediaObject.find(self.media_object_id)
+    media_object.read_groups += [self.token]
+    media_object.save!
   end
 end

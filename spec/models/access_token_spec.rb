@@ -24,5 +24,26 @@ RSpec.describe AccessToken, type: :model do
     it 'access token is not valid by default' do
       expect(access_token.valid?).to eq(false)
     end
+
+    it 'is valid when given an existing media object and user' do
+      media_object = FactoryBot.create(:media_object)
+      user = FactoryBot.create(:user)
+
+      access_token.media_object_id = media_object.id
+      access_token.user = user
+
+      expect(access_token.valid?).to be true
+    end
+
+    it 'adds a read group to the media_object after creation' do
+      media_object = FactoryBot.create(:media_object)
+      user = FactoryBot.create(:user)
+      access_token.user = user
+
+      access_token = AccessToken.create!(user: user, media_object_id: media_object.id, expiration: 7.days.from_now)
+      media_object.reload
+
+      expect(media_object.read_groups).to include(access_token.token)
+    end
   end
 end

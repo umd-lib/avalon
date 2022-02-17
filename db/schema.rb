@@ -10,14 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2022_02_16_184500) do
+ActiveRecord::Schema.define(version: 2022_02_17_140427) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
   create_table "access_tokens", force: :cascade do |t|
     t.string "token"
-    t.string "media_object"
+    t.string "media_object_id"
     t.datetime "expiration"
     t.boolean "allow_streaming"
     t.boolean "allow_download"
