@@ -33,7 +33,7 @@ class AccessToken < ApplicationRecord
 
   # Checks whether the target media object exists
   def media_object_exists?
-    MediaObject.exists? self.media_object
+    MediaObject.exists? self.media_object_id
   end
 
   # Validation method to check whether the target media object exists
