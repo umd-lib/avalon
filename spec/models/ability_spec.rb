@@ -130,7 +130,7 @@ describe 'masterfile_download Ability' do
     end
   end
 
-  it 'is avaiable if an active access token allowing downloads is provided' do
+  it 'is available if an active access token allowing downloads is provided' do
     access_token = FactoryBot.create(:access_token)
     access_token.media_object_id = master_file.media_object.id
     access_token.allow_download = true

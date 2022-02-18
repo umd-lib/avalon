@@ -39,7 +39,7 @@ class Ability
     @user_groups |= @options[:virtual_groups] if @options.present? and @options.has_key? :virtual_groups
     @user_groups |= [@options[:remote_ip]] if @options.present? and @options.has_key? :remote_ip
 
-    if @options.has_key? :access_token
+    if @options.present? && @options.has_key?(:access_token)
       token = @options[:access_token]
       @user_groups |= access_token_user_groups(token)
     end

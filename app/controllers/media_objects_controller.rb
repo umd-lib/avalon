@@ -325,7 +325,7 @@ class MediaObjectsController < ApplicationController
 
   # Begin customization for LIBAVALON-196
   def master_file_download_allowed?
-    return false if @masterFiles.empty?
+    return false if @masterFiles.nil? || @masterFiles.empty?
 
     download_allowed = true
     @masterFiles.each do |master_file|
