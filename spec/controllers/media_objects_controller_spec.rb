@@ -848,10 +848,17 @@ describe MediaObjectsController, type: :controller do
         get :show, params: { id: media_object_with_master_file.id }
         expect(controller.instance_variable_get('@master_file_download_allowed')).to be true
       end
+
       it "should not display when not permitted" do
         login_as :public
         get :show, params: { id: media_object_with_master_file.id }
         expect(controller.instance_variable_get('@master_file_download_allowed')).to be false
+      end
+
+      it "should include @access_token variable for template when access token is provided" do
+        login_as :public
+        get :show, params: { id: media_object_with_master_file.id, access_token: 'test_access_token' }
+        expect(controller.instance_variable_get('@access_token')).to eq 'test_access_token'
       end
     end
 
