@@ -40,17 +40,19 @@ class AccessToken < ApplicationRecord
   # Returns true if this token has not expired and not revoked, false
   # otherwise.
   def active?
-    !should_expire? && !revoked?
+    !expired? && !revoked?
   end
 
-  # Checks whether the expiration time for this token is in the past.
-  def should_expire?
-    self.expiration.past?
+  # Returns true if the expiration time for this token is in the past, or the
+  # "expired" field is true, false otherwise.
+  def expired?
+    self.expiration.past? || self[:expired]
   end
 
   # Sets the #expired attribute based on whether this token should expire.
   def set_expired_flag
-    self.expired = should_expire?
+    self.expired = expired?
+  end
   end
 
   # Checks whether the target media object exists

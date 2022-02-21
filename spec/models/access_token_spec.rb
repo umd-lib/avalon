@@ -60,7 +60,7 @@ RSpec.describe AccessToken, type: :model do
     end
 
     it 'returns true if not expired and not revoked' do
-      expect(access_token.should_expire?).to be(false)
+      expect(access_token.expired?).to be(false)
       expect(access_token.revoked).to be(false)
       expect(access_token.active?).to be(true)
     end
