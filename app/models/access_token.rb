@@ -67,6 +67,7 @@ class AccessToken < ApplicationRecord
 
   # Adds read group to the media_object, using the token as the group identifier
   def add_read_group
+    return if expired?
     media_object = MediaObject.find(self.media_object_id)
     media_object.read_groups += [self.token]
     media_object.save!

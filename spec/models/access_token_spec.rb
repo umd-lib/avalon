@@ -45,6 +45,14 @@ RSpec.describe AccessToken, type: :model do
 
       expect(media_object.read_groups).to include(access_token.token)
     end
+
+    it 'should not add a read group to the media_object if expiration date is past' do
+      media_object = FactoryBot.create(:media_object)
+      access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, expiration: 7.days.ago)
+      media_object.reload
+
+      expect(media_object.read_groups).to_not include(access_token.token)
+    end
   end
 
   describe '#active?' do
