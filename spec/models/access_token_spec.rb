@@ -172,4 +172,27 @@ RSpec.describe AccessToken, type: :model do
       expect(media_object.reload.read_groups).not_to include(token)
     end
   end
+
+  describe '#expire' do
+    let (:access_token) { FactoryBot.create(:access_token, expiration: 1.day.from_now) }
+    let (:media_object) { MediaObject.find(access_token.media_object_id) }
+
+    it 'sets the "expired" field to true' do
+      expect(access_token.expired?).to be false
+
+      access_token.expire
+
+      expect(access_token.expired?).to be true
+    end
+
+    it 'removes the token from the read_group of the associated media object' do
+      expect(access_token.expired?).to be false
+      expect(media_object.read_groups).to include(access_token.token)
+
+      access_token.expire
+
+      expect(access_token.expired?).to be true
+      expect(media_object.reload.read_groups).to_not include(access_token.token)
+    end
+  end
 end

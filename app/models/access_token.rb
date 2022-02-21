@@ -52,6 +52,11 @@ class AccessToken < ApplicationRecord
     super(expiration_date)
     self.expired = self.expiration.past?
   end
+
+  # Expires this access token
+  def expire
+    self.expired = true
+    remove_read_group
   end
 
   # Checks whether the target media object exists
