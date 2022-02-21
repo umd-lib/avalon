@@ -337,9 +337,9 @@ class MediaObjectsController < ApplicationController
   # End customization for LIBAVALON-196
 
   def show
-    @playback_restricted = cannot? :full_read, @media_object
-    @master_file_download_allowed = master_file_download_allowed?
     @access_token = params[:access_token]
+    @playback_restricted = cannot? :stream, @media_object
+    @master_file_download_allowed = master_file_download_allowed?
 
     respond_to do |format|
       format.html do

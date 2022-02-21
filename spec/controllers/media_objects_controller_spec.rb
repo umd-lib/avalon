@@ -862,6 +862,24 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    context "streaming" do
+      it "should be permitted for when an access token allows streaming" do
+        media_object = FactoryBot.create(:published_media_object, visibility: 'private')
+
+        get :show, params: { id: media_object.id }
+        expect(controller.instance_variable_get('@playback_restricted')).to be true
+
+        # Force reset of current_ability
+        controller.instance_variable_set('@current_ability', nil)
+
+        access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id)
+        access_token.save!
+
+        get :show, params: { id: media_object.id, access_token: access_token.token }
+        expect(controller.instance_variable_get('@playback_restricted')).to be false
+      end
+    end
+
     context "correctly handle unfound streams/sections" do
       subject(:mo){FactoryBot.create(:media_object, :with_master_file)}
       before do

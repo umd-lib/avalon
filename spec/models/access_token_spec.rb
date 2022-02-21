@@ -46,7 +46,8 @@ RSpec.describe AccessToken, type: :model do
       expect(media_object.read_groups).to include(access_token.token)
     end
   end
-  describe 'the active? flag' do
+
+  describe '#active?' do
     let(:access_token) { FactoryBot.create(:access_token) }
     it 'returns false if the token has expired' do
       access_token.expiration = 1.day.ago
@@ -61,7 +62,65 @@ RSpec.describe AccessToken, type: :model do
     it 'returns true if not expired and not revoked' do
       expect(access_token.should_expire?).to be(false)
       expect(access_token.revoked).to be(false)
-      expect(access_token.active?).to be (true)
+      expect(access_token.active?).to be(true)
+    end
+  end
+
+  describe '#allow_streaming_of?' do
+    let(:access_token) { FactoryBot.create(:access_token, :allow_streaming) }
+    let(:token) { access_token.token }
+    let(:media_object_id) { access_token.media_object_id }
+
+    it 'returns false if the token is revoked' do
+      access_token.revoked = true
+      access_token.save!
+
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+    end
+
+    it 'returns false if the token is expired' do
+      access_token.expiration = 1.day.ago
+      access_token.save!
+
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+    end
+
+    it 'returns false if the token does match the given media object id' do
+      media_object_id = 'some_other_id'
+
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+    end
+
+    it 'returns false if the given media object id is nil' do
+      media_object_id = nil
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+    end
+
+    it 'the class method returns false if the token is not a known token' do
+      token = "nonexistent_token"
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+    end
+
+    it 'the class method returns false if the token is nil' do
+      token = nil
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+    end
+
+    it 'returns false if the access token is active, but streaming is not allowed' do
+      access_token.allow_streaming = false
+      access_token.save!
+
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+    end
+
+    it 'returns true if the access token is active' do
+      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(true)
+      expect(access_token.allow_streaming_of?(media_object_id)).to be(true)
     end
   end
 end

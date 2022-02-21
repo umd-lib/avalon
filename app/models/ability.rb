@@ -93,6 +93,10 @@ class Ability
         (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
       end
 
+      can :stream, MediaObject do |media_object|
+        is_streaming_allowed?(media_object)
+      end
+
       can :read, MasterFile do |master_file|
         can? :full_read, master_file.media_object
       end
@@ -279,6 +283,21 @@ class Ability
 
     allowed = is_member_of?(collection)
     allowed = allowed || @user_groups.include?(Ability.access_token_download_group_name(media_object_id))
+    allowed
+  end
+
+  def is_streaming_allowed?(media_object)
+    # Returns true if streaming of the given media object is allowed,
+    # false otherwise
+    return false unless media_object
+
+    allowed = can? :full_read, media_object
+
+    if @options.has_key?(:access_token)
+      token = @options[:access_token]
+      allowed = allowed || AccessToken.allow_streaming_of?(token, media_object.id)
+    end
+
     allowed
   end
 

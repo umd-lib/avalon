@@ -140,4 +140,51 @@ describe Ability, type: :model do
       expect(ability).to be_able_to(:master_file_download, master_file)
     end
   end
+
+  describe "stream Ability" do
+    let(:media_object) { FactoryBot.create(:media_object) }
+
+    it 'is not available to non-logged in users' do
+      ability = Ability.new(nil)
+      expect(ability).to_not be_able_to(:stream, media_object)
+    end
+
+    it 'is available to admin users' do
+      ability = Ability.new(FactoryBot.create(:admin))
+      expect(ability).to be_able_to(:stream, media_object)
+    end
+
+    it 'is available to managers, editors, and depositors of the collection' do
+      collection_users = media_object.collection.managers +
+                         media_object.collection.editors +
+                         media_object.collection.depositors
+      collection_users.each do |user_name|
+        ability = Ability.new(User.find_by(username: user_name))
+        expect(ability).to be_able_to(:stream, media_object)
+      end
+    end
+
+    it 'is not available to managers, editors, and depositors of other collections' do
+      other_collection = FactoryBot.create(:collection)
+
+      other_collection_users = other_collection.managers +
+                              other_collection.editors +
+                              other_collection.depositors
+
+      other_collection_users.each do |user_name|
+        ability = Ability.new(User.find_by(username: user_name))
+        expect(ability).to_not be_able_to(:stream, media_object)
+      end
+    end
+
+    it 'is available if an active access token allowing streaming is provided' do
+      access_token = FactoryBot.create(:access_token, :allow_streaming)
+      access_token.media_object_id = media_object.id
+      access_token.save!
+
+      token = access_token.token
+      ability = Ability.new(nil, { access_token: token })
+      expect(ability).to be_able_to(:stream, media_object)
+    end
+  end
 end
