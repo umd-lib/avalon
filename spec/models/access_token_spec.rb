@@ -74,6 +74,34 @@ RSpec.describe AccessToken, type: :model do
     end
   end
 
+  describe '#expiration=' do
+    let(:access_token) { FactoryBot.create(:access_token) }
+
+    it 'when setting the expiration date, the "expired" field should also be updated' do
+      expect(access_token[:expired]).to be false
+
+      access_token.expiration = 1.day.ago
+
+      expect(access_token[:expired]).to be true
+
+      access_token.expiration = 1.day.from_now
+
+      expect(access_token[:expired]).to be false
+    end
+
+    it 'when created with an expiration date in the past, "expired" field should also be set' do
+      access_token_params = FactoryBot.attributes_for(:access_token)
+      access_token_params[:expiration] = 1.day.ago
+      access_token = AccessToken.new(access_token_params)
+
+      expect(access_token[:expired]).to be true
+
+      access_token.expiration = 1.day.from_now
+
+      expect(access_token[:expired]).to be false
+    end
+  end
+
   describe '#allow_streaming_of?' do
     let(:access_token) { FactoryBot.create(:access_token, :allow_streaming) }
     let(:token) { access_token.token }

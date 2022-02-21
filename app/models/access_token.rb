@@ -6,7 +6,6 @@ class AccessToken < ApplicationRecord
 
   validate :media_object_must_exist
 
-  before_save :set_expired_flag
   after_create :add_read_group
 
   # Convenience method for accessing instance version of "allow_streaming_of?"
@@ -49,9 +48,9 @@ class AccessToken < ApplicationRecord
     self.expiration.past? || self[:expired]
   end
 
-  # Sets the #expired attribute based on whether this token should expire.
-  def set_expired_flag
-    self.expired = expired?
+  def expiration=(expiration_date)
+    super(expiration_date)
+    self.expired = self.expiration.past?
   end
   end
 
