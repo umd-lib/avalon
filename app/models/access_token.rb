@@ -71,4 +71,14 @@ class AccessToken < ApplicationRecord
     media_object.read_groups += [self.token]
     media_object.save!
   end
+
+  # Removes the read group added by this token from the media_object
+  def remove_read_group
+    media_object = MediaObject.find(self.media_object_id)
+
+    if media_object && media_object.read_groups.include?(self.token)
+      media_object.read_groups -= [self.token]
+      media_object.save!
+    end
+  end
 end

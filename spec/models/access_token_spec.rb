@@ -159,4 +159,17 @@ RSpec.describe AccessToken, type: :model do
       expect(access_token.allow_streaming_of?(media_object_id)).to be(true)
     end
   end
+
+  describe '#remove_read_group' do
+    let(:access_token) { FactoryBot.create(:access_token) }
+    let(:token) { access_token.token }
+    let(:media_object) { MediaObject.find(access_token.media_object_id) }
+
+    it 'removes the read_group associated with the token from the media object' do
+      expect(media_object.read_groups).to include(token)
+
+      access_token.remove_read_group
+      expect(media_object.reload.read_groups).not_to include(token)
+    end
+  end
 end
