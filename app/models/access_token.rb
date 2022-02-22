@@ -5,6 +5,7 @@ class AccessToken < ApplicationRecord
   after_initialize :set_defaults
 
   validate :media_object_must_exist
+  validates :expiration, presence: true
 
   after_create :add_read_group
 
@@ -48,14 +49,23 @@ class AccessToken < ApplicationRecord
     self.expiration.past? || self[:expired]
   end
 
+  # Sets the expiration date. Overridden to only allow the expiration date
+  # on new, unsaved records to be set.
   def expiration=(expiration_date)
+    unless self.new_record?
+      logger.warn("Attempted to set expiration on existing record: access_token id=#{self.id}. Update ignored")
+      return
+    end
     super(expiration_date)
-    self.expired = self.expiration.past?
+    self.expired = expiration_date.past?
   end
 
-  # Expires this access token
+  # Expires this access token if the expiration date is passed
   def expire
+    return unless expired?
+
     self.expired = true
+    self.save! unless self.new_record?
     remove_read_group
   end
 
@@ -73,8 +83,11 @@ class AccessToken < ApplicationRecord
   def add_read_group
     return if expired?
     media_object = MediaObject.find(self.media_object_id)
-    media_object.read_groups += [self.token]
-    media_object.save!
+
+    unless media_object.read_groups.include?(self.token)
+      media_object.read_groups += [self.token]
+      media_object.save!
+    end
   end
 
   # Removes the read group added by this token from the media_object
