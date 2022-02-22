@@ -76,7 +76,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         <ul>
         <% @masterFiles.each do |master_file| %>
           <li>
-          <%= link_to(File.basename(master_file.file_location), download_master_file_path(id: master_file.id)) %>
+          <%= link_to(File.basename(master_file.file_location), download_master_file_path(id: master_file.id, access_token: @access_token)) %>
           </li>
         <% end %>
       </div>

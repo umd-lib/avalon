@@ -325,7 +325,7 @@ class MediaObjectsController < ApplicationController
 
   # Begin customization for LIBAVALON-196
   def master_file_download_allowed?
-    return false if @masterFiles.empty?
+    return false if @masterFiles.nil? || @masterFiles.empty?
 
     download_allowed = true
     @masterFiles.each do |master_file|
@@ -339,6 +339,8 @@ class MediaObjectsController < ApplicationController
   def show
     @playback_restricted = cannot? :full_read, @media_object
     @master_file_download_allowed = master_file_download_allowed?
+    @access_token = params[:access_token]
+
     respond_to do |format|
       format.html do
         if (not @masterFiles.empty? and @currentStream.blank?) then

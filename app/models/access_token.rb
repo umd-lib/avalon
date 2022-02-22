@@ -22,6 +22,12 @@ class AccessToken < ApplicationRecord
     self.revoked ||= false
   end
 
+  # Returns true if this token has not expired and not revoked, false
+  # otherwise.
+  def active?
+    !should_expire? && !revoked?
+  end
+
   # Checks whether the expiration time for this token is in the past.
   def should_expire?
     self.expiration.past?
