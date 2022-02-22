@@ -9,6 +9,21 @@ class AccessToken < ApplicationRecord
   before_save :set_expired_flag
   after_create :add_read_group
 
+  # Convenience method for accessing instance version of "allow_streaming_of?"
+  # with just a token string and media object id
+  def self.allow_streaming_of?(token, media_object_id)
+    access_token = AccessToken.find_by(token: token)
+    return false if access_token.nil?
+
+    access_token.allow_streaming_of?(media_object_id)
+  end
+
+  # Returns true if streaming is allowed by this access token for the given
+  # media object id, false otherwise.
+  def allow_streaming_of?(media_object_id)
+    allow_streaming? && active? && self.media_object_id == media_object_id
+  end
+
   # Generates a URL-safe base64 encoded 12 byte token.
   def generate_token
     self.token ||= Base64.urlsafe_encode64(SecureRandom.random_bytes(12))
