@@ -25,34 +25,55 @@ RSpec.describe AccessToken, type: :model do
       expect(access_token.valid?).to eq(false)
     end
 
-    it 'is valid when given an existing media object and user' do
+    it 'is valid when given an existing media object, user, and expiration' do
       media_object = FactoryBot.create(:media_object)
       user = FactoryBot.create(:user)
 
       access_token.media_object_id = media_object.id
       access_token.user = user
+      access_token.expiration = 7.days.from_now
 
       expect(access_token.valid?).to be true
     end
+  end
 
-    it 'adds a read group to the media_object after creation' do
-      media_object = FactoryBot.create(:media_object)
-      user = FactoryBot.create(:user)
-      access_token.user = user
+  context 'read group' do
+    let (:access_token) { FactoryBot.create(:access_token) }
+    let (:media_object) { MediaObject.find(access_token.media_object_id) }
+    let (:user) { access_token.user }
 
-      access_token = AccessToken.create!(user: user, media_object_id: media_object.id, expiration: 7.days.from_now)
+    it 'should be added to the media_object after creation' do
+      expect(media_object.reload.read_groups).to include(access_token.token)
+    end
+
+    it 'should not be added to the media_object if expiration date is in the past' do
+      access_token = FactoryBot.create(:access_token, expiration: 7.days.ago)
+      media_object = MediaObject.find(access_token.media_object_id)
+
+      expect(media_object.read_groups).to_not include(access_token.token)
+    end
+
+    it 'should not be added to the media_object if the read group already is present' do
+      expect(media_object.read_groups).to include(access_token.token)
+      expect(media_object.read_groups.length).to be(1)
+
+      # Attempt to add read group again
+      access_token.add_read_group
       media_object.reload
 
       expect(media_object.read_groups).to include(access_token.token)
+      expect(media_object.read_groups.length).to be(1)
     end
   end
 
   describe '#active?' do
-    let(:access_token) { FactoryBot.create(:access_token) }
     it 'returns false if the token has expired' do
+      access_token = FactoryBot.create(:access_token, expiration: 1.day.ago)
       access_token.expiration = 1.day.ago
       expect(access_token.active?).to be (false)
     end
+
+    let(:access_token) { FactoryBot.create(:access_token) }
 
     it 'returns false if the token has been revoked' do
       access_token.revoked = true
@@ -60,9 +81,33 @@ RSpec.describe AccessToken, type: :model do
     end
 
     it 'returns true if not expired and not revoked' do
-      expect(access_token.should_expire?).to be(false)
+      expect(access_token.expired?).to be(false)
       expect(access_token.revoked).to be(false)
       expect(access_token.active?).to be(true)
+    end
+  end
+
+  describe '#expiration=' do
+    it 'cannot be set after object is created' do
+      access_token = FactoryBot.create(:access_token, expiration: 1.day.from_now)
+
+      current_expiration = access_token.expiration
+      new_expiration = 2.days.from_now
+
+      expect(Rails.logger).to receive(:warn).with(/Attempted to set expiration on existing record/)
+
+      access_token.expiration = new_expiration
+      access_token.save!
+
+      expect(access_token[:expiration]).to eq(current_expiration)
+    end
+
+    it 'when created with an expiration date in the past, "expired" field should also be set' do
+      access_token_params = FactoryBot.attributes_for(:access_token)
+      access_token_params[:expiration] = 1.day.ago
+      access_token = AccessToken.new(access_token_params)
+
+      expect(access_token[:expired]).to be true
     end
   end
 
@@ -80,14 +125,15 @@ RSpec.describe AccessToken, type: :model do
     end
 
     it 'returns false if the token is expired' do
-      access_token.expiration = 1.day.ago
-      access_token.save!
+      access_token = FactoryBot.create(:access_token, :allow_streaming, expiration: 1.day.ago)
+      token = access_token.token
+      media_object_id = access_token.media_object_id
 
       expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
       expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
     end
 
-    it 'returns false if the token does match the given media object id' do
+    it 'returns false if the token does not match the given media object id' do
       media_object_id = 'some_other_id'
 
       expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
@@ -121,6 +167,52 @@ RSpec.describe AccessToken, type: :model do
     it 'returns true if the access token is active' do
       expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(true)
       expect(access_token.allow_streaming_of?(media_object_id)).to be(true)
+    end
+  end
+
+  describe '#remove_read_group' do
+    let(:access_token) { FactoryBot.create(:access_token) }
+    let(:token) { access_token.token }
+    let(:media_object) { MediaObject.find(access_token.media_object_id) }
+
+    it 'removes the read_group associated with the token from the media object' do
+      expect(media_object.read_groups).to include(token)
+
+      access_token.remove_read_group
+      expect(media_object.reload.read_groups).not_to include(token)
+    end
+  end
+
+  describe '#expire' do
+    let (:access_token) { FactoryBot.create(:access_token, expiration: 30.minutes.from_now) }
+    let (:media_object) { MediaObject.find(access_token.media_object_id) }
+
+    it 'does nothing if the expiration date is not in the past' do
+      access_token.expire
+      expect(access_token.reload.expired).to be false
+      expect(access_token.reload.expired?).to be false
+    end
+
+    it 'sets the "expired" field to true' do
+      expect(access_token.expired?).to be false
+
+      travel_to(1.hour.from_now) do
+        access_token.expire
+        expect(access_token.reload.expired).to be true
+        expect(access_token.reload.expired?).to be true
+      end
+    end
+
+    it 'removes the token from the read_group of the associated media object' do
+      expect(access_token.expired?).to be false
+      expect(media_object.read_groups).to include(access_token.token)
+
+      travel_to(1.hour.from_now) do
+        access_token.expire
+
+        expect(access_token.expired?).to be true
+        expect(media_object.reload.read_groups).to_not include(access_token.token)
+      end
     end
   end
 end

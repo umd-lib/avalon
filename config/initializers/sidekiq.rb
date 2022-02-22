@@ -20,6 +20,7 @@ begin
   Sidekiq::Cron::Job.create(name: 'Status Checking and Email Notification of Existing Batches - every 15min', cron: '*/15 * * * *', class: 'IngestBatchStatusEmailJobs::IngestFinished')
   Sidekiq::Cron::Job.create(name: 'Status Checking and Email Notification for Stalled Batches - every 1day', cron: '0 1 * * *', class: 'IngestBatchStatusEmailJobs::StalledJob')
   Sidekiq::Cron::Job.create(name: 'Clean out user sessions older than 7 days - every 6hour', cron: '0 */6 * * *', class: 'CleanupSessionJob')
+  Sidekiq::Cron::Job.create(name: 'Clean up access tokens that have past their expiration date - every 1day', cron: '0 1 * * *', class: 'CleanupAccessTokenJob')
 rescue Redis::CannotConnectError => e
   Rails.logger.warn "Cannot create sidekiq-cron jobs: #{e.message}"
 end

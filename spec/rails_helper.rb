@@ -167,6 +167,9 @@ RSpec.configure do |config|
   config.include Warden::Test::Helpers,type: :feature
   config.include FixtureMacros, type: :controller
   config.include OptionalExample
+
+  # LIBAVALON-208 - include time helpers
+  config.include ActiveSupport::Testing::TimeHelpers
 end
 
 FactoryBot::SyntaxRunner.class_eval do

@@ -24,14 +24,13 @@ describe Ability, type: :model do
 
   describe '#user_groups' do
     context 'when options has an "access_token" entry' do
-      let (:ability) { Ability.new(nil, { access_token: access_token.token }) }
-      let (:access_token) { FactoryBot.create(:access_token) }
-
       it 'does not add "allow_download" group if the access token has expired' do
-        access_token.expiration = 1.day.ago
+        access_token = FactoryBot.create(:access_token, expiration: 1.day.ago)
+        ability = Ability.new(nil, access_token: access_token.token)
+
         access_token.allow_download = true
         access_token.save!
-        expect(access_token.should_expire?).to be(true)
+        expect(access_token.expired?).to be(true)
 
         user_groups = ability.user_groups
         download_group_name = Ability.access_token_download_group_name(access_token.media_object_id)
@@ -39,7 +38,12 @@ describe Ability, type: :model do
         expect(user_groups.include?(download_group_name)).to be(false)
       end
 
+      let (:ability) { Ability.new(nil, { access_token: access_token.token }) }
+      let (:access_token) { FactoryBot.create(:access_token) }
+
       it 'does not add "allow_download" group if the access token has been revoked' do
+        access_token = FactoryBot.create(:access_token)
+
         access_token.revoked = true
         access_token.allow_download = true
         access_token.save!

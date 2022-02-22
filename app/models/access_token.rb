@@ -5,8 +5,8 @@ class AccessToken < ApplicationRecord
   after_initialize :set_defaults
 
   validate :media_object_must_exist
+  validates :expiration, presence: true
 
-  before_save :set_expired_flag
   after_create :add_read_group
 
   # Convenience method for accessing instance version of "allow_streaming_of?"
@@ -40,17 +40,33 @@ class AccessToken < ApplicationRecord
   # Returns true if this token has not expired and not revoked, false
   # otherwise.
   def active?
-    !should_expire? && !revoked?
+    !expired? && !revoked?
   end
 
-  # Checks whether the expiration time for this token is in the past.
-  def should_expire?
-    self.expiration.past?
+  # Returns true if the expiration time for this token is in the past, or the
+  # "expired" field is true, false otherwise.
+  def expired?
+    self.expiration.past? || self[:expired]
   end
 
-  # Sets the #expired attribute based on whether this token should expire.
-  def set_expired_flag
-    self.expired = should_expire?
+  # Sets the expiration date. Overridden to only allow the expiration date
+  # on new, unsaved records to be set.
+  def expiration=(expiration_date)
+    unless self.new_record?
+      logger.warn("Attempted to set expiration on existing record: access_token id=#{self.id}. Update ignored")
+      return
+    end
+    super(expiration_date)
+    self.expired = expiration_date.past?
+  end
+
+  # Expires this access token if the expiration date is passed
+  def expire
+    return unless expired?
+
+    self.expired = true
+    self.save! unless self.new_record?
+    remove_read_group
   end
 
   # Checks whether the target media object exists
@@ -65,8 +81,22 @@ class AccessToken < ApplicationRecord
 
   # Adds read group to the media_object, using the token as the group identifier
   def add_read_group
+    return if expired?
     media_object = MediaObject.find(self.media_object_id)
-    media_object.read_groups += [self.token]
-    media_object.save!
+
+    unless media_object.read_groups.include?(self.token)
+      media_object.read_groups += [self.token]
+      media_object.save!
+    end
+  end
+
+  # Removes the read group added by this token from the media_object
+  def remove_read_group
+    media_object = MediaObject.find(self.media_object_id)
+
+    if media_object && media_object.read_groups.include?(self.token)
+      media_object.read_groups -= [self.token]
+      media_object.save!
+    end
   end
 end
