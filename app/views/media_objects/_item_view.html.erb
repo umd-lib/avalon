@@ -51,6 +51,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= render 'workflow_progress' %>
     <%= render partial: 'timeline' if current_ability.can? :create, Timeline %>
     <% end %>
+    <%= render 'download' if @master_file_download_allowed %>
     <%= render 'share' if will_partial_list_render? :share %>
     <% unless @playback_restricted %>
 
