@@ -104,7 +104,7 @@ existing asset files into the archive.
 
 This Rails task examines all the MasterFile entries for asset files remaining
 in the dropbox, and moves them to the "archive" directory specified in the
-"master_file_management.move" parameter of the config/setting.yml" file. The
+"master_file_management.move" parameter of the "config/settings.yml" file. The
 MasterFile entries in the database will be updated with the new file location.
 
 It is recommended that a "dry run" for the task be performed first. This will
@@ -123,7 +123,7 @@ To perform the actual migration:
 rails umd:move_dropbox_files_to_archive
 ```
 
-The console output will indicate any errors such as failed migrations,
+The console output will indicate any errors such as failed migrations
 and failed deletions.
 
 This Rails task is intended to be idempotent -- running the task multiple times

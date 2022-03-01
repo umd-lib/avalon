@@ -1,4 +1,7 @@
 class DropBoxFile
+  # Encapsulates the information about a drop box file, and the actions
+  # that can be taken on it.
+
   attr_reader :dropbox_file_location, :archive_locations, :errors
 
   def initialize(dropbox_file_location)
@@ -12,10 +15,15 @@ class DropBoxFile
   end
 
   def add_master_file(master_file)
+    # Associates the given MasterFile with this object
     @master_files.push(master_file)
   end
 
   def migrate_file(archive_directory)
+    # Copies the associated dropbox file to the archive directory (the file is
+    # copied once for each MasterFile), and updates the MasterFiles. Returns
+    # true if the migration succeeds, false otherwise. If the migration fails,
+    # a MigrationError is added to the "errors" field of this object.
     @migration_successful = true
     @master_files.each do |master_file|
       archive_location = File.join(archive_directory,
@@ -27,7 +35,7 @@ class DropBoxFile
         master_file.save!
         @master_files_updated.push(master_file.id)
         @archive_locations.push(archive_location)
-        Rails.logger.info("Successful migtation of #{@dropbox_file_location} to #{archive_location} for #{master_file.id}")
+        Rails.logger.info("Successful migration of #{@dropbox_file_location} to #{archive_location} for #{master_file.id}")
       rescue Exception => e
         @errors.push(MigrationError.new(master_file_id: master_file.id,
                                 dropbox_file_location: @dropbox_file_location,
@@ -41,10 +49,15 @@ class DropBoxFile
   end
 
   def can_delete?
+    # Returns true if all operations on this object have been successful, and
+    # therefore the file can be deleted, false otherwise.
     @errors.empty? && @migration_successful
   end
 
   def delete_file
+    # Deletes the file in the dropbox directory, returning true if the file was
+    # successfully deleted, false otherwise. If the deletion fails, a
+    # DeletionError is added to the "errors" field of this object.
     @deleted = false
     if can_delete?
       begin
@@ -60,10 +73,12 @@ class DropBoxFile
   end
 
   def master_file_ids
+    # Returns a list of the MasterFile ids associated with this object.
     @master_files.map(&:id)
   end
 
   def to_s
+    # Returns a String reprsentation of this object.
     master_files_updated_ids = @master_files_updated
     "DropBoxFile: [" +
       "dropbox_file_location: #{@dropbox_file_location}, " +
@@ -77,9 +92,13 @@ class DropBoxFile
   end
 end
 
-
 class MoveDropboxFilesToArchive
+  # Performs the operations needed by the "umd:move_dropbox_files_to_archive"
+  # Rake task
+
   def self.create_drop_box_files_hash()
+    # Queries all the MasterFiles, returning a hash of DropBoxFile objects,
+    # indexed by the file location.
     drop_box_files_hash = {}
 
     MasterFile.all.each do |master_file|
@@ -94,6 +113,13 @@ class MoveDropboxFilesToArchive
   end
 
   def self.filter_drop_box_files(archive_dir, drop_box_files_hash)
+    # Returns a FilterFileResult object, containing:
+    #   file_to_migrate: A list of DropBoxFile objects to migrate (i.e., the
+    #      associated file is in a dropbox directory)
+    #   missing_files: A list of DropBoxFile objects where the file could not
+    #      be found
+    #   skipped_files: A list of DropBoxFile objects where the file is already
+    #      in the archive directory, and so does not need to be moved.
     skipped_files = []
     missing_files = []
     files_to_migrate = []
@@ -114,6 +140,15 @@ class MoveDropboxFilesToArchive
   end
 
   def self.migrate_drop_box_files(archive_dir, files_to_migrate)
+    # Migrates all DropBoxFiles in the given "files_to_migrate" list to the
+    # appropriate directory the given "archive_dir" base directory.
+    #
+    # Returns a MigrateDropBoxFilesResult object containing:
+    #   successful_migrations: A list of DropBoxFiles that were successfully
+    #     migrated.
+    #   failed_migrations: A list of DropBoxFiles that failed to migrate. The
+    #     "errors" field of the objects will be populated with the specific
+    #     error.
     successful_migrations = []
     failed_migrations = []
     files_to_migrate.each do |f|
@@ -128,6 +163,14 @@ class MoveDropboxFilesToArchive
   end
 
   def self.delete_files(successful_migrations)
+    # Deletes all DropBoxFiles in the given "successful_migrations" list.
+    #
+    # Returns a DeleteFilesResult object containing:
+    #   successful_deletes: A list of DropBoxFiles that were successfully
+    #     deleted.
+    #   failed_deletes: A list of DropBoxFiles that failed to delete. The
+    #     "errors" field of the objects will be populated with the specific
+    #     error.
     successful_deletes = []
     failed_deletes = []
 
@@ -142,6 +185,23 @@ class MoveDropboxFilesToArchive
   end
 
   def self.perform(archive_dir, dry_run=false)
+    # Main function, called to perform the actual migration steps, migrating
+    # the files into the given "archive_dir" base directory.
+    #
+    # If the "dry_run" parameter is true, only information about the number of
+    # files to be moved will be returned -- there will be no change to the
+    # files.
+    #
+    # Returns a PerformResult containing all the information generated by the
+    # migration steps:
+    #   drop_box_files_hash: the hash of DropBoxFile objects considered for
+    #     migration, indexed by the file location.
+    #   filter_files_result: the FilterFilesResult, containing the files to be
+    #     migrated, missing files, and skipped files
+    #   migrate_drop_box_files_result: the MigrateDropBoxFilesResult, containing
+    #     the successful and failed migrations
+    #   delete_files_result: the DeleteFilesResult, containing the successful
+    #     and failed deletions
     drop_box_files_hash = create_drop_box_files_hash()
     filter_files_result = filter_drop_box_files(archive_dir, drop_box_files_hash)
 
