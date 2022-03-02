@@ -2,13 +2,14 @@ require 'move_dropbox_files_to_archive'
 
 namespace :umd do
   desc "Move master files from dropbox directory to archive"
-  task :move_dropbox_files_to_archive, %i[dry_run] => :environment do |_t, args|
-    args.with_defaults(:dry_run => 'false')
-
+  task :move_dropbox_files_to_archive => :environment do
     archive_dir = Settings.master_file_management.path
     raise '"path" configuration missing for master_file_management strategy "move"' if archive_dir.blank?
 
-    dry_run = ActiveModel::Type::Boolean.new.cast(args.dry_run)
+    # additionally support "no" as a false boolean value
+    ENV['dry_run'] = 'false' if ENV['dry_run'].in? %w[no NO]
+
+    dry_run = ActiveModel::Type::Boolean.new.cast(ENV['dry_run'])
 
     Rails.logger.tagged("move_dropbox_files_to_archive") do
       Rails.logger.info("Starting move_dropbox_files_to_archive, dry_run=#{dry_run}")
