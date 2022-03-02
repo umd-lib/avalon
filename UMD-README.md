@@ -111,10 +111,11 @@ It is recommended that a "dry run" for the task be performed first. This will
 identify the number of files that need to be moved, as well as any files that
 are missing.
 
-To perform a "dry run":
+To perform a "dry run", use a "dry_run" environment variable (lower-case,
+because lower-case is used in supplying arguments to other Avalon Rake tasks):
 
 ```bash
-rails umd:move_dropbox_files_to_archive[true]
+dry_run=true rails umd:move_dropbox_files_to_archive
 ```
 
 To perform the actual migration:
