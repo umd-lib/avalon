@@ -60,7 +60,7 @@ class AccessTokensController < ApplicationController
     end
 
     def access_tokens_list(status)
-      AccessToken.send(status).order(:expiration)
+      AccessToken.send(status).order(:expiration).page(params[:page])
     end
 
     def access_token_params

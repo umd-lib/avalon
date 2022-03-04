@@ -4,6 +4,11 @@
   <%= select_tag 'status', options_for_select(AccessTokensController::STATUS_VALUES, @show_status) %>
   <button>Go</button>
 </form>
+
+<div>
+  <%= paginate @access_tokens %>
+</div>
+
 <table class="table">
   <thead>
   <tr>
@@ -43,6 +48,12 @@
   </tbody>
 </table>
 
-<%= link_to new_access_token_path, class: 'btn btn-success' do %>
-  <i class="fa fa-plus"></i> Create a new token
-<% end %>
+<div>
+  <%= paginate @access_tokens %>
+</div>
+
+<div>
+  <%= link_to new_access_token_path, class: 'btn btn-success' do %>
+    <i class="fa fa-plus"></i> Create a new token
+  <% end %>
+</div>
