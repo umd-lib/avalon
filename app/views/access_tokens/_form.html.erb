@@ -20,7 +20,7 @@
         <%= form.label :expiration %>
       </dt>
       <dd>
-        <%= form.datetime_local_field :expiration %>
+        <%= form.date_field :expiration %>
         <%= render partial: 'error_messages', locals: {obj: @access_token, key: :expiration} %>
       </dd>
     <% end %>
