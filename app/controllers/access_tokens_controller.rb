@@ -22,8 +22,9 @@ class AccessTokensController < ApplicationController
 
   def create
     @access_token = AccessToken.new(access_token_params)
+
     if @access_token.save
-      redirect_to access_tokens_url
+      redirect_to @access_token
     else
       render 'new', status: :unprocessable_entity
     end
