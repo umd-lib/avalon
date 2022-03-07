@@ -82,6 +82,9 @@ class AccessToken < ApplicationRecord
 
   # Validation method to check whether the expiration is in the future
   def expiration_must_be_future
+    # Need to skip check after token is expired, so "expired" flag can be set
+    # by the "cleanup access token" job
+    return if expired? 
     errors.add(:expiration, 'is in the past') unless expiration.future?
   end
 
