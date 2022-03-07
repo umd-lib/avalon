@@ -3,21 +3,42 @@ require 'rails_helper'
 RSpec.describe AccessTokensController, type: :controller do
 
   context '#new' do
-    it "generates an access token with an empty media object field, if no param is provided" do
-      login_as(:administrator)
+    context 'when a "media_object_id" param is not provided' do
+      it 'generates an access token with an empty media object field' do
+        login_as(:administrator)
 
-      get :new
-      access_token = controller.instance_variable_get('@access_token')
-      expect(access_token.media_object_id).to be_nil
+        get :new
+        access_token = controller.instance_variable_get('@access_token')
+        expect(access_token.media_object_id).to be_nil
+      end
+
+      it 'sets the "Cancel" button to return to the access tokens list page' do
+        login_as(:administrator)
+
+        get :new
+        cancel_link = controller.instance_variable_get('@cancel_link')
+        expect(cancel_link).to eq (access_tokens_path)
+      end
     end
 
-    it "generates the access token with the media object id, if provided as a param" do
-      login_as(:administrator)
-      media_object = FactoryBot.create(:media_object)
+    context 'when media_object_id param provided' do
+      it 'generates the access token with the media object id' do
+        login_as(:administrator)
+        media_object = FactoryBot.create(:media_object)
 
-      get :new, params: { media_object_id: media_object.id }
-      access_token = controller.instance_variable_get('@access_token')
-      expect(access_token.media_object_id).to eq(media_object.id)
+        get :new, params: { media_object_id: media_object.id }
+        access_token = controller.instance_variable_get('@access_token')
+        expect(access_token.media_object_id).to eq(media_object.id)
+      end
+
+      it 'sets the "Cancel" button to return to the media object Access Control page' do
+        login_as(:administrator)
+        media_object = FactoryBot.create(:media_object)
+
+        get :new, params: { media_object_id: media_object.id }
+        cancel_link = controller.instance_variable_get('@cancel_link')
+        expect(cancel_link).to eq (edit_media_object_path(id: media_object.id))
+      end
     end
   end
 

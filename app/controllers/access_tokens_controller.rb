@@ -17,7 +17,12 @@ class AccessTokensController < ApplicationController
   def new
     media_object_id = params[:media_object_id]
     @access_token ||= AccessToken.new(access_token_defaults)
-    @access_token.media_object_id = media_object_id if media_object_id
+    if media_object_id
+      @access_token.media_object_id = media_object_id
+      @cancel_link = edit_media_object_path(id: media_object_id)
+    else
+      @cancel_link = access_tokens_path
+    end
   end
 
   def create
