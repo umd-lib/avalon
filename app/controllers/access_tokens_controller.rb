@@ -73,7 +73,12 @@ class AccessTokensController < ApplicationController
 
     def access_token_params
       data = params.require(:access_token).permit(%i[media_object_id access_mode expiration user revoked])
-      data[:expiration] = Date.parse(data[:expiration]).in_time_zone(Rails.configuration.time_zone).end_of_day if data[:expiration]
+      begin
+        data[:expiration] = Date.parse(data[:expiration]).in_time_zone(Rails.configuration.time_zone).end_of_day if data[:expiration]
+      rescue StandardError => e
+        # Simply recover and do nothing -- AccessToken validation should catch
+        # missing parameter
+      end
       data[:user] = User.find_by_username_or_email(data[:user]) if data[:user]
       data.merge!(parse_access_mode(data.delete(:access_mode).to_sym)) if data[:access_mode]
       data

@@ -57,6 +57,20 @@ RSpec.describe AccessTokensController, type: :controller do
       expect(response).to render_template(:new)
     end
 
+    it 'returns to the "new" page when no expiration date is provided' do
+      login_as(:administrator)
+      media_object = FactoryBot.create(:media_object)
+      user = FactoryBot.create(:administrator)
+
+      params = { access_token: { media_object_id: media_object.id, user: user.username,
+                                 expiration: '',
+                                 allow_streaming: true, allow_downloading: false } }
+
+      post :create, params: params
+
+      expect(response).to render_template(:new)
+    end
+
     it 'when an access token is successfully created, goes to the "show" page for that token' do
       login_as(:administrator)
       media_object = FactoryBot.create(:media_object)
