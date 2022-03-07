@@ -1,0 +1,59 @@
+<form method="get">
+  <strong>Showing <%= @show_status %> tokens.</strong>
+  Filter by status:
+  <%= select_tag 'status', options_for_select(AccessTokensController::STATUS_VALUES, @show_status) %>
+  <button>Go</button>
+</form>
+
+<div>
+  <%= paginate @access_tokens %>
+</div>
+
+<table class="table">
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Status</th>
+    <th>Target</th>
+    <th>Token</th>
+    <th>Streaming?</th>
+    <th>Download?</th>
+    <th>Expires</th>
+    <th>Created by</th>
+    <th></th>
+  </tr>
+  </thead>
+  <tbody>
+  <% if @access_tokens.length > 0 %>
+    <% @access_tokens.each do |token| %>
+      <tr class="<%= css_classes(token) %>">
+        <td><%= link_to token.id, token %></td>
+        <td><%= status(token) %></td>
+        <td><%= media_object_link(token) %></td>
+        <td><%= media_object_with_token_link(token) %></td>
+        <td><% if token.allow_streaming %>Yes<% end %></td>
+        <td><% if token.allow_download %>Yes<% end %></td>
+        <td><%= token.expiration %><br>(<%= approximate_time_distance(token) %>)</td>
+        <td><%= token.user.username %></td>
+        <td>
+          <%= link_to 'View', token, class: 'btn btn-default' %>
+        </td>
+      </tr>
+    <% end %>
+  <% else %>
+  <tr>
+    <td colspan="9">No <%= @show_status %> tokens found</td>
+  </tr>
+  <% end %>
+  </tbody>
+</table>
+
+<div>
+  <%= paginate @access_tokens %>
+</div>
+
+<div>
+  <%= link_to new_access_token_path, class: 'btn btn-success' do %>
+    <i class="fa fa-plus"></i> Create a new token
+  <% end %>
+</div>

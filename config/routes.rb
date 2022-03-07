@@ -226,4 +226,6 @@ Rails.application.routes.draw do
     mount Sidekiq::Web, at: '/jobs', as: 'jobs'
   end
   get '/jobs(.:format)', to: redirect('/')
+
+  resources :access_tokens
 end
