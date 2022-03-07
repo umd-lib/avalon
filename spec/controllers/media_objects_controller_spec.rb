@@ -631,6 +631,21 @@ describe MediaObjectsController, type: :controller do
           .not_to change { MediaObject.find(mo.id).hidden? }
       end
     end
+
+    it "should display active Access Tokens" do
+      media_object = FactoryBot.create(:media_object)
+      login_user media_object.collection.managers.first
+
+      # When no access tokens, count should be zero
+      get 'edit', params: { id: media_object.id, step: 'access-control' }
+      expect(controller.instance_variable_get('@active_access_tokens').count).to eq(0)
+
+      access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id)
+
+      # When active access token exists, should be returned.
+      get 'edit', params: { id: media_object.id, step: 'access-control' }
+      expect(controller.instance_variable_get('@active_access_tokens').count).to eq(1)
+    end
   end
 
   describe "#index" do

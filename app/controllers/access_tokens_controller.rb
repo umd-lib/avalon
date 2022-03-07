@@ -15,7 +15,9 @@ class AccessTokensController < ApplicationController
   end
 
   def new
+    media_object_id = params[:media_object_id]
     @access_token ||= AccessToken.new(access_token_defaults)
+    @access_token.media_object_id = media_object_id if media_object_id
   end
 
   def create
