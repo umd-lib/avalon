@@ -8,12 +8,14 @@ class AccessToken < ApplicationRecord
   validate :media_object_must_exist
   validates :expiration, presence: true
   validate :expiration_must_be_future
+  validate :user_must_be_collection_editor
 
   after_create :add_read_group
 
   scope :expired, ->{ where('expiration <= NOW()')}
   scope :revoked, ->{ where(revoked: true) }
   scope :active, ->{ where('expiration > NOW() AND NOT revoked')}
+  scope :with_status, ->(status) { send(status) }
 
   # Convenience method for accessing instance version of "allow_streaming_of?"
   # with just a token string and media object id
@@ -92,14 +94,23 @@ class AccessToken < ApplicationRecord
   # Validation method to check whether the target media object exists
   def media_object_must_exist
     if media_object_id.present?
-      errors.add(:media_object_id, 'does not exist') unless media_object_exists?
+      errors.add(:media_object_id, 'not found') unless media_object_exists?
+    end
+  end
+
+  # Validation method to check whether the user creating this token is a collection
+  # editor of the media object. If this validation fails, it sets a "not found" error,
+  # even though the media object does exist. This is to prevent leaking information
+  # about what media objects exist to an unauthorized user.
+  def user_must_be_collection_editor
+    if media_object_id.present? && media_object_exists?
+      errors.add(:media_object_id, 'not found') unless Ability.new(user).is_editor_of?(media_object.collection)
     end
   end
 
   # Adds read group to the media_object, using the token as the group identifier
   def add_read_group
     return if expired?
-    media_object = MediaObject.find(self.media_object_id)
 
     unless media_object.read_groups.include?(self.token)
       media_object.read_groups += [self.token]
@@ -109,8 +120,6 @@ class AccessToken < ApplicationRecord
 
   # Removes the read group added by this token from the media_object
   def remove_read_group
-    media_object = MediaObject.find(self.media_object_id)
-
     if media_object && media_object.read_groups.include?(self.token)
       media_object.read_groups -= [self.token]
       media_object.save!
@@ -125,5 +134,9 @@ class AccessToken < ApplicationRecord
     elsif allow_download?
       :download_only
     end
+  end
+
+  def media_object
+    @media_object ||= MediaObject.find(self.media_object_id)
   end
 end

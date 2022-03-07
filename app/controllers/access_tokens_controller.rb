@@ -89,7 +89,15 @@ class AccessTokensController < ApplicationController
     end
 
     def access_tokens_list(status)
-      AccessToken.send(status).order(:expiration).page(params[:page])
+      tokens = AccessToken.with_status(status).order(:expiration)
+      if cannot? :list_all, AccessToken
+        # filter to only those tokens for which the current user is an editor
+        # we cannot do this in the database only, so we have to paginate the array
+        # instead of the ActiveRecord::Relation
+        tokens = tokens.to_a.select {|token| current_ability.is_editor_of?(token.media_object.collection)}
+        tokens = Kaminari.paginate_array(tokens)
+      end
+      tokens.page(params[:page])
     end
 
     def access_token_params
