@@ -117,6 +117,12 @@ class Ability
 
       # End customization for LIBAVALON-196
 
+      can [:create, :update], AccessToken do |access_token|
+        is_editor_of?(access_token.media_object.collection)
+      end
+
+      can :list_all, AccessToken if is_administrator?
+
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
       if full_login? || is_api_request?
