@@ -95,7 +95,7 @@ RSpec.describe AccessTokensController, type: :controller do
     end
   end
 
-  context "#show" do
+  context '#show' do
     it 'provides a link to the Media Object Access Control page' do
       login_as(:administrator)
       access_token = FactoryBot.create(:access_token)
@@ -107,4 +107,14 @@ RSpec.describe AccessTokensController, type: :controller do
     end
   end
 
+  context '#edit' do
+    it 'provides a Cancel link back to the "show" access page' do
+      login_as(:administrator)
+      access_token = FactoryBot.create(:access_token)
+
+      get :edit, params: { id: access_token.id }
+      cancel_link = controller.instance_variable_get('@cancel_link')
+      expect(cancel_link).to eq(access_token_path(access_token))
+    end
+  end
 end

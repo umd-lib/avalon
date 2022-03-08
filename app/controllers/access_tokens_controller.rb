@@ -48,6 +48,7 @@ class AccessTokensController < ApplicationController
 
   def edit
     @access_token = AccessToken.find(params[:id])
+    @cancel_link = access_token_path(@access_token)
   end
 
   def update
