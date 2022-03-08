@@ -44,6 +44,17 @@
   </dd>
 </dl>
 
+<% if @info_for_patron_snippet %>
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Information for Patron</h3>
+    </div>
+    <div class="panel-body">
+      <%= raw(@info_for_patron_snippet) %>
+    </div>
+  </div>
+<% end %>
+
   <%= form_with model: @access_token, local: true do |form| %>
     <% unless @access_token.expired? %>
       <%= link_to edit_access_token_url(@access_token), class: "btn btn-default" do %>

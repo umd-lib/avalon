@@ -105,6 +105,34 @@ RSpec.describe AccessTokensController, type: :controller do
       media_object_access_control_link = controller.instance_variable_get('@media_object_access_control_link')
       expect(media_object_access_control_link).to eq(edit_media_object_path(id: access_token.media_object_id))
     end
+
+    context 'for active tokens' do
+      it 'includes a text snippet containing information to provide to the patron' do
+        login_as(:administrator)
+        access_token = FactoryBot.create(:access_token)
+
+        get :show, params: { id: access_token.id }
+        expect(controller.instance_variable_get('@info_for_patron_snippet')).to_not be_empty
+      end
+    end
+    context 'for expired or revoked tokens' do
+      it 'does not include a text snippet containing information to provide to the patron' do
+        login_as(:administrator)
+        access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now)
+
+        # Expired token
+        travel_to(1.hour.from_now) do
+          get :show, params: { id: access_token.id }
+          expect(controller.instance_variable_get('@info_for_patron_snippet')).to be_nil
+        end
+
+        # Revoked token
+        access_token.revoked=true
+        access_token.save!
+        get :show, params: { id: access_token.id }
+        expect(controller.instance_variable_get('@info_for_patron_snippet')).to be_nil
+      end
+    end
   end
 
   context '#edit' do

@@ -44,6 +44,19 @@ class AccessTokensController < ApplicationController
   def show
     @access_token = AccessToken.find(params[:id])
     @media_object_access_control_link = edit_media_object_path(id: @access_token.media_object_id)
+    media_object = MediaObject.find(@access_token.media_object_id)
+
+    if (@access_token.active?)
+      access_token_url = media_object_url(id: @access_token.media_object_id, access_token: @access_token.token)
+      access_mode = t("access_token.access_mode.#{@access_token.access_mode}")
+      expiration = @access_token.expiration.strftime("%B %e, %Y %I:%M:%S %p")
+
+      @info_for_patron_snippet = t('access_token.info_for_patron_snippet_html',
+                        access_token_url: access_token_url,
+                        access_mode: access_mode,
+                        media_object_title: media_object.title,
+                        expiration: expiration)
+    end
   end
 
   def edit

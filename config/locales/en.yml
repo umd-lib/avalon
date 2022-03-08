@@ -18,6 +18,16 @@ en:
       blank: "field is required."
       taken: "is taken."
       dateformat: "(%{date}) is in wrong format."
+  access_token:
+    info_for_patron_snippet_html: |
+      The following URL allows %{access_mode} of "%{media_object_title}" until %{expiration}:<br>
+      <br>
+      <a href=%{access_token_url}>%{access_token_url}</a><br>
+
+    access_mode:
+      streaming_and_download: streaming and download
+      streaming_only: streaming
+      download_only: download
   media_object:
     empty_share_link: ""
     empty_share_link_notice: "After processing has started the embedded link will be available."
