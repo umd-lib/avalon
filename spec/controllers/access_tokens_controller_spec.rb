@@ -21,7 +21,7 @@ RSpec.describe AccessTokensController, type: :controller do
       end
     end
 
-    context 'when media_object_id param provided' do
+    context 'when media_object_id param is provided' do
       it 'generates the access token with the media object id' do
         login_as(:administrator)
         media_object = FactoryBot.create(:media_object)
@@ -55,6 +55,10 @@ RSpec.describe AccessTokensController, type: :controller do
       post :create, params: params
 
       expect(response).to render_template(:new)
+
+      # Cancel button returns to access tokens list page
+      cancel_link = controller.instance_variable_get('@cancel_link')
+      expect(cancel_link).to eq (access_tokens_path)
     end
 
     it 'returns to the "new" page when no expiration date is provided' do
@@ -69,6 +73,11 @@ RSpec.describe AccessTokensController, type: :controller do
       post :create, params: params
 
       expect(response).to render_template(:new)
+
+      # Cancel button returns to media object Access Control page (because there
+      # is a media_object_id)
+      cancel_link = controller.instance_variable_get('@cancel_link')
+      expect(cancel_link).to eq (edit_media_object_path(id: media_object.id))
     end
 
     it 'when an access token is successfully created, goes to the "show" page for that token' do

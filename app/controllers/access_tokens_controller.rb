@@ -17,12 +17,9 @@ class AccessTokensController < ApplicationController
   def new
     media_object_id = params[:media_object_id]
     @access_token ||= AccessToken.new(access_token_defaults)
-    if media_object_id
-      @access_token.media_object_id = media_object_id
-      @cancel_link = edit_media_object_path(id: media_object_id)
-    else
-      @cancel_link = access_tokens_path
-    end
+
+    @access_token.media_object_id = media_object_id if media_object_id
+    @cancel_link = create_cancel_link(media_object_id)
   end
 
   def create
@@ -31,8 +28,17 @@ class AccessTokensController < ApplicationController
     if @access_token.save
       redirect_to @access_token
     else
+      @cancel_link = create_cancel_link(@access_token.media_object_id)
       render 'new', status: :unprocessable_entity
     end
+  end
+
+  def create_cancel_link(media_object_id)
+    # Returns a link to the media object Access Control page, if a media
+    # object id is given, otherwise returns a link to the Access Tokens list
+    # page.
+    return edit_media_object_path(id: media_object_id) if media_object_id.present?
+    access_tokens_path
   end
 
   def show
