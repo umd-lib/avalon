@@ -63,7 +63,8 @@ class AccessToken < ApplicationRecord
       return
     end
     super(expiration_date)
-    self.expired = expiration_date.past?
+
+    self.expired = expiration_date.nil? || (expiration_date == '') || expiration_date.past?
   end
 
   # Expires this access token if the expiration date is passed
@@ -71,7 +72,9 @@ class AccessToken < ApplicationRecord
     return unless expired?
 
     self.expired = true
-    self.save! unless self.new_record?
+    # Skip validation, because otherwise we will fail
+    # "expiration_must_be_future" validation check
+    self.save(validate: false) unless self.new_record?
     remove_read_group
   end
 
@@ -82,9 +85,7 @@ class AccessToken < ApplicationRecord
 
   # Validation method to check whether the expiration is in the future
   def expiration_must_be_future
-    # Need to skip check after token is expired, so "expired" flag can be set
-    # by the "cleanup access token" job
-    return if expired? 
+    return if expiration.nil?
     errors.add(:expiration, 'is in the past') unless expiration.future?
   end
 

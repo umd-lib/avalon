@@ -37,6 +37,10 @@ RSpec.describe AccessToken, type: :model do
     end
   end
 
+  it 'cannot be created with an expiration date in the past' do
+    expect { FactoryBot.create(:access_token, expiration: 1.day.ago) }.to raise_exception(ActiveRecord::RecordInvalid)
+  end
+
   context 'read group' do
     let (:access_token) { FactoryBot.create(:access_token) }
     let (:media_object) { MediaObject.find(access_token.media_object_id) }
@@ -46,12 +50,12 @@ RSpec.describe AccessToken, type: :model do
       expect(media_object.reload.read_groups).to include(access_token.token)
     end
 
-    it 'should not be added to the media_object if expiration date is in the past' do
-      access_token = FactoryBot.create(:access_token, expiration: 7.days.ago)
-      media_object = MediaObject.find(access_token.media_object_id)
+    # it 'should not be added to the media_object if expiration date is in the past' do
+    #   access_token = FactoryBot.create(:access_token, expiration: 7.days.ago)
+    #   media_object = MediaObject.find(access_token.media_object_id)
 
-      expect(media_object.read_groups).to_not include(access_token.token)
-    end
+    #   expect(media_object.read_groups).to_not include(access_token.token)
+    # end
 
     it 'should not be added to the media_object if the read group already is present' do
       expect(media_object.read_groups).to include(access_token.token)
@@ -68,9 +72,10 @@ RSpec.describe AccessToken, type: :model do
 
   describe '#active?' do
     it 'returns false if the token has expired' do
-      access_token = FactoryBot.create(:access_token, expiration: 1.day.ago)
-      access_token.expiration = 1.day.ago
-      expect(access_token.active?).to be (false)
+      access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now)
+      travel_to(1.hour.from_now) do
+         expect(access_token.active?).to be (false)
+      end
     end
 
     let(:access_token) { FactoryBot.create(:access_token) }
@@ -125,12 +130,15 @@ RSpec.describe AccessToken, type: :model do
     end
 
     it 'returns false if the token is expired' do
-      access_token = FactoryBot.create(:access_token, :allow_streaming, expiration: 1.day.ago)
-      token = access_token.token
-      media_object_id = access_token.media_object_id
+      access_token = FactoryBot.create(:access_token, :allow_streaming, expiration: 30.minutes.from_now)
 
-      expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
-      expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+      travel_to(1.hour.from_now) do
+        token = access_token.token
+        media_object_id = access_token.media_object_id
+
+        expect(AccessToken.allow_streaming_of?(token, media_object_id)).to be(false)
+        expect(access_token.allow_streaming_of?(media_object_id)).to be(false)
+      end
     end
 
     it 'returns false if the token does not match the given media object id' do

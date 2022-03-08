@@ -108,6 +108,49 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% end %>
 
+<div class="panel panel-default access-token">
+  <div class="panel-heading">
+    <h3 class="panel-title">Access Token</h3>
+  </div>
+  <div class="panel-body">
+
+    <% if !@active_access_tokens.nil? && @active_access_tokens.any? %>
+      <div class="panel panel-default">
+        <div class="panel-heading">Active tokens</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Token</th>
+              <th>Streaming?</th>
+              <th>Download?</th>
+              <th>Expires</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @active_access_tokens.each do |token| %>
+              <tr class="<%= css_classes(token) %>">
+                <td><%= link_to token.id, token %></td>
+                <td><%= link_to token.token, token %></td>
+                <td><% if token.allow_streaming %>Yes<% end %></td>
+                <td><% if token.allow_download %>Yes<% end %></td>
+                <td><%= token.expiration %><br>(<%= approximate_time_distance(token) %>)</td>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% unless @media_object.nil? || @media_object.id.nil? %>
+      <%= link_to new_access_token_path( {media_object_id: @media_object.id} ), class: 'btn btn-success' do %>
+        <i class="fa fa-plus"></i> Create a new token
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+
 <div class="panel panel-default special-access">
   <div class="panel-heading">
     <h3 class="panel-title">Assign special access</h3>

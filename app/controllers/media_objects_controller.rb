@@ -306,6 +306,8 @@ class MediaObjectsController < ApplicationController
       @ip_leases = @media_object.leases('ip')
       @visibility = @media_object.visibility
 
+      @active_access_tokens = AccessToken.active.where(media_object_id: @media_object.id).order(:expiration)
+
       @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
       @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
     end
