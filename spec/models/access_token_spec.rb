@@ -223,16 +223,4 @@ RSpec.describe AccessToken, type: :model do
       end
     end
   end
-
-  # context "#expiration_must_be_future" do
-  #   let (:access_token) { FactoryBot.create(:access_token, expiration: 30.minutes.from_now) }
-
-  #   it 'is skipped if the access token has already expired, so "expired" flag can be set' do
-  #     travel_to(1.hour.from_now) do
-  #       access_token.expire
-
-  #       expect(access_token.expired?).to be true
-  #     end
-  #   end
-  # end
 end
