@@ -37,7 +37,7 @@ RSpec.describe AccessTokensController, type: :controller do
 
         get :new, params: { media_object_id: media_object.id }
         cancel_link = controller.instance_variable_get('@cancel_link')
-        expect(cancel_link).to eq (edit_media_object_path(id: media_object.id))
+        expect(cancel_link).to eq (edit_media_object_path(id: media_object.id, step: 'access-control'))
       end
     end
   end
@@ -77,7 +77,7 @@ RSpec.describe AccessTokensController, type: :controller do
       # Cancel button returns to media object Access Control page (because there
       # is a media_object_id)
       cancel_link = controller.instance_variable_get('@cancel_link')
-      expect(cancel_link).to eq (edit_media_object_path(id: media_object.id))
+      expect(cancel_link).to eq (edit_media_object_path(id: media_object.id, step: 'access-control'))
     end
 
     it 'when an access token is successfully created, goes to the "show" page for that token' do
@@ -103,7 +103,7 @@ RSpec.describe AccessTokensController, type: :controller do
       get :show, params: { id: access_token.id }
 
       media_object_access_control_link = controller.instance_variable_get('@media_object_access_control_link')
-      expect(media_object_access_control_link).to eq(edit_media_object_path(id: access_token.media_object_id))
+      expect(media_object_access_control_link).to eq(edit_media_object_path(id: access_token.media_object_id, step: 'access-control'))
     end
 
     context 'for active tokens' do

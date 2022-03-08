@@ -37,13 +37,13 @@ class AccessTokensController < ApplicationController
     # Returns a link to the media object Access Control page, if a media
     # object id is given, otherwise returns a link to the Access Tokens list
     # page.
-    return edit_media_object_path(id: media_object_id) if media_object_id.present?
+    return edit_media_object_path(id: media_object_id, step: 'access-control') if media_object_id.present?
     access_tokens_path
   end
 
   def show
     @access_token = AccessToken.find(params[:id])
-    @media_object_access_control_link = edit_media_object_path(id: @access_token.media_object_id)
+    @media_object_access_control_link = edit_media_object_path(id: @access_token.media_object_id, step: 'access-control')
     media_object = MediaObject.find(@access_token.media_object_id)
 
     if (@access_token.active?)
