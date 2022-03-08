@@ -43,6 +43,7 @@ class AccessTokensController < ApplicationController
 
   def show
     @access_token = AccessToken.find(params[:id])
+    @media_object_access_control_link = edit_media_object_path(id: @access_token.media_object_id)
   end
 
   def edit

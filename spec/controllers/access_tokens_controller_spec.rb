@@ -94,4 +94,17 @@ RSpec.describe AccessTokensController, type: :controller do
       expect(response).to redirect_to(access_token_path(access_token))
     end
   end
+
+  context "#show" do
+    it 'provides a link to the Media Object Access Control page' do
+      login_as(:administrator)
+      access_token = FactoryBot.create(:access_token)
+
+      get :show, params: { id: access_token.id }
+
+      media_object_access_control_link = controller.instance_variable_get('@media_object_access_control_link')
+      expect(media_object_access_control_link).to eq(edit_media_object_path(id: access_token.media_object_id))
+    end
+  end
+
 end
