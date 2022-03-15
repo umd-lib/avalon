@@ -634,13 +634,13 @@ describe MediaObjectsController, type: :controller do
 
     it "should display active Access Tokens" do
       media_object = FactoryBot.create(:media_object)
-      login_user media_object.collection.managers.first
+      user = login_user media_object.collection.managers.first
 
       # When no access tokens, count should be zero
       get 'edit', params: { id: media_object.id, step: 'access-control' }
       expect(controller.instance_variable_get('@active_access_tokens').count).to eq(0)
 
-      access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id)
+      access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id, user: user)
 
       # When active access token exists, should be returned.
       get 'edit', params: { id: media_object.id, step: 'access-control' }
@@ -880,6 +880,7 @@ describe MediaObjectsController, type: :controller do
     context "streaming" do
       it "should be permitted for when an access token allows streaming" do
         media_object = FactoryBot.create(:published_media_object, visibility: 'private')
+        user = login_user media_object.collection.managers.first
 
         get :show, params: { id: media_object.id }
         expect(controller.instance_variable_get('@playback_restricted')).to be true
@@ -887,7 +888,7 @@ describe MediaObjectsController, type: :controller do
         # Force reset of current_ability
         controller.instance_variable_set('@current_ability', nil)
 
-        access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id)
+        access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id, user: user)
         access_token.save!
 
         get :show, params: { id: media_object.id, access_token: access_token.token }
