@@ -52,11 +52,7 @@ pipeline {
            |
            |Check console output at $BUILD_URL to view the results.
            |
-           |There were ${TEST_COUNTS,var="fail"} failed tests.
-           |
-           |There are ${ANALYSIS_ISSUES_COUNT} static analysis issues in this build.
-           |
-           |There were ${TEST_COUNTS,var="skip"} skipped tests.'''.stripMargin()
+           | No tests were run.'''.stripMargin()
   }
 
   stages {
@@ -92,7 +88,7 @@ pipeline {
       steps {
         sh '''
           # Start the Avalon Docker containers for testing
-          docker-compose up -d test
+          # docker-compose up -d test
         '''
       }
     }
@@ -101,17 +97,17 @@ pipeline {
       steps {
         sh '''
           # Run rspec tests, with JUNit-formatted output
-          docker-compose exec -T test bash -c "bundle exec rspec --format RspecJunitFormatter --out rspec.xml"
+          # docker-compose exec -T test bash -c "bundle exec rspec --format RspecJunitFormatter --out rspec.xml"
         '''
       }
       post {
         always {
           sh '''
-            docker-compose down
+            # docker-compose down
           '''
 
           // Process JUnit-formatter test output
-          junit 'rspec.xml'
+          // junit 'rspec.xml'
         }
       }
     }
