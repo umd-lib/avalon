@@ -4,6 +4,8 @@ identifier_types:
   local: Catalog Key
   oclc: OCLC
   lccn: LCCN
+  fedora2: Fedora 2 PID
+  filename: Filename
   issue number: Issue Number
   matrix number: Matrix Number
   music publisher: Music Publisher/Label
