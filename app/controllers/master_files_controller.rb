@@ -80,6 +80,34 @@ class MasterFilesController < ApplicationController
     redirect_to id_section_media_object_path(master_file.media_object_id, master_file.id, params.except(:id, :action, :controller))
   end
 
+  def download
+    begin
+      master_file = MasterFile.find(params[:id])
+    rescue ActiveFedora::ObjectNotFoundError
+      redirect_back(fallback_location: root_path, alert: t('master_file.error_id_not_found', id: params[:id]))
+      return
+    end
+
+    if can? :master_file_download, master_file
+      location = master_file.file_location
+
+      if location.nil? || location.empty?
+        redirect_back(fallback_location: root_path, alert: t('master_file.error_no_file'))
+        return
+      end
+
+      begin
+        send_file location
+      rescue ActionController::MissingFile
+        redirect_back(fallback_location: root_path, alert: t('master_file.error_file_not_found', location: location))
+        return
+      end
+    else
+      redirect_back(fallback_location: root_path, notice: t('master_file.download_not_permitted'))
+      return
+    end
+  end
+
   def embed
     @master_file = MasterFile.find(params[:id])
     if can? :read, @master_file

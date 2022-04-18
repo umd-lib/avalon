@@ -52,8 +52,8 @@ redis:
 groups:
   system_groups: [administrator, group_manager, manager]
 master_file_management:
-  strategy: 'none' #'delete', or 'move' (for move uncomment and configure next line)
-  #path: '/path/to/move/to'
+  strategy: 'move' #'delete', or 'move' (for move uncomment and configure next line)
+  path: '/masterfiles/archive'
 bib_retriever:
   default:
     protocol: sru

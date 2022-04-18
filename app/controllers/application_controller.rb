@@ -151,6 +151,10 @@ class ApplicationController < ActionController::Base
   def current_ability
     session_opts ||= user_session
     session_opts ||= {}
+
+    access_token = request.query_parameters[:access_token]
+    session_opts = session_opts.merge(access_token: access_token) if access_token
+
     @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.ip))
   end
 

@@ -463,6 +463,18 @@ describe MasterFile do
     end
   end
 
+  describe '#post_processing_move_relative_filepath' do
+    let(:id) { '0z708w40c' }
+    let(:path) { '/path/to/video.mp4' }
+    it 'returns a filepath based on the id' do
+      expect(MasterFile.post_processing_move_relative_filepath(path, id: id)).to eq '0z/70/8w/40/0z708w40c-video.mp4'
+    end
+    it 'does not prepend the id if already present' do
+      path = '/path/to/0z708w40c-video.mp4'
+      expect(MasterFile.post_processing_move_relative_filepath(path, id: id)).to eq '0z/70/8w/40/0z708w40c-video.mp4'
+    end
+  end
+
   describe '#post_processing_move_filename' do
     let(:id) { 'avalon:12345' }
     let(:id_prefix) { 'avalon_12345' }
@@ -683,7 +695,7 @@ describe MasterFile do
 
     context 'without derivative' do
       let(:master_file) { FactoryBot.build(:master_file) }
-    
+
       it 'returns false' do
         expect(master_file.has_audio?).to eq false
       end
@@ -694,7 +706,7 @@ describe MasterFile do
 
       context 'with audio track' do
         let(:derivative) { FactoryBot.build(:derivative, audio_codec: 'aac') }
-        
+
         it 'returns true' do
           expect(master_file.has_audio?).to eq true
         end
@@ -702,7 +714,7 @@ describe MasterFile do
 
       context 'without audio track' do
         let(:derivative) { FactoryBot.build(:derivative, audio_codec: nil) }
-        
+
         it 'returns false' do
           expect(master_file.has_audio?).to eq false
         end

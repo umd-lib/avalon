@@ -128,4 +128,17 @@ describe ApplicationController do
       expect(controller.params[:key][:subkey]).to eq "value"
     end
   end
+
+  describe '#current_ability' do
+    it 'adds access_token to session options when "access_token" param is present' do
+      access_token = FactoryBot.create(:access_token)
+      request.params['access_token'] = access_token.token
+      ability = controller.current_ability
+      expect(ability.options[:access_token]).to be(access_token.token)
+    end
+    it 'does not add access_token to session options when "access_token" param is not present' do
+      ability = controller.current_ability
+      expect(ability.options.has_key?(:access_token)).to be(false)
+    end
+  end
 end

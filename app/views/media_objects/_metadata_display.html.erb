@@ -65,6 +65,24 @@ Unless required by applicable law or agreed to in writing, software distributed
     <% end %>
   </div>
 
+  <%if @master_file_download_allowed %>
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">
+          Downloads
+        </h3>
+      </div>
+      <div class="panel-body">
+        <ul>
+        <% @masterFiles.each do |master_file| %>
+          <li>
+          <%= link_to(File.basename(master_file.file_location), download_master_file_path(id: master_file.id, access_token: @access_token)) %>
+          </li>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <div class="panel panel-default">
     <div class="panel-heading">
       <h3 class="panel-title">

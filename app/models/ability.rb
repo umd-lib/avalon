@@ -24,6 +24,12 @@ class Ability
     can :read, :encode_dashboard if is_administrator?
   end
 
+  def self.access_token_download_group_name(media_object_id)
+    # Returns the group name to use if downloads are allowed for a media object
+    # via an access token
+    "allow_download_#{media_object_id}"
+  end
+
   def user_groups
     return @user_groups if @user_groups
 
@@ -32,7 +38,24 @@ class Ability
     @user_groups |= ['registered'] unless current_user.new_record?
     @user_groups |= @options[:virtual_groups] if @options.present? and @options.has_key? :virtual_groups
     @user_groups |= [@options[:remote_ip]] if @options.present? and @options.has_key? :remote_ip
+
+    if @options.present? && @options.has_key?(:access_token)
+      token = @options[:access_token]
+      @user_groups |= access_token_user_groups(token)
+    end
+
     @user_groups
+  end
+
+  def access_token_user_groups(token)
+    # Returns a list of the user groups based on the token, or an empty list.
+    return [] if token.nil?
+
+    access_token = AccessToken.find_by(token: token)
+    return [] unless !access_token.nil? && access_token.active? && access_token.allow_download?
+
+    media_object_id = access_token.media_object_id
+    [Ability.access_token_download_group_name(media_object_id)]
   end
 
   def create_permissions(user=nil, session=nil)
@@ -70,6 +93,10 @@ class Ability
         (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
       end
 
+      can :stream, MediaObject do |media_object|
+        is_streaming_allowed?(media_object)
+      end
+
       can :read, MasterFile do |master_file|
         can? :full_read, master_file.media_object
       end
@@ -82,6 +109,13 @@ class Ability
         can? :full_read, derivative.masterfile.media_object
       end
       # End customization for LIBAVALON-168
+
+      # Begin customization for LIBAVALON-196
+      can :master_file_download, MasterFile do |master_file|
+        is_master_file_download_allowed?(master_file)
+      end
+
+      # End customization for LIBAVALON-196
 
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
@@ -235,6 +269,36 @@ class Ability
   def is_member_of?(collection)
      is_administrator? ||
        @user.in?(collection.managers, collection.editors, collection.depositors)
+  end
+
+  def is_master_file_download_allowed?(master_file)
+    # Returns true if download of the master file is allowed, false otherwise
+    media_object = master_file&.media_object
+    return false unless media_object
+
+    media_object_id = media_object.id
+
+    collection = media_object.collection
+    return false unless collection
+
+    allowed = is_member_of?(collection)
+    allowed = allowed || @user_groups.include?(Ability.access_token_download_group_name(media_object_id))
+    allowed
+  end
+
+  def is_streaming_allowed?(media_object)
+    # Returns true if streaming of the given media object is allowed,
+    # false otherwise
+    return false unless media_object
+
+    allowed = can? :full_read, media_object
+
+    if @options.has_key?(:access_token)
+      token = @options[:access_token]
+      allowed = allowed || AccessToken.allow_streaming_of?(token, media_object.id)
+    end
+
+    allowed
   end
 
   def is_editor_of?(collection)

@@ -1,0 +1,75 @@
+<dl class="access-token-metadata">
+  <dt>
+    Media Object
+  </dt>
+  <dd>
+    <%= media_object_link(@access_token) %>
+  </dd>
+  <dt>
+    Token
+  </dt>
+  <dd>
+    <%= media_object_with_token_link(@access_token) %>
+  </dd>
+  <dt>
+    Allows streaming?
+  </dt>
+  <dd>
+    <%= yes_no(@access_token.allow_streaming?) %>
+  </dd>
+  <dt>
+    Allows download?
+  </dt>
+  <dd>
+    <%= yes_no(@access_token.allow_download?) %>
+  </dd>
+  <dt>
+    Status
+  </dt>
+  <dd>
+    <%= status(@access_token) %>
+  </dd>
+  <dt>
+    Expiration
+  </dt>
+  <dd>
+    <%= @access_token.expiration %>
+    (<%= approximate_time_distance(@access_token) %>)
+  </dd>
+  <dt>
+    Created by:
+  </dt>
+  <dd>
+    <%= @access_token.user.username %>
+  </dd>
+</dl>
+
+<% if @info_for_patron_snippet %>
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">Information for Patron</h3>
+    </div>
+    <div class="panel-body">
+      <%= raw(@info_for_patron_snippet) %>
+    </div>
+  </div>
+<% end %>
+
+  <%= form_with model: @access_token, local: true do |form| %>
+    <% unless @access_token.expired? %>
+      <%= link_to edit_access_token_url(@access_token), class: "btn btn-default" do %>
+        <i class="fa fa-edit"></i> Edit
+      <% end %>
+
+      <% if @access_token.revoked? %>
+        <%= form.hidden_field :revoked, value: false %>
+        <%= form.submit 'Un-revoke', class: 'btn btn-default' %>
+      <% else %>
+        <%= form.hidden_field :revoked, value: true %>
+        <%= form.submit 'Revoke', class: 'btn btn-danger' %>
+      <% end %>
+    <% end %>
+    <%= link_to 'Access Tokens List', access_tokens_path, class: 'btn btn-primary' %>
+    <%= link_to 'Media Object Access Control', @media_object_access_control_link, class: 'btn btn-primary' %>
+  <% end %>
+

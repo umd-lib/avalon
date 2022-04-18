@@ -17,7 +17,7 @@ require 'cancan/matchers'
 
 describe MediaObject do
   let(:media_object) { FactoryBot.create(:media_object) }
-  
+
   it 'assigns a noid id' do
     media_object = MediaObject.new
     expect { media_object.assign_id! }.to change { media_object.id }.from(nil).to(String)
@@ -166,6 +166,7 @@ describe MediaObject do
       it{ is_expected.to be_able_to(:destroy, media_object) }
       it{ is_expected.to be_able_to(:update_access_control, media_object) }
       it "should not be able to destroy and unpublish published item" do
+        pending('UMD LIBAVALON-178')
         media_object.publish! "someone"
         expect(subject).not_to be_able_to(:destroy, media_object)
         expect(subject).not_to be_able_to(:update, media_object)
@@ -200,6 +201,7 @@ describe MediaObject do
 
       it{ is_expected.to be_able_to(:share, MediaObject) }
       it "should not be able to read unauthorized, published MediaObject" do
+        pending('UMD LIBAVALON-178')
         media_object.publish! "random"
         media_object.reload
         expect(subject.can?(:read, media_object)).to be false
@@ -237,6 +239,7 @@ describe MediaObject do
       end
 
       it 'should not be able to read unauthorized, published MediaObject' do
+        pending('UMD LIBAVALON-178')
         media_object.read_groups += [Faker::Internet.ip_v4_address]
         media_object.publish! "random"
         media_object.reload
@@ -929,7 +932,7 @@ describe MediaObject do
 
   describe '#merge!' do
     let(:media_objects) { [] }
-    
+
     before do
       2.times { media_objects << FactoryBot.create(:media_object, :with_master_file) }
     end

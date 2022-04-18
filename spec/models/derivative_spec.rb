@@ -18,7 +18,7 @@ describe Derivative do
 
   describe "#from_output" do
     let(:api_output) do
-      { 
+      {
         id: 'track-1',
         label: 'quality-high',
         url: 'http://www.test.com/test.mp4.m3u8',
@@ -33,7 +33,7 @@ describe Derivative do
       }
     end
     let(:derivative) { described_class.from_output(api_output, false) }
-                  
+
     it "Call from ingest API should populate :url and :hls_url" do
       expect(derivative.location_url).to eq('http://www.test.com/test.mp4.m3u8')
     end
@@ -62,6 +62,15 @@ describe Derivative do
     let(:location)   { "file://#{root}/c5e0f8b8-3f69-40de-9524-604f03b5f867/8c871d4b-a9a6-4841-8e2a-dd98cf2ee625/content.mp4" }
     let(:audio_derivative) { Derivative.new(audio_codec: 'AAC').tap { |d| d.absolute_location = location } }
     let(:video_derivative) { Derivative.new(video_codec: 'AVC').tap { |d| d.absolute_location = location } }
+
+    around :each do |example|
+      old_value = Avalon::StreamMapper.streaming_server
+      begin
+        example.run
+      ensure
+        Avalon::StreamMapper.streaming_server = old_value
+      end
+    end
 
     describe "generic" do
       before :each do

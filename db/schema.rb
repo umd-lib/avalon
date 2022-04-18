@@ -10,10 +10,25 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_04_14_154529) do
+ActiveRecord::Schema.define(version: 2022_02_17_140427) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "access_tokens", force: :cascade do |t|
+    t.string "token"
+    t.string "media_object_id"
+    t.datetime "expiration"
+    t.boolean "allow_streaming"
+    t.boolean "allow_download"
+    t.string "description"
+    t.boolean "revoked"
+    t.boolean "expired"
+    t.bigint "user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_access_tokens_on_user_id"
+  end
 
   create_table "active_encode_encode_records", id: :serial, force: :cascade do |t|
     t.string "global_id"
@@ -270,6 +285,7 @@ ActiveRecord::Schema.define(version: 2020_04_14_154529) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "access_tokens", "users"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "timelines", "users"
 end

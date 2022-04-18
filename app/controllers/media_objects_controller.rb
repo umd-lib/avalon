@@ -306,6 +306,8 @@ class MediaObjectsController < ApplicationController
       @ip_leases = @media_object.leases('ip')
       @visibility = @media_object.visibility
 
+      @active_access_tokens = AccessToken.active.where(media_object_id: @media_object.id).order(:expiration)
+
       @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
       @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
     end
@@ -323,8 +325,24 @@ class MediaObjectsController < ApplicationController
     end
   end
 
+  # Begin customization for LIBAVALON-196
+  def master_file_download_allowed?
+    return false if @masterFiles.nil? || @masterFiles.empty?
+
+    download_allowed = true
+    @masterFiles.each do |master_file|
+      master_file = master_file.real_object if master_file.is_a? SpeedyAF::Proxy::MasterFile
+      download_allowed = download_allowed && can?(:master_file_download, master_file)
+    end
+    download_allowed
+  end
+  # End customization for LIBAVALON-196
+
   def show
-    @playback_restricted = cannot? :full_read, @media_object
+    @access_token = params[:access_token]
+    @playback_restricted = cannot? :stream, @media_object
+    @master_file_download_allowed = master_file_download_allowed?
+
     respond_to do |format|
       format.html do
         if (not @masterFiles.empty? and @currentStream.blank?) then

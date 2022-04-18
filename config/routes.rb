@@ -140,6 +140,7 @@ Rails.application.routes.draw do
       post 'thumbnail', :to => 'master_files#set_frame', :defaults => { :type => 'thumbnail', :format => 'html' }
       post 'poster',    :to => 'master_files#set_frame', :defaults => { :type => 'poster', :format => 'html' }
       post 'still',     :to => 'master_files#set_frame', :defaults => { :format => 'html' }
+      get :download
       get :embed
       post 'attach_structure'
       post 'attach_captions'
@@ -225,4 +226,6 @@ Rails.application.routes.draw do
     mount Sidekiq::Web, at: '/jobs', as: 'jobs'
   end
   get '/jobs(.:format)', to: redirect('/')
+
+  resources :access_tokens
 end

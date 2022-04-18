@@ -18,10 +18,25 @@ en:
       blank: "field is required."
       taken: "is taken."
       dateformat: "(%{date}) is in wrong format."
+  access_token:
+    info_for_patron_snippet_html: |
+      The following URL allows %{access_mode} of "%{media_object_title}" until %{expiration}:<br>
+      <br>
+      <a href=%{access_token_url}>%{access_token_url}</a><br>
+
+    access_mode:
+      streaming_and_download: streaming and download
+      streaming_only: streaming
+      download_only: download
   media_object:
     empty_share_link: ""
     empty_share_link_notice: "After processing has started the embedded link will be available."
     empty_share_section_permalink_notice: "After processing has started the section link will be available."
+  master_file:
+    error_id_not_found: "Download failed: Cannot find master file with id: %{id}"
+    error_no_file: "Download failed: Original file not stored."
+    error_file_not_found: "Download failed: File not found at: %{location}"
+    download_not_permitted: "Download not permitted."
   metadata_tip:
     abstract: |
       Summary provides a space for describing the contents of the item. Examples
@@ -246,7 +261,7 @@ en:
       timeline:
         title: "Title"
         description: "Description"
-      user:  
+      user:
         login: "Username or email"
 
   iiif:

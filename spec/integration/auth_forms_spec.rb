@@ -16,11 +16,13 @@ require 'rails_helper'
 
 describe AuthFormsController, type: :feature do
   scenario "User reaches the login screen" do
+    pending('UMD LIBAVALON-178')
     visit "/users/auth/identity"
     expect(page).to have_text('Avalon Media System')
   end
-  
+
   scenario "User reaches the registration screen" do
+    pending('UMD LIBAVALON-178')
     visit "/users/auth/identity/register"
     expect(page).to have_text('Avalon Media System')
   end
