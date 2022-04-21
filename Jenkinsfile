@@ -24,6 +24,13 @@ pipeline {
   agent any
 
   options {
+    // Throttle declarative pipeline so only one Avalon build runs at a time.
+    throttleJobProperty(
+        categories: ['throttle_avalon'],
+        throttleEnabled: true,
+        throttleOption: 'category'
+    )
+
     buildDiscarder(
       logRotator(
         artifactDaysToKeepStr: '',
@@ -52,7 +59,11 @@ pipeline {
            |
            |Check console output at $BUILD_URL to view the results.
            |
-           | No tests were run.'''.stripMargin()
+           |There were ${TEST_COUNTS,var="fail"} failed tests.
+           |
+           |There are ${ANALYSIS_ISSUES_COUNT} static analysis issues in this build.
+           |
+           |There were ${TEST_COUNTS,var="skip"} skipped tests.'''.stripMargin()
   }
 
   stages {
@@ -87,8 +98,11 @@ pipeline {
     stage('build') {
       steps {
         sh '''
+          # Purge any volumes not in use by a container
+          docker system prune --force --volumes
+
           # Start the Avalon Docker containers for testing
-          # docker-compose up -d test
+          docker-compose up -d test
         '''
       }
     }
@@ -96,18 +110,24 @@ pipeline {
     stage('test') {
       steps {
         sh '''
-          # Run rspec tests, with JUNit-formatted output
-          # docker-compose exec -T test bash -c "bundle exec rspec --format RspecJunitFormatter --out rspec.xml"
+          # Unclear why the following line is necessary -- without it, yarn
+          # almost always seems to encounter an error downloading packages.
+          # See https://github.com/yarnpkg/yarn/issues/2629#issuecomment-685088015
+          docker-compose exec -T test bash -c "yarn install --check-files --cache-folder .ycache && rm -rf .ycache"
+
+          # Run bundle install
+          docker-compose exec -T test bash -c "bundle install"
+
+          # Run rspec tests, with "documentation" formatter (for the
+          # console log) and JUnit-formatted output (to a file) for
+          # Jenkins stats
+          docker-compose exec -T test bash -c "bundle exec rspec --format documentation --format RspecJunitFormatter --out rspec.xml"
         '''
       }
       post {
         always {
-          sh '''
-            # docker-compose down
-          '''
-
           // Process JUnit-formatter test output
-          // junit 'rspec.xml'
+          junit 'rspec.xml'
         }
       }
     }
@@ -124,19 +144,31 @@ pipeline {
     //     }
     //   }
     // }
-
-    stage('clean-workspace') {
-      steps {
-        cleanWs()
-      }
-    }
   }
 
   post {
     always {
+      // Email build results
       emailext to: "$DEFAULT_RECIPIENTS",
                subject: "$EMAIL_SUBJECT",
                body: "$EMAIL_CONTENT"
+
+      // Change permissions of the workspace directory to world-writeable
+      // so Jenkins can delete it. This is needed, because files may be
+      // written to the directory from the Docker container as the "root"
+      // user, which Jenkins would not otherwise be able to clean up.
+      sh '''
+        docker-compose exec -T test bash -c "chmod --recursive 777 /home/app/avalon"
+      '''
+
+      sh '''
+        # Stop Avalon Docker containers, using "--volumes" flag to delete
+        # all volumes
+        docker-compose down --volumes
+      '''
+
+      // Cleanup workspace
+      cleanWs()
     }
   }
 }
