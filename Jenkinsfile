@@ -24,6 +24,11 @@ pipeline {
   agent any
 
   options {
+    // Lock the AVALON_SINGLE_BUILD resource to prevent multiple Avalon
+    // jobs from running simultaneously. This is done to prevent Avalon
+    // from taking up all available executors.
+    lock resource: "AVALON_SINGLE_BUILD_${env.NODE_NAME}"
+
     buildDiscarder(
       logRotator(
         artifactDaysToKeepStr: '',
