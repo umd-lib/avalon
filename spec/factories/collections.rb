@@ -32,10 +32,43 @@ FactoryBot.define do
     end
 
     trait :with_poster do
-      after(:create) do |collection|
+      after(:build) do |collection|
         collection.poster.mime_type = 'image/png'
         collection.poster.content = 'fake image content'
         collection.save
+      end
+    end
+
+    trait :with_manager do
+      transient do
+        manager {nil}
+      end
+      after(:build) do |collection, evaluator|
+        if evaluator.manager.present?
+          collection.add_manager(evaluator.manager.user_key)
+        end
+      end
+    end
+
+    trait :with_editor do
+      transient do
+        editor {nil}
+      end
+      after(:build) do |collection, evaluator|
+        if evaluator.editor.present?
+          collection.add_editor(evaluator.editor.user_key)
+        end
+      end
+    end
+
+    trait :with_depositor do
+      transient do
+        depositor {nil}
+      end
+      after(:build) do |collection, evaluator|
+        if evaluator.depositor.present?
+          collection.add_depositor(evaluator.depositor.user_key)
+        end
       end
     end
   end
