@@ -8,7 +8,7 @@ class AccessToken < ApplicationRecord
   validate :media_object_must_exist
   validates :expiration, presence: true
   validate :expiration_must_be_future
-  validate :user_must_be_collection_editor
+  validate :user_must_be_collection_member
 
   after_create :add_read_group
 
@@ -98,13 +98,14 @@ class AccessToken < ApplicationRecord
     end
   end
 
-  # Validation method to check whether the user creating this token is a collection
-  # editor of the media object. If this validation fails, it sets a "not found" error,
-  # even though the media object does exist. This is to prevent leaking information
+  # Validation method to check whether the user creating this token is an admin
+  # or "member" (manager, editor, or depositor) of the collection holding the
+  # media object. If this validation fails, it sets a "not found" error, even
+  # though the media object does exist. This is to prevent leaking information
   # about what media objects exist to an unauthorized user.
-  def user_must_be_collection_editor
+  def user_must_be_collection_member
     if media_object_id.present? && media_object_exists?
-      errors.add(:media_object_id, 'not found') unless Ability.new(user).is_editor_of?(media_object.collection)
+      errors.add(:media_object_id, 'not found') unless Ability.new(user).is_member_of?(media_object.collection)
     end
   end
 
@@ -134,6 +135,12 @@ class AccessToken < ApplicationRecord
     elsif allow_download?
       :download_only
     end
+  end
+
+  def media_object_id=(media_object_id)
+    # Reset @media_object whenever media_object_id is changed
+    @media_object = nil
+    super(media_object_id)
   end
 
   def media_object
