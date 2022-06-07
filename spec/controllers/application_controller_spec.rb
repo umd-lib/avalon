@@ -132,7 +132,7 @@ describe ApplicationController do
   describe '#current_ability' do
     it 'adds access_token to session options when "access_token" param is present' do
       access_token = FactoryBot.create(:access_token)
-      request.params['access_token'] = access_token.token
+      request.query_parameters['access_token'] = access_token.token
       ability = controller.current_ability
       expect(ability.options[:access_token]).to be(access_token.token)
     end
