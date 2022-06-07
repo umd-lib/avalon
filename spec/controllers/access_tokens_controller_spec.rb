@@ -97,8 +97,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
   context '#show' do
     it 'provides a link to the Media Object Access Control page' do
-      login_as(:administrator)
-      access_token = FactoryBot.create(:access_token)
+      user = login_as(:administrator)
+      access_token = FactoryBot.create(:access_token, user: user)
 
       get :show, params: { id: access_token.id }
 
@@ -108,8 +108,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
     context 'for active tokens' do
       it 'includes a text snippet containing information to provide to the patron' do
-        login_as(:administrator)
-        access_token = FactoryBot.create(:access_token)
+        user = login_as(:administrator)
+        access_token = FactoryBot.create(:access_token, user: user)
 
         get :show, params: { id: access_token.id }
         expect(controller.instance_variable_get('@info_for_patron_snippet')).to_not be_empty
@@ -117,8 +117,8 @@ RSpec.describe AccessTokensController, type: :controller do
     end
     context 'for expired or revoked tokens' do
       it 'does not include a text snippet containing information to provide to the patron' do
-        login_as(:administrator)
-        access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now)
+        user = login_as(:administrator)
+        access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now, user: user)
 
         # Expired token
         travel_to(1.hour.from_now) do
@@ -137,8 +137,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
   context '#edit' do
     it 'provides a Cancel link back to the "show" access page' do
-      login_as(:administrator)
-      access_token = FactoryBot.create(:access_token)
+      user = login_as(:administrator)
+      access_token = FactoryBot.create(:access_token, user: user)
 
       get :edit, params: { id: access_token.id }
       cancel_link = controller.instance_variable_get('@cancel_link')
