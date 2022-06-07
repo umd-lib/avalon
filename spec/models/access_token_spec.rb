@@ -24,17 +24,53 @@ RSpec.describe AccessToken, type: :model do
     it 'access token is not valid by default' do
       expect(access_token.valid?).to eq(false)
     end
+  end
 
-    it 'is valid when given an existing media object, user, and expiration' do
-      media_object = FactoryBot.create(:media_object)
-      user = FactoryBot.create(:user)
-
-      access_token.media_object_id = media_object.id
-      access_token.user = user
-      access_token.expiration = 7.days.from_now
+  context 'is valid when given an existing media object, an expiration in the future, and' do
+    it 'an admin user' do
+      admin_user = FactoryBot.create(:admin)
+      access_token = FactoryBot.create(:access_token, user: admin_user)
 
       expect(access_token.valid?).to be true
     end
+
+    it 'a manager of the collection' do
+      manager = FactoryBot.create(:manager)
+      collection = FactoryBot.create(:collection, :with_manager, manager: manager)
+      media_object = FactoryBot.create(:media_object, collection: collection)
+      access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: manager)
+
+      expect(access_token.valid?).to be true
+    end
+
+    it 'an editor of the collection' do
+      editor = FactoryBot.create(:user) # Any user can be an editor
+      collection = FactoryBot.create(:collection, :with_editor, editor: editor)
+      media_object = FactoryBot.create(:media_object, collection: collection)
+      access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: editor)
+
+      expect(access_token.valid?).to be true
+    end
+
+    it 'a depositor of the collection' do
+      depositor = FactoryBot.create(:user) # Any user can be a depositor
+      collection = FactoryBot.create(:collection, :with_depositor, depositor: depositor)
+      media_object = FactoryBot.create(:media_object, collection: collection)
+      access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: depositor)
+
+      expect(access_token.valid?).to be true
+    end
+  end
+
+  it 'cannot be created if user is not an admin, or an manager, editor, or depositor of the collection' do
+    user = FactoryBot.create(:user)
+    media_object = FactoryBot.create(:media_object)
+    collection = media_object.collection
+    expect(collection.managers.include?(user)).to be false
+    expect(collection.editors.include?(user)).to be false
+    expect(collection.depositors.include?(user)).to be false
+
+    expect { FactoryBot.create(:access_token, user: user) }.to raise_exception(ActiveRecord::RecordInvalid)
   end
 
   it 'cannot be created with an expiration date in the past' do
