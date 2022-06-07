@@ -5,13 +5,17 @@ describe CleanupAccessTokenJob do
     @media_object = FactoryBot.create(:media_object)
     @unexpired_access_token = FactoryBot.create(:access_token, media_object_id: @media_object.id)
     @expiring_access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now, media_object_id: @media_object.id)
-    @expired_access_token = FactoryBot.create(:access_token, expiration: 1.month.ago, media_object_id: @media_object.id)
+    # Access tokens cannot be created as expired, so first create a token, and then set the expiration
+    @expired_access_token = FactoryBot.create(:access_token, expiration: 1.minute.from_now, media_object_id: @media_object.id)
+    @expired_access_token.expiration = 1.month.ago
+
 
     # Reload the media object to pick up changes to read_groups
     @media_object.reload
   end
 
   describe "perform" do
+
     it 'sets "expired" flag on expiring tokens' do
       travel_to(1.hour.from_now) do
         CleanupAccessTokenJob.perform_now
@@ -25,7 +29,8 @@ describe CleanupAccessTokenJob do
     it 'removes the read_group on the media object associated with expiring tokens' do
       expect(@media_object.read_groups).to include(@unexpired_access_token.token)
       expect(@media_object.read_groups).to include(@expiring_access_token.token)
-      expect(@media_object.read_groups).to_not include(@expired_access_token.token)
+      # Expired token still in read_groups, because cleanup has not been done
+      expect(@media_object.read_groups).to include(@expired_access_token.token)
 
       travel_to(1.hour.from_now) do
         CleanupAccessTokenJob.perform_now
