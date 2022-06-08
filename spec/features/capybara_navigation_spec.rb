@@ -51,6 +51,52 @@ describe 'checks navigation after logging in' do
     expect(page).to have_content('administrator')
     expect(page).to have_content('manager')
   end
+  context 'checks navigation to Manage Access Tokens' do
+    it 'displayed for administrators' do
+      user = FactoryBot.create(:administrator)
+      login_as user, scope: :user
+      visit '/'
+      click_link('Manage Access Tokens')
+      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_content('Access')
+      expect(page).to have_content('Create a new token')
+    end
+    it 'displayed for managers' do
+      user = FactoryBot.create(:manager)
+      login_as user, scope: :user
+      visit '/'
+      click_link('Manage Access Tokens')
+      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_content('Access')
+      expect(page).to have_content('Create a new token')
+    end
+    it 'displayed for editors' do
+      user = FactoryBot.create(:user)
+      collection = FactoryBot.create(:collection, :with_editor, editor: user)
+      login_as user, scope: :user
+      visit '/'
+      click_link('Manage Access Tokens')
+      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_content('Access')
+      expect(page).to have_content('Create a new token')
+    end
+    it 'displayed for depositors' do
+      user = FactoryBot.create(:user)
+      collection = FactoryBot.create(:collection, :with_depositor, depositor: user)
+      login_as user, scope: :user
+      visit '/'
+      click_link('Manage Access Tokens')
+      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_content('Access')
+      expect(page).to have_content('Create a new token')
+    end
+    it 'is not displayed for other users' do
+      user = FactoryBot.create(:user)
+      login_as user, scope: :user
+      visit '/'
+      expect(page).to have_no_link('Manage Access Tokens')
+    end
+  end
   it 'checks naviagtion to Playlist' do
     user = FactoryBot.create(:administrator)
     login_as user, scope: :user
