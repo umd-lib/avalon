@@ -3,6 +3,13 @@
 class UmdIPManager
   GROUP_PREFIX = 'umd.ip.manager:'
 
+  def initialize
+    @connection = Faraday.new(ENV['IP_MANAGER_SERVER']) do |connection|
+      connection.response :json
+      connection.adapter :net_http
+    end
+  end
+
   def groups
     groups = retrieve_groups
     GroupsResult.new(groups: groups)
@@ -22,14 +29,26 @@ class UmdIPManager
     end
   end
 
+  # Returns an array of UmdIPManager::Group, or raises an exception
   def retrieve_groups
-    # TODO - returns an array of UmdIPManager::Group, or raises an exception
+    response = @connection.get('/groups')
+    raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
+
+    response.body['groups'].map do |group|
+      Group.new(base_key: group['key'], name: group['name'])
+    end
   end
 
+  # Returns true, if the given IP Address is in the given group,
+  # false otherwise. Raise an exception if an error occurs
   def do_check_ip(group_base_key:, ip_address:)
-    # TODO - returns true, if the given IP Address is in the given group,
-    # false otherwise. Raise an exception if an error occurs
+    response = @connection.get('/check', ip: ip_address, group: group_base_key)
+    raise APIError, response.body['detail'] unless response.success?
+
+    response.body['contained']
   end
+
+  class APIError < StandardError; end
 
   class Group
     PREFIX = UmdIPManager::GROUP_PREFIX
@@ -65,11 +84,17 @@ class UmdIPManager
   end
 
   class GroupsResult
+    include Enumerable
+
     attr_reader :groups, :errors
 
     def initialize(groups: [], errors: [])
       @groups = groups
       @errors = errors
+    end
+
+    def each(&block)
+      @groups.each(&block)
     end
 
     # Returns true if no errors occurred, false otherwise.

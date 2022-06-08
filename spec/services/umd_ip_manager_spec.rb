@@ -1,7 +1,52 @@
 require 'rails_helper'
 
+def mock_ip_check_response(ip_address:, group:, contained:)
+  {
+    '@id': "http://ipmanager-local:3001/check?ip=#{ip_address}&group=#{group}",
+    group: {
+      '@id': "http://ipmanager-local:3001/groups/#{group}",
+      key: group,
+      name: "#{group.capitalize} Group"
+    },
+    ip: ip_address,
+    contained: contained
+  }
+end
+
+def mock_ip_check_error_response(group:)
+  {
+    status: 404,
+    title: 'Group not found',
+    detail: "There is no group with the key '#{group}'."
+  }
+end
+
+def stub_ip_check_request(ip_address:, group:, contained:)
+  stub_request(:get, 'ipmanager-local:3001/check').
+    with(query: {ip: ip_address, group: group}).
+    to_return(
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.dump(
+        mock_ip_check_response(ip_address: ip_address, group: group, contained: contained)
+      )
+    )
+end
+
+def stub_ip_check_request_error(ip_address:, group:)
+  stub_request(:get, 'ipmanager-local:3001/check').
+    with(query: {ip: ip_address, group: group}).
+    to_return(
+      status: 404,
+      headers: {'Content-Type': 'application/problem+json'},
+      body: JSON.dump(mock_ip_check_error_response(group: group))
+    )
+end
+
 describe UmdIPManager do
-  let(:ip_manager) { described_class.new }
+  let(:ip_manager) {
+    ENV['IP_MANAGER_SERVER'] = 'http://ipmanager-local:3001'
+    described_class.new
+  }
 
   context '#groups' do
     it 'returns a GroupsResult with a list of UmdIPManager::Groups on success' do
@@ -52,6 +97,29 @@ describe UmdIPManager do
       expect(check_ip_result.success?).to be(false)
       expect(check_ip_result.ip_is_member?).to be(false)
       expect(check_ip_result.errors.length).to eq(1)
+    end
+    context "#ip_is_member?" do
+      it 'returns true when IP is contained in group' do
+        stub_ip_check_request(ip_address: '127.0.0.1', group: 'test', contained: true)
+        result = ip_manager.check_ip(group_base_key: 'test', ip_address: '127.0.0.1')
+        expect(result.success?).to be(true)
+        expect(result.ip_is_member?).to be(true)
+      end
+
+      it 'returns false when IP is not contained in group' do
+        stub_ip_check_request(ip_address: '127.0.0.1', group: 'test', contained: false)
+        result = ip_manager.check_ip(group_base_key: 'test', ip_address: '127.0.0.1')
+        expect(result.success?).to be(true)
+        expect(result.ip_is_member?).to be(false)
+      end
+
+      it 'returns a CheckIPResult with errors if the group is not found' do
+        stub_ip_check_request_error(ip_address: '127.0.0.1', group: 'bad_group')
+        result = ip_manager.check_ip(group_base_key: 'bad_group', ip_address: '127.0.0.1')
+        expect(result.success?).to be(false)
+        expect(result.errors.length).to eq(1)
+        expect(result.errors[0]).to eq('Bad Request Detail')
+      end
     end
   end
 end
