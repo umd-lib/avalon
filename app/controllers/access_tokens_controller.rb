@@ -1,5 +1,6 @@
 class AccessTokensController < ApplicationController
   before_action :authenticate_user!
+  before_action :auth
 
   STATUS_VALUES = %w[active expired revoked all]
 
@@ -8,6 +9,10 @@ class AccessTokensController < ApplicationController
     'Download Only' => :download_only,
     'Streaming and Download' => :streaming_and_download,
   }
+
+  def auth
+    authorize! :manage, AccessToken
+  end
 
   def index
     @show_status = status_value
