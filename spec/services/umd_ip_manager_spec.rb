@@ -65,7 +65,7 @@ end
 
 describe UmdIPManager do
   let(:ip_manager) {
-    ENV['IP_MANAGER_SERVER'] = 'http://ipmanager-local:3001'
+    ENV['IP_MANAGER_SERVER_URL'] = 'http://ipmanager-local:3001'
     described_class.new
   }
 
