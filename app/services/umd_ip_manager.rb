@@ -28,7 +28,7 @@ class UmdIPManager
 
   class API
     def initialize
-      @connection = Faraday.new(ENV['IP_MANAGER_SERVER']) do |connection|
+      @connection = Faraday.new(ENV['IP_MANAGER_SERVER_URL']) do |connection|
         connection.response :json
         connection.adapter :net_http
       end
