@@ -21,6 +21,16 @@ def mock_ip_check_error_response(group:)
   }
 end
 
+def mock_ip_check_list_response(ip_address:, groups: {})
+  {
+    '@id': "http://ipmanager-local:3001/check?ip=#{ip_address}",
+    ip: ip_address,
+    checks: groups.map do |key, contained|
+      mock_ip_check_response(ip_address: ip_address, group: key.to_s, contained: contained)
+    end
+  }
+end
+
 def stub_ip_check_request(ip_address:, group:, contained:)
   stub_request(:get, 'ipmanager-local:3001/check').
     with(query: {ip: ip_address, group: group}).
@@ -28,6 +38,17 @@ def stub_ip_check_request(ip_address:, group:, contained:)
       headers: {'Content-Type': 'application/json'},
       body: JSON.dump(
         mock_ip_check_response(ip_address: ip_address, group: group, contained: contained)
+      )
+    )
+end
+
+def stub_ip_check_list_request(ip_address:, groups: {})
+  stub_request(:get, 'ipmanager-local:3001/check').
+    with(query: {ip: ip_address}).
+    to_return(
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.dump(
+        mock_ip_check_list_response(ip_address: ip_address, groups: groups)
       )
     )
 end
@@ -51,7 +72,7 @@ describe UmdIPManager do
   context '#groups' do
     it 'returns a GroupsResult with a list of UmdIPManager::Groups on success' do
       test_group = UmdIPManager::Group.new(base_key: 'test-group', name: 'Test Group')
-      allow(ip_manager).to receive(:retrieve_groups) {
+      allow(ip_manager.api).to receive(:all_groups) {
         [test_group]
       }
 
@@ -62,10 +83,26 @@ describe UmdIPManager do
     end
 
     it 'returns a GroupsResult with errors on failure' do
-      allow(ip_manager).to receive(:retrieve_groups) { raise StandardError, "An error occurred" }
+      allow(ip_manager.api).to receive(:all_groups) { raise StandardError, "An error occurred" }
 
       groups_result = ip_manager.groups
       expect(groups_result.success?).to be(false)
+    end
+
+    it 'returns a GroupResult with a limited list of groups when checking an IP' do
+      stub_ip_check_list_request(
+        ip_address: '127.0.0.1',
+        groups: {
+          test1: true,
+          test2: false,
+          test3: false,
+          test4: true
+        }
+      )
+      result = ip_manager.groups(ip_address: '127.0.0.1')
+      expect(result.success?).to be(true)
+      expect(result.groups.length).to eq(2)
+      expect(result.groups.map {|g| g.base_key}).to eq(%w[test1 test4])
     end
   end
 
@@ -78,8 +115,8 @@ describe UmdIPManager do
     end
 
     it 'returns a successful CheckIPResult indicating whether an IP is a member when no errors occur' do
-      allow(ip_manager).to receive(:do_check_ip).with(group_base_key: 'test_localhost', ip_address: '127.0.0.1').and_return(true)
-      allow(ip_manager).to receive(:do_check_ip).with(group_base_key: 'test_localhost', ip_address: '192.168.1.105').and_return(false)
+      allow(ip_manager.api).to receive(:ip_in_group?).with(group_base_key: 'test_localhost', ip_address: '127.0.0.1').and_return(true)
+      allow(ip_manager.api).to receive(:ip_in_group?).with(group_base_key: 'test_localhost', ip_address: '192.168.1.105').and_return(false)
 
       check_ip_result = ip_manager.check_ip(group_base_key: 'test_localhost', ip_address: '127.0.0.1')
       expect(check_ip_result.success?).to be(true)
@@ -91,7 +128,7 @@ describe UmdIPManager do
     end
 
     it 'returns a CheckIPResult with errors on failure' do
-      allow(ip_manager).to receive(:do_check_ip) { raise StandardError, "An error occurred" }
+      allow(ip_manager.api).to receive(:ip_in_group?) { raise StandardError, "An error occurred" }
 
       check_ip_result = ip_manager.check_ip(group_base_key: 'test_localhost', ip_address: '127.0.0.1')
       expect(check_ip_result.success?).to be(false)
@@ -118,7 +155,7 @@ describe UmdIPManager do
         result = ip_manager.check_ip(group_base_key: 'bad_group', ip_address: '127.0.0.1')
         expect(result.success?).to be(false)
         expect(result.errors.length).to eq(1)
-        expect(result.errors[0]).to eq('Bad Request Detail')
+        expect(result.errors[0]).to eq("There is no group with the key 'bad_group'.")
       end
     end
   end

@@ -3,15 +3,12 @@
 class UmdIPManager
   GROUP_PREFIX = 'umd.ip.manager:'
 
-  def initialize
-    @connection = Faraday.new(ENV['IP_MANAGER_SERVER']) do |connection|
-      connection.response :json
-      connection.adapter :net_http
-    end
+  def api
+    @api ||= API.new
   end
 
-  def groups
-    groups = retrieve_groups
+  def groups(ip_address: nil)
+    groups = ip_address.nil? ? api.all_groups : api.groups_for_ip(ip_address)
     GroupsResult.new(groups: groups)
   rescue StandardError => e
     GroupsResult.new(errors: [e.message])
@@ -22,30 +19,48 @@ class UmdIPManager
     raise ArgumentError, "invalid argument: ip_address='#{ip_address}'" unless ip_address.present?
 
     begin
-      ip_is_member = do_check_ip(group_base_key: group_base_key, ip_address: ip_address)
+      ip_is_member = api.ip_in_group?(group_base_key: group_base_key, ip_address: ip_address)
       CheckIPResult.new(ip_is_member: ip_is_member)
     rescue StandardError => e
       CheckIPResult.new(errors: [e.message])
     end
   end
 
-  # Returns an array of UmdIPManager::Group, or raises an exception
-  def retrieve_groups
-    response = @connection.get('/groups')
-    raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
-
-    response.body['groups'].map do |group|
-      Group.new(base_key: group['key'], name: group['name'])
+  class API
+    def initialize
+      @connection = Faraday.new(ENV['IP_MANAGER_SERVER']) do |connection|
+        connection.response :json
+        connection.adapter :net_http
+      end
     end
-  end
 
-  # Returns true, if the given IP Address is in the given group,
-  # false otherwise. Raise an exception if an error occurs
-  def do_check_ip(group_base_key:, ip_address:)
-    response = @connection.get('/check', ip: ip_address, group: group_base_key)
-    raise APIError, response.body['detail'] unless response.success?
+    # Returns an array of UmdIPManager::Group, or raises an exception
+    def all_groups
+      response = @connection.get('/groups')
+      raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
 
-    response.body['contained']
+      response.body['groups'].map do |group|
+        Group.new(base_key: group['key'], name: group['name'])
+      end
+    end
+
+    # Returns true, if the given IP Address is in the given group,
+    # false otherwise. Raise an exception if an error occurs
+    def ip_in_group?(group_base_key:, ip_address:)
+      response = @connection.get('/check', ip: ip_address, group: group_base_key)
+      raise APIError, response.body['detail'] unless response.success?
+
+      response.body['contained']
+    end
+
+    def groups_for_ip(ip_address)
+      response = @connection.get('/check', ip: ip_address)
+      raise APIError, response.body['detail'] unless response.success?
+
+      response.body['checks'].select { |c| c['contained'] }.map do |check|
+        Group.new(base_key: check['group']['key'], name: check['group']['name'])
+      end
+    end
   end
 
   class APIError < StandardError; end
