@@ -14,12 +14,12 @@ class UmdIPManager
     GroupsResult.new(errors: [e.message])
   end
 
-  def check_ip(group_base_key:, ip_address:)
-    raise ArgumentError, "invalid argument: group_base_key='#{group_base_key}'" unless group_base_key.present?
+  def check_ip(group_key:, ip_address:)
+    raise ArgumentError, "invalid argument: group_key='#{group_key}'" unless group_key.present?
     raise ArgumentError, "invalid argument: ip_address='#{ip_address}'" unless ip_address.present?
 
     begin
-      ip_is_member = api.ip_in_group?(group_base_key: group_base_key, ip_address: ip_address)
+      ip_is_member = api.ip_in_group?(group_key: group_key, ip_address: ip_address)
       CheckIPResult.new(ip_is_member: ip_is_member)
     rescue StandardError => e
       CheckIPResult.new(errors: [e.message])
@@ -40,14 +40,14 @@ class UmdIPManager
       raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
 
       response.body['groups'].map do |group|
-        Group.new(base_key: group['key'], name: group['name'])
+        Group.new(key: group['key'], name: group['name'])
       end
     end
 
     # Returns true, if the given IP Address is in the given group,
     # false otherwise. Raise an exception if an error occurs
-    def ip_in_group?(group_base_key:, ip_address:)
-      response = @connection.get('/check', ip: ip_address, group: group_base_key)
+    def ip_in_group?(group_key:, ip_address:)
+      response = @connection.get('/check', ip: ip_address, group: group_key)
       raise APIError, response.body['detail'] unless response.success?
 
       response.body['contained']
@@ -58,7 +58,7 @@ class UmdIPManager
       raise APIError, response.body['detail'] unless response.success?
 
       response.body['checks'].select { |c| c['contained'] }.map do |check|
-        Group.new(base_key: check['group']['key'], name: check['group']['name'])
+        Group.new(key: check['group']['key'], name: check['group']['name'])
       end
     end
   end
@@ -68,24 +68,24 @@ class UmdIPManager
   class Group
     PREFIX = UmdIPManager::GROUP_PREFIX
 
-    attr_reader :base_key, :prefixed_key, :name
+    attr_reader :key, :prefixed_key, :name
 
-    def initialize(base_key:, name:)
-      raise ArgumentError, "invalid argument: base_key='#{base_key}'" unless base_key.present?
+    def initialize(key:, name:)
+      raise ArgumentError, "invalid argument: key='#{key}'" unless key.present?
       raise ArgumentError, "invalid argument: name='#{name}'" unless name.present?
-      @base_key = base_key
+      @key = key
       @name = name
-      @prefixed_key = Group.as_prefixed_key(base_key)
+      @prefixed_key = Group.as_prefixed_key(key)
     end
 
-    # Returns the prefixed key for the given base key.
-    def self.as_prefixed_key(base_key)
-      raise ArgumentError, "invalid argument: base_key='#{base_key}'" unless base_key.present?
-      "#{PREFIX}#{base_key}"
+    # Returns the prefixed key for the given IP Manager key.
+    def self.as_prefixed_key(key)
+      raise ArgumentError, "invalid argument: key='#{key}'" unless key.present?
+      "#{PREFIX}#{key}"
     end
 
-    # Returns the base key for the given prefixed key.
-    def self.as_base_key(prefixed_key)
+    # Returns the IP Manager key for the given prefixed key.
+    def self.as_key(prefixed_key)
       raise ArgumentError, 'prefixed_key does not start with expected prefix' unless prefixed_key&.starts_with?(PREFIX)
       prefixed_key.delete_prefix(PREFIX)
     end
