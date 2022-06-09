@@ -123,6 +123,8 @@ class Ability
 
       can :list_all, AccessToken if is_administrator?
 
+      can :manage, AccessToken if (is_member_of_any_collection? or @user_groups.include? 'manager')
+
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
       if full_login? || is_api_request?
