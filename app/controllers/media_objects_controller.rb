@@ -304,15 +304,17 @@ class MediaObjectsController < ApplicationController
       @virtual_leases = @media_object.leases('external')
       @ip_groups = @media_object.ip_read_groups
       @ip_leases = @media_object.leases('ip')
-      @umd_ip_manager_groups = @media_object.umd_ip_manager_read_groups
-      @umd_ip_manager_leases = @media_object.leases('umd_ip_manager')
       @visibility = @media_object.visibility
 
       @active_access_tokens = AccessToken.active.where(media_object_id: @media_object.id).order(:expiration)
 
       @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
       @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
-      @addable_umd_ip_manager_groups = UmdIPManager.new.groups.reject { |g| @umd_ip_manager_groups.include? g.prefixed_key }
+
+      umd_ip_manager_read_groups = @media_object.umd_ip_manager_read_groups
+      all_umd_ip_manager_groups = UmdIPManager.new.groups
+      @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
+      @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
     end
   end
 

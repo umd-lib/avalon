@@ -55,12 +55,15 @@ class Admin::CollectionsController < ApplicationController
         @users = @collection.default_read_users
         @virtual_groups = @collection.default_virtual_read_groups
         @ip_groups = @collection.default_ip_read_groups
-        @umd_ip_manager_groups = @collection.default_umd_ip_manager_read_groups
         @visibility = @collection.default_visibility
 
         @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
         @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
-        @addable_umd_ip_manager_groups = UmdIPManager.new.groups.reject { |g| @umd_ip_manager_groups.include? g.prefixed_key }
+
+        umd_ip_manager_read_groups = @collection.default_umd_ip_manager_read_groups
+        all_umd_ip_manager_groups = UmdIPManager.new.groups
+        @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
+        @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
       }
     end
   end

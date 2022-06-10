@@ -221,6 +221,16 @@ module ApplicationHelper
     c.nil? ? value : (c.title || c.label || value)
   end
 
+  def umd_ip_manager_group_display(value)
+    # Value is assumed to be a UmdIPManager::Group
+    value.name
+  end
+
+  def umd_ip_manager_group_access_object_remove_helper(value)
+    # Value is assumed to be a UmdIPManager::Group
+    value.prefixed_key
+  end
+
   def truncate_center label, output_label_length, end_length = 0
     end_length = output_label_length / 2 - 3 if end_length == 0
     truncate(label, length: output_label_length,
