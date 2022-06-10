@@ -44,6 +44,8 @@ require 'noid/rails/rspec'
 require "email_spec"
 require "email_spec/rspec"
 require 'webdrivers'
+require_relative 'services/mock_umd_ip_manager'
+
 # require 'equivalent-xml/rspec_matchers'
 # require 'fakefs/safe'
 # require 'fileutils'
@@ -134,6 +136,7 @@ RSpec.configure do |config|
     ActiveJob::Base.queue_adapter.enqueued_jobs = []
     ActiveJob::Base.queue_adapter.performed_jobs = []
     Settings.bib_retriever = { 'default' => { 'protocol' => 'sru', 'url' => 'http://zgate.example.edu:9000/db', 'retriever_class' => 'Avalon::BibRetriever::SRU', 'retriever_class_require' => 'avalon/bib_retriever/sru' } }
+    enable_umd_ip_manager_mock
   end
 
   config.after :each do

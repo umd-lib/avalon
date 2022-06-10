@@ -64,6 +64,10 @@ def stub_ip_check_request_error(ip_address:, group:)
 end
 
 describe UmdIPManager do
+  before(:each) do
+    disable_umd_ip_manager_mock
+  end
+
   let(:ip_manager) {
     ENV['IP_MANAGER_SERVER_URL'] = 'http://ipmanager-local:3001'
     described_class.new
