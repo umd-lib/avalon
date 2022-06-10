@@ -60,8 +60,10 @@ class Admin::CollectionsController < ApplicationController
         @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
         @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
 
-        umd_ip_manager_read_groups = @collection.default_umd_ip_manager_read_groups
         all_umd_ip_manager_groups = UmdIPManager.new.groups
+        @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless all_umd_ip_manager_groups.success?
+
+        umd_ip_manager_read_groups = @collection.default_umd_ip_manager_read_groups
         @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
         @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
       }

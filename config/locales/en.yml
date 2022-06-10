@@ -18,6 +18,7 @@ en:
       blank: "field is required."
       taken: "is taken."
       dateformat: "(%{date}) is in wrong format."
+    umd_ip_manager_error: Unable to access IP Manager server
   access_token:
     info_for_patron_snippet_html: |
       The following URL allows %{access_mode} of "%{media_object_title}" until %{expiration}:<br>

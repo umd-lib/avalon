@@ -40,7 +40,7 @@ class Ability
     if @options.present? and @options.has_key? :remote_ip
       remote_ip = @options[:remote_ip]
       @user_groups |= [remote_ip]
-      umd_ip_manager_groups = UmdIPManager.new.api.groups_for_ip(remote_ip)
+      umd_ip_manager_groups = UmdIPManager.new.groups(ip_address: remote_ip)
       @user_groups |= umd_ip_manager_groups.map { |g| g.prefixed_key }
     end
 

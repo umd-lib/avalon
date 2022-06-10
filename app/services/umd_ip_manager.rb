@@ -11,6 +11,7 @@ class UmdIPManager
     groups = ip_address.nil? ? api.all_groups : api.groups_for_ip(ip_address)
     GroupsResult.new(groups: groups)
   rescue StandardError => e
+    Rails.logger.error(e)
     GroupsResult.new(errors: [e.message])
   end
 
@@ -22,6 +23,7 @@ class UmdIPManager
       ip_is_member = api.ip_in_group?(group_key: group_key, ip_address: ip_address)
       CheckIPResult.new(ip_is_member: ip_is_member)
     rescue StandardError => e
+      Rails.logger.error(e)
       CheckIPResult.new(errors: [e.message])
     end
   end
