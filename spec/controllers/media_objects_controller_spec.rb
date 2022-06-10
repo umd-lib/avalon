@@ -1235,6 +1235,7 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
+      let!(:umd_ip_manager_group) { "#{UmdIPManager::GROUP_PREFIX}TestGroup" }
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
@@ -1253,6 +1254,10 @@ describe MediaObjectsController, type: :controller do
         it "grants and revokes special read access to ips" do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_ipaddress: ipaddr, submit_add_ipaddress: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([ipaddr])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_ipaddress: ipaddr, submit_remove_ipaddress: 'Remove' } }.to change { media_object.reload.read_groups }.from([ipaddr]).to([])
+        end
+        it "grants and revokes special read access to UMD IP Manager groups" do
+          expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_umd_ip_manager_group: umd_ip_manager_group, submit_add_umd_ip_manager_group: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([umd_ip_manager_group])
+          expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_umd_ip_manager_group: umd_ip_manager_group, submit_remove_umd_ip_manager_group: 'Remove' } }.to change { media_object.reload.read_groups }.from([umd_ip_manager_group]).to([])
         end
       end
 

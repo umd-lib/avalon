@@ -386,13 +386,17 @@ describe Admin::CollectionsController, type: :controller do
       it "IP address/range" do
         expect{ put 'update', params: { id: collection.id, submit_add_ipaddress: "Add", add_ipaddress: "255.0.0.1" }}.to change{ collection.reload.default_read_groups.size }.by(1)
       end
+
+      it "UMD IP Manager Group" do
+        expect{ put 'update', params: { id: collection.id, submit_add_umd_ip_manager_group: "Add", add_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(1)
+      end
     end
 
 
     context "remove existing special access" do
       before do
         collection.default_read_users = ["test1@example.com"]
-        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1"]
+        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1", "#{UmdIPManager::GROUP_PREFIX}TestGroup"]
         collection.save!
       end
       it "user" do
@@ -409,6 +413,10 @@ describe Admin::CollectionsController, type: :controller do
 
       it "IP address/range" do
         expect{ put 'update', params: { id: collection.id, remove_ipaddress: "255.0.1.1" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
+      end
+
+      it "UMD IP Manager Group" do
+        expect{ put 'update', params: { id: collection.id, remove_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
       end
     end
 

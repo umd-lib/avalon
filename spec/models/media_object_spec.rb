@@ -258,6 +258,8 @@ describe MediaObject do
         expect(subject.can?(:read, media_object)).to be_truthy
       end
     end
+
+    # TODO -- Add test case for UMD IP Manager?
   end
 
   describe "Required metadata is present" do
