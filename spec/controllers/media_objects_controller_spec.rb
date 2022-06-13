@@ -702,6 +702,20 @@ describe MediaObjectsController, type: :controller do
           expect(controller.instance_variable_get('@umd_ip_manager_groups')).to contain_exactly(test_group1)
           expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group2)
         end
+
+        it "should display leases" do
+          lease = FactoryBot.create(:lease)
+          lease.inherited_read_groups = [test_group1.prefixed_key]
+          lease.save!
+          media_object.governing_policies += [ lease ]
+          media_object.save!
+
+          get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+          umd_ip_manager_leases = controller.instance_variable_get('@umd_ip_manager_leases')
+          expect(umd_ip_manager_leases.count).to eq(1)
+          expect(umd_ip_manager_leases.first.inherited_read_groups).to contain_exactly(test_group1.prefixed_key)
+        end
       end
     end
   end

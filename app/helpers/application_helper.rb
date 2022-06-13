@@ -222,13 +222,31 @@ module ApplicationHelper
   end
 
   def umd_ip_manager_group_display(value)
-    # Value is assumed to be a UmdIPManager::Group
-    value.name
+    if value.is_a?(UmdIPManager::Group)
+      # For groups without leases, just return the human-readable name for the
+      # groups
+      return value.name
+    elsif !@umd_ip_manager_keys_to_names.nil?
+      # For leases, use @umd_ip_manager_keys_to_names to retrieve the
+      # human-readable name for the prefixed_key provided by the lease,
+      # or the value itself if it is not found.
+      return @umd_ip_manager_keys_to_names.fetch(value, value)
+    end
+    # This shouldn't happen, but if not a UmdIPManager::Group, and
+    # @umd_ip_manager_keys_to_names is not provided, simply return the given
+    # value
+    value
   end
 
   def umd_ip_manager_group_access_object_remove_helper(value)
-    # Value is assumed to be a UmdIPManager::Group
-    value.prefixed_key
+    if value.is_a?(UmdIPManager::Group)
+      # For groups without leases, return the prefixed_key, so it will be
+      # used as the id for the "remove"
+      value.prefixed_key
+    else
+      # For leases just return whatever we are given
+      value
+    end
   end
 
   def truncate_center label, output_label_length, end_length = 0

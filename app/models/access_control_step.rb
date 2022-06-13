@@ -106,16 +106,14 @@ class AccessControlStep < Avalon::Workflow::BasicStep
     context[:groups] = media_object.read_groups
     context[:virtual_groups] = media_object.virtual_read_groups
     context[:ip_groups] = media_object.ip_read_groups
-    context[:group_leases] = media_object.leases('local')
-    # --- TODO --- Make a real implmentation
     context[:umd_ip_manager_groups] = media_object.umd_ip_manager_read_groups
-    context[:addable_umd_ip_manager_groups] = UmdIPManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
-    # -- end TODO
+    context[:group_leases] = media_object.leases('local')
     context[:user_leases] = media_object.leases('user')
     context[:virtual_leases] = media_object.leases('external')
     context[:ip_leases] = media_object.leases('ip')
     context[:addable_groups] = Admin::Group.non_system_groups.reject { |g| context[:groups].include? g.name }
     context[:addable_courses] = Course.all.reject { |c| context[:virtual_groups].include? c.context_id }
+    context[:addable_umd_ip_manager_groups] = UmdIPManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
     context
   end
 end

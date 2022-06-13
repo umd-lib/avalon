@@ -227,4 +227,44 @@ describe ApplicationHelper do
       end
     end
   end
+
+  describe '#umd_ip_manager_group_display' do
+    before(:each) do
+      @umd_ip_manager_keys_to_names = { 'test1' => 'Test Name 1',  'test2' => 'Test Name 2' }
+    end
+
+    it 'given a UmdIPManager::Group, returns the human-readable "name" for the group' do
+      group = UmdIPManager::Group.new(key: 'group1', name: 'Group 1')
+      expect(helper.umd_ip_manager_group_display(group)).to eq('Group 1')
+    end
+
+    context 'given anything else' do
+      context 'and @umd_ip_manager_keys_to_names variable is non-nil' do
+        it 'return the human-readable name from @umd_ip_manager_keys_to_names, if found' do
+          value = 'test1'
+          expect(helper.umd_ip_manager_group_display(value)).to eq('Test Name 1')
+        end
+        it 'if not found in @umd_ip_manager_keys_to_names, simply return the value' do
+          value = 'some_other_value'
+          expect(helper.umd_ip_manager_group_display(value)).to eq('some_other_value')
+        end
+      end
+      it 'otherwise, simply return the given value' do
+        @umd_ip_manager_keys_to_names = nil
+        value = 'some_other_value2'
+        expect(helper.umd_ip_manager_group_display(value)).to eq('some_other_value2')
+      end
+    end
+  end
+
+  describe '#umd_ip_manager_group_access_object_remove_helper' do
+    it 'given a UmdIPManager::Group, returns the prefixed_key so the API endpoint can identify the group' do
+      group = UmdIPManager::Group.new(key: 'group1', name: 'Group 1')
+      expect(helper.umd_ip_manager_group_access_object_remove_helper(group)).to eq(group.prefixed_key)
+    end
+    it 'given any other object (such as a string), simply returns the object' do
+      value = 'some_other_value'
+      expect(helper.umd_ip_manager_group_access_object_remove_helper(value)).to eq(value)
+    end
+  end
 end

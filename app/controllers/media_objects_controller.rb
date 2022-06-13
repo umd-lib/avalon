@@ -314,7 +314,11 @@ class MediaObjectsController < ApplicationController
       all_umd_ip_manager_groups = UmdIPManager.new.groups
       @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless all_umd_ip_manager_groups.success?
 
+      # The following hash is needed to map the Group prefixed_key in leases to the human-readable name for display
+      @umd_ip_manager_keys_to_names = Hash[all_umd_ip_manager_groups.map { |g| [g.prefixed_key, g.name] }]
+
       umd_ip_manager_read_groups = @media_object.umd_ip_manager_read_groups
+      @umd_ip_manager_leases = @media_object.leases('umd_ip_manager')
       @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
       @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
     end
