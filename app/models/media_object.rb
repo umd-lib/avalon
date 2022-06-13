@@ -355,7 +355,6 @@ class MediaObject < ActiveFedora::Base
     else
       actors << "collection staff" if visibility == "private"
       actors << "specific users" if read_users.any? || leases('user').any?
-      # -- TODO - need anything here for UMD IP Manager Groups?
 
       if visibility == "restricted"
         actors << "logged-in users"
@@ -363,7 +362,8 @@ class MediaObject < ActiveFedora::Base
         actors << "users in specific groups"
       end
 
-      actors << "users in specific IP Ranges" if ip_read_groups.any? || leases('ip').any?
+      actors << "users in specific IP Ranges" if ip_read_groups.any? || leases('ip').any? ||
+                                                 umd_ip_manager_read_groups.any? || leases('umd_ip_manager').any?
     end
 
     "This item is accessible by: #{actors.join(', ')}."
