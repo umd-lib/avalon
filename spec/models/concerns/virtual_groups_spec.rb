@@ -30,8 +30,12 @@ describe VirtualGroups do
     let!(:local_groups) {[FactoryBot.create(:group).name, FactoryBot.create(:group).name]}
     let(:virtual_groups) {["vgroup1", "vgroup2"]}
     let(:ip_groups) {[Faker::Internet.ip_v4_address, Faker::Internet.ip_v6_address, Faker::Internet.ip_v4_address + "/24"]}
+    let(:umd_ip_manager_groups) {
+      ["#{UmdIPManager::GROUP_PREFIX}UmdIPTestGroup1", "#{UmdIPManager::GROUP_PREFIX}UmdIPTestGroup2"]
+    }
+
     before(:each) do
-      subject.read_groups = local_groups + virtual_groups + ip_groups
+      subject.read_groups = local_groups + virtual_groups + ip_groups + umd_ip_manager_groups
     end
 
     describe '#local_group_exceptions' do
@@ -49,6 +53,12 @@ describe VirtualGroups do
     describe '#ip_group_exceptions' do
       it 'should have only ip groups' do
         expect(subject.ip_read_groups).to eq(ip_groups)
+      end
+    end
+
+    describe '#umd_ip_group_exceptions' do
+      it 'should have only UMD IP Manager groups' do
+        expect(subject.umd_ip_manager_read_groups).to eq(umd_ip_manager_groups)
       end
     end
   end

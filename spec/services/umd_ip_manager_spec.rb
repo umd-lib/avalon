@@ -13,14 +13,6 @@ def mock_ip_check_response(ip_address:, group:, contained:)
   }
 end
 
-def mock_ip_check_error_response(group:)
-  {
-    status: 404,
-    title: 'Group not found',
-    detail: "There is no group with the key '#{group}'."
-  }
-end
-
 def mock_ip_check_list_response(ip_address:, groups: {})
   {
     '@id': "http://ipmanager-local:3001/check?ip=#{ip_address}",
@@ -29,17 +21,6 @@ def mock_ip_check_list_response(ip_address:, groups: {})
       mock_ip_check_response(ip_address: ip_address, group: key.to_s, contained: contained)
     end
   }
-end
-
-def stub_ip_check_request(ip_address:, group:, contained:)
-  stub_request(:get, 'ipmanager-local:3001/check').
-    with(query: {ip: ip_address, group: group}).
-    to_return(
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.dump(
-        mock_ip_check_response(ip_address: ip_address, group: group, contained: contained)
-      )
-    )
 end
 
 def stub_ip_check_list_request(ip_address:, groups: {})
@@ -53,17 +34,11 @@ def stub_ip_check_list_request(ip_address:, groups: {})
     )
 end
 
-def stub_ip_check_request_error(ip_address:, group:)
-  stub_request(:get, 'ipmanager-local:3001/check').
-    with(query: {ip: ip_address, group: group}).
-    to_return(
-      status: 404,
-      headers: {'Content-Type': 'application/problem+json'},
-      body: JSON.dump(mock_ip_check_error_response(group: group))
-    )
-end
-
 describe UmdIPManager do
+  before(:each) do
+    disable_umd_ip_manager_mock
+  end
+
   let(:ip_manager) {
     ENV['IP_MANAGER_SERVER_URL'] = 'http://ipmanager-local:3001'
     described_class.new
@@ -71,7 +46,7 @@ describe UmdIPManager do
 
   context '#groups' do
     it 'returns a GroupsResult with a list of UmdIPManager::Groups on success' do
-      test_group = UmdIPManager::Group.new(base_key: 'test-group', name: 'Test Group')
+      test_group = UmdIPManager::Group.new(key: 'test-group', name: 'Test Group')
       allow(ip_manager.api).to receive(:all_groups) {
         [test_group]
       }
@@ -102,88 +77,9 @@ describe UmdIPManager do
       result = ip_manager.groups(ip_address: '127.0.0.1')
       expect(result.success?).to be(true)
       expect(result.groups.length).to eq(2)
-      expect(result.groups.map {|g| g.base_key}).to eq(%w[test1 test4])
+      expected_prefixed_keys = [ UmdIPManager::Group.as_prefixed_key('test1'), UmdIPManager::Group.as_prefixed_key('test4') ]
+      expect(result.groups.map {|g| g.prefixed_key}).to match_array(expected_prefixed_keys)
     end
-  end
-
-  context '#check_ip' do
-    it 'raises an ArgumentError when given invalid parameters' do
-      expect { ip_manager.check_ip }.to raise_error(ArgumentError)
-      expect { ip_manager.check_ip(group_base_key: '') }.to raise_error(ArgumentError)
-      expect { ip_manager.check_ip(ip_address: '') }.to raise_error(ArgumentError)
-      expect { ip_manager.check_ip(group_base_key: '', ip_address: '') }.to raise_error(ArgumentError)
-    end
-
-    it 'returns a successful CheckIPResult indicating whether an IP is a member when no errors occur' do
-      allow(ip_manager.api).to receive(:ip_in_group?).with(group_base_key: 'test_localhost', ip_address: '127.0.0.1').and_return(true)
-      allow(ip_manager.api).to receive(:ip_in_group?).with(group_base_key: 'test_localhost', ip_address: '192.168.1.105').and_return(false)
-
-      check_ip_result = ip_manager.check_ip(group_base_key: 'test_localhost', ip_address: '127.0.0.1')
-      expect(check_ip_result.success?).to be(true)
-      expect(check_ip_result.ip_is_member?).to be(true)
-
-      check_ip_result = ip_manager.check_ip(group_base_key: 'test_localhost', ip_address: '192.168.1.105')
-      expect(check_ip_result.success?).to be(true)
-      expect(check_ip_result.ip_is_member?).to be(false)
-    end
-
-    it 'returns a CheckIPResult with errors on failure' do
-      allow(ip_manager.api).to receive(:ip_in_group?) { raise StandardError, "An error occurred" }
-
-      check_ip_result = ip_manager.check_ip(group_base_key: 'test_localhost', ip_address: '127.0.0.1')
-      expect(check_ip_result.success?).to be(false)
-      expect(check_ip_result.ip_is_member?).to be(false)
-      expect(check_ip_result.errors.length).to eq(1)
-    end
-    context "#ip_is_member?" do
-      it 'returns true when IP is contained in group' do
-        stub_ip_check_request(ip_address: '127.0.0.1', group: 'test', contained: true)
-        result = ip_manager.check_ip(group_base_key: 'test', ip_address: '127.0.0.1')
-        expect(result.success?).to be(true)
-        expect(result.ip_is_member?).to be(true)
-      end
-
-      it 'returns false when IP is not contained in group' do
-        stub_ip_check_request(ip_address: '127.0.0.1', group: 'test', contained: false)
-        result = ip_manager.check_ip(group_base_key: 'test', ip_address: '127.0.0.1')
-        expect(result.success?).to be(true)
-        expect(result.ip_is_member?).to be(false)
-      end
-
-      it 'returns a CheckIPResult with errors if the group is not found' do
-        stub_ip_check_request_error(ip_address: '127.0.0.1', group: 'bad_group')
-        result = ip_manager.check_ip(group_base_key: 'bad_group', ip_address: '127.0.0.1')
-        expect(result.success?).to be(false)
-        expect(result.errors.length).to eq(1)
-        expect(result.errors[0]).to eq("There is no group with the key 'bad_group'.")
-      end
-    end
-  end
-end
-
-describe UmdIPManager::CheckIPResult do
-  context '#success?' do
-    it 'returns true when there are no errors' do
-      check_ip_result = described_class.new
-      expect(check_ip_result.success?).to be(true)
-      expect(check_ip_result.errors.length).to eq(0)
-    end
-
-    it 'returns false when there are errors' do
-      check_ip_result = described_class.new(errors: ['An error occurred!'])
-      expect(check_ip_result.success?).to be(false)
-      expect(check_ip_result.errors.length).to eq(1)
-    end
-  end
-
-  it 'returns true when an IP Address is a member of the group' do
-    check_ip_result = described_class.new(ip_is_member: true)
-    expect(check_ip_result.ip_is_member?).to be(true)
-  end
-
-  it 'returns false when an IP Address is not a member of the group' do
-    check_ip_result = described_class.new(ip_is_member: false)
-    expect(check_ip_result.ip_is_member?).to be(false)
   end
 end
 
@@ -203,8 +99,8 @@ describe UmdIPManager::GroupsResult do
   end
 
   it 'returns a list of provided groups' do
-    group1 = UmdIPManager::Group.new(base_key: 'group-1', name: 'Group 1')
-    group2 = UmdIPManager::Group.new(base_key: 'group-2', name: 'Group 2')
+    group1 = UmdIPManager::Group.new(key: 'group-1', name: 'Group 1')
+    group2 = UmdIPManager::Group.new(key: 'group-2', name: 'Group 2')
     groups = [group1, group2]
 
     groups_result = described_class.new(groups: groups)
@@ -221,18 +117,13 @@ end
 describe UmdIPManager::Group do
   EXPECTED_PREFIX = 'umd.ip.manager:'
 
-  it 'provides the base_key for a group' do
-    group = described_class.new(base_key: 'test-base-key', name: 'Test')
-    expect(group.base_key).to eq('test-base-key')
-  end
-
   it 'provides the prefixed_key for a group' do
-    group = described_class.new(base_key: 'test-base-key', name: 'Test')
-    expect(group.prefixed_key).to eq("#{EXPECTED_PREFIX}test-base-key")
+    group = described_class.new(key: 'test-key', name: 'Test')
+    expect(group.prefixed_key).to eq("#{EXPECTED_PREFIX}test-key")
   end
 
   it 'provides the name of the group' do
-    group = described_class.new(base_key: 'test-base-key', name: 'Test')
+    group = described_class.new(key: 'test-key', name: 'Test')
     expect(group.name).to eq('Test')
   end
 
@@ -240,66 +131,41 @@ describe UmdIPManager::Group do
     it 'raises an ArgumentError when given invalid parameters' do
       expect { described_class.new }.to raise_error(ArgumentError)
       expect { described_class.new(name: '') }.to raise_error(ArgumentError)
-      expect { described_class.new(base_key: '') }.to raise_error(ArgumentError)
-      expect { described_class.new(base_key: '', name: '') }.to raise_error(ArgumentError)
-      expect { described_class.new(base_key: 'foo', name: '') }.to raise_error(ArgumentError)
-      expect { described_class.new(base_key: '', name: 'Foo') }.to raise_error(ArgumentError)
+      expect { described_class.new(key: '') }.to raise_error(ArgumentError)
+      expect { described_class.new(key: '', name: '') }.to raise_error(ArgumentError)
+      expect { described_class.new(key: 'foo', name: '') }.to raise_error(ArgumentError)
+      expect { described_class.new(key: '', name: 'Foo') }.to raise_error(ArgumentError)
     end
 
     it 'is properly constructed when given valid parameters' do
-      group = described_class.new(base_key: 'test-base-key', name: 'Test')
-      expect(group.base_key).to eq('test-base-key')
+      group = described_class.new(key: 'test-key', name: 'Test')
       expect(group.name).to eq('Test')
-      expect(group.prefixed_key).to eq("#{EXPECTED_PREFIX}test-base-key")
+      expect(group.prefixed_key).to eq("#{EXPECTED_PREFIX}test-key")
     end
   end
 
   context '.as_prefixed_key' do
     context 'raises an ArgumentError' do
-      it 'when given a nil base_key' do
+      it 'when given a nil key' do
         expect { described_class.as_prefixed_key(nil) }.to raise_error(ArgumentError)
       end
 
-      it 'when given an empty base_key' do
+      it 'when given an empty key' do
         expect { described_class.as_prefixed_key('') }.to raise_error(ArgumentError)
       end
 
-      it 'when given an base_key of only whitespace' do
+      it 'when given an key of only whitespace' do
         expect { described_class.as_prefixed_key("  \t  ") }.to raise_error(ArgumentError)
       end
     end
 
-    it 'returns the given base_key prefixed with UmdIPManager::Group.PREFIX' do
+    it 'returns the given key prefixed with UmdIPManager::Group.PREFIX' do
       expect(described_class.as_prefixed_key('foo')).to eq("#{EXPECTED_PREFIX}foo")
     end
   end
 
-  context '.as_base_key' do
-    context 'raises an ArgumentError' do
-      it 'when given a nil prefixed_key' do
-        expect { described_class.as_base_key(nil) }.to raise_error(ArgumentError)
-      end
-
-      it 'when given an empty prefixed_key' do
-        expect { described_class.as_base_key('') }.to raise_error(ArgumentError)
-      end
-
-      it 'when given a prefixed_key of only whitespace' do
-        expect { described_class.as_base_key("  \t  ") }.to raise_error(ArgumentError)
-      end
-
-      it 'when given a prefixed_key without the expected prefix' do
-        expect { described_class.as_base_key("UNEXPECTED_PREFIX") }.to raise_error(ArgumentError)
-      end
-    end
-
-    it 'returns the given prefixed_key without the UmdIPManager::Group.PREFIX' do
-      expect(described_class.as_base_key("#{EXPECTED_PREFIX}foo")).to eq('foo')
-    end
-  end
-
   context '.valid_prefixed_key?' do
-    context 'return false' do
+    context 'returns false' do
       it 'when given a nil prefixed_key' do
         expect(described_class.valid_prefixed_key?(nil)).to be(false)
       end

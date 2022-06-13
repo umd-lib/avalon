@@ -172,5 +172,20 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= render "modules/access_object", object: object,
           access_object: "ipaddress", members: @ip_groups, leases: @ip_leases,
           input_disabled: !can_update %>
+    <% if @umd_ip_manager_error.nil? %>
+      <%= render "modules/access_object", object: object,
+            access_object: "umd_ip_manager_group", members: @umd_ip_manager_groups, leases: @umd_ip_manager_leases,
+            dropdown_values: [@addable_umd_ip_manager_groups, 'prefixed_key', 'name'],
+            display_helper: :umd_ip_manager_group_display,
+            access_object_remove_helper: :umd_ip_manager_group_access_object_remove_helper,
+            input_disabled: !can_update %>
+    <% else %>
+      <% access_object = "umd_ip_manager_group" %>
+      <div class="access-block col-lg-10" id="<%= access_object %>_management">
+       <%= bootstrap_form_for object do |form| %>
+         <%= render partial: "modules/tooltip", locals: { form: form, field: access_object, tooltip: t("access_control.#{access_object}"), options: {display_label: (t("access_control.#{access_object}label")+'*').html_safe} } %><br />
+         <div class="alert alert-danger"><%= @umd_ip_manager_error %></div>
+        <% end %>
+    <% end %>
   </div>
 </div>

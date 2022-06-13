@@ -32,7 +32,7 @@ class AccessControlStep < Avalon::Workflow::BasicStep
 
     # Limited access stuff
     limited_access_submit = false
-    ["group", "class", "user", "ipaddress"].each do |title|
+    ["group", "class", "user", "ipaddress", "umd_ip_manager_group"].each do |title|
       if context["submit_add_#{title}"].present?
         limited_access_submit = true
         begin_time = context["add_#{title}_begin"].blank? ? nil : context["add_#{title}_begin"]
@@ -81,7 +81,7 @@ class AccessControlStep < Avalon::Workflow::BasicStep
       end
       if context["remove_#{title}"].present?
         limited_access_submit = true
-        if ["group", "class", "ipaddress"].include? title
+        if ["group", "class", "ipaddress", "umd_ip_manager_group"].include? title
           media_object.read_groups -= [context["remove_#{title}"]]
         else
           media_object.read_users -= [context["remove_#{title}"]]
@@ -106,12 +106,14 @@ class AccessControlStep < Avalon::Workflow::BasicStep
     context[:groups] = media_object.read_groups
     context[:virtual_groups] = media_object.virtual_read_groups
     context[:ip_groups] = media_object.ip_read_groups
+    context[:umd_ip_manager_groups] = media_object.umd_ip_manager_read_groups
     context[:group_leases] = media_object.leases('local')
     context[:user_leases] = media_object.leases('user')
     context[:virtual_leases] = media_object.leases('external')
     context[:ip_leases] = media_object.leases('ip')
     context[:addable_groups] = Admin::Group.non_system_groups.reject { |g| context[:groups].include? g.name }
     context[:addable_courses] = Course.all.reject { |c| context[:virtual_groups].include? c.context_id }
+    context[:addable_umd_ip_manager_groups] = UmdIPManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
     context
   end
 end

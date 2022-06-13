@@ -646,6 +646,78 @@ describe MediaObjectsController, type: :controller do
       get 'edit', params: { id: media_object.id, step: 'access-control' }
       expect(controller.instance_variable_get('@active_access_tokens').count).to eq(1)
     end
+
+    context "Assign Special Access - UMD IP Manager Groups" do
+      it "should provide an error message if UMD IP Manager group retrieval fails" do
+        login_user media_object.collection.managers.first
+
+        allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(UmdIPManager::GroupsResult.new(errors: ['An error occurred!']))
+        get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+        expect(controller.instance_variable_get('@umd_ip_manager_error')).to_not be(nil)
+        expect(controller.instance_variable_get('@umd_ip_manager_groups')).to be_empty
+        expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to be_empty
+      end
+
+      context "when UMD IP Manager group retrieval succeeds" do
+        let (:test_group1) { UmdIPManager::Group.new(key: 'test1', name: 'Test Group 1') }
+        let (:test_group2) { UmdIPManager::Group.new(key: 'test2', name: 'Test Group 2') }
+
+        before(:each) do
+          login_user media_object.collection.managers.first
+
+          allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(
+            UmdIPManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
+          )
+        end
+
+        it "should display groups" do
+          get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups').count).to eq(0)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group1, test_group2)
+        end
+
+        it "dropdown should not contain already selected groups" do
+          media_object.read_groups = [test_group1.prefixed_key]
+          media_object.save!
+
+          get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups')).to contain_exactly(test_group1)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group2)
+        end
+
+        it "a group in media_object.read_groups that has been deleted from IP Manager should be ignored" do
+          deleted_group = UmdIPManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
+
+          media_object.read_groups = [test_group1.prefixed_key, deleted_group.prefixed_key]
+          media_object.save!
+
+          get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups')).to contain_exactly(test_group1)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group2)
+        end
+
+        it "should display leases" do
+          lease = FactoryBot.create(:lease)
+          lease.inherited_read_groups = [test_group1.prefixed_key]
+          lease.save!
+          media_object.governing_policies += [ lease ]
+          media_object.save!
+
+          get 'edit', params: { id: media_object.id, step: 'access-control' }
+
+          umd_ip_manager_leases = controller.instance_variable_get('@umd_ip_manager_leases')
+          expect(umd_ip_manager_leases.count).to eq(1)
+          expect(umd_ip_manager_leases.first.inherited_read_groups).to contain_exactly(test_group1.prefixed_key)
+        end
+      end
+    end
   end
 
   describe "#index" do
@@ -1235,6 +1307,7 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
+      let!(:umd_ip_manager_group) { "#{UmdIPManager::GROUP_PREFIX}TestGroup" }
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
@@ -1253,6 +1326,10 @@ describe MediaObjectsController, type: :controller do
         it "grants and revokes special read access to ips" do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_ipaddress: ipaddr, submit_add_ipaddress: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([ipaddr])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_ipaddress: ipaddr, submit_remove_ipaddress: 'Remove' } }.to change { media_object.reload.read_groups }.from([ipaddr]).to([])
+        end
+        it "grants and revokes special read access to UMD IP Manager groups" do
+          expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_umd_ip_manager_group: umd_ip_manager_group, submit_add_umd_ip_manager_group: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([umd_ip_manager_group])
+          expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_umd_ip_manager_group: umd_ip_manager_group, submit_remove_umd_ip_manager_group: 'Remove' } }.to change { media_object.reload.read_groups }.from([umd_ip_manager_group]).to([])
         end
       end
 
