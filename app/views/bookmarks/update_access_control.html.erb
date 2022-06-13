@@ -33,6 +33,8 @@ Unless required by applicable law or agreed to in writing, software distributed
    @visibility = visibility if @media_objects.all? {|mo| mo.visibility == visibility}
    @shown = @media_objects.all? {|doc| doc.hidden? == false}
    @hidden = @media_objects.all? {|doc| doc.hidden? == true}
+   @all_umd_ip_manager_groups = UmdIPManager.new.groups
+   @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless @all_umd_ip_manager_groups.success?
   %>
 
   <%= form_for "add", url: url_for(:controller => "bookmarks", :action => "update_access_control"), html: { :id => 'update_access_control_form', :class => "form-horizontal" } do |form| %>
@@ -121,6 +123,30 @@ Unless required by applicable law or agreed to in writing, software distributed
           <%= button_tag "Add", name: 'submit_add_ipaddress', class:'btn btn-default', value: 'Add'  %>
           <%= button_tag "Remove", name: 'submit_remove_ipaddress', class:'btn btn-default remove_access', value: 'Remove' %>
         <% end %>
+        <%= label_tag "umd_ip_manager_group" do %>
+          <% access_object = "umd_ip_manager_group" %>
+          <% if @umd_ip_manager_error.nil? %>
+            <%= render partial: "modules/tooltip", locals: {
+                    form: form, field: access_object, tooltip: t("access_control.#{access_object}"),
+                    options: {display_label: t("access_control.#{access_object}label").html_safe}
+            } %>
+            <%  dropdown_values = [@all_umd_ip_manager_groups, 'prefixed_key', 'name'] %>
+            <%  dropdown_values = options_from_collection_for_select(*dropdown_values) %>
+            <%= select_tag "#{access_object}",
+                          dropdown_values,
+                          { include_blank: true, class: "form-control"}
+            %>
+            <br>
+            <%= text_field_tag "add_#{access_object}_begin", nil, placeholder: 'Begin Date (yyyy-mm-dd)', class: 'form-control date-input access_date', autocomplete: 'off' %>
+            <br>
+            <%= text_field_tag "add_#{access_object}_end", nil, placeholder: 'End Date (yyyy-mm-dd)', class: 'form-control date-input access_date', autocomplete: 'off' %>
+            <%= button_tag "Add", name: "submit_add_#{access_object}", class:'btn btn-default', value: 'Add'  %>
+            <%= button_tag "Remove", name: "submit_remove_#{access_object}", class:'btn btn-default remove_access', value: 'Remove' %>
+          <% else %>
+              <%= render partial: "modules/tooltip", locals: { form: form, field: access_object, tooltip: t("access_control.#{access_object}"), options: {display_label: (t("access_control.#{access_object}label")+'*').html_safe} } %><br />
+              <div class="alert alert-danger"><%= @umd_ip_manager_error %></div>
+          <% end %>
+      <% end %>
 
 
             </fieldset>
