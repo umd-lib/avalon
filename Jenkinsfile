@@ -24,7 +24,7 @@ pipeline {
   agent any
 
   options {
-    // Throttle a declarative pipeline via options
+    // Throttle declarative pipeline so only one Avalon build runs at a time.
     throttleJobProperty(
         categories: ['throttle_avalon'],
         throttleEnabled: true,
@@ -39,8 +39,8 @@ pipeline {
   }
 
   environment {
-    // Retrieve the CI user id, so it can be used later to chown all the files
-    // back to the CI user. Shell command suggestwd in
+    // Retrieve the CI user id, so it can be used later to "chown" all the files
+    // back to the CI user. Shell command suggested in
     // https://stackoverflow.com/a/51775022
     CI_USER_ID = sh(script: "id -u", returnStdout: true).trim()
 
@@ -111,6 +111,7 @@ pipeline {
 
           # This following line is a bit of voodoo -- without it, yarn almost
           # always seems to encounter an error downloading packages.
+          # See https://github.com/yarnpkg/yarn/issues/2629#issuecomment-685088015
           docker-compose exec -T test bash -c "yarn install --check-files --cache-folder .ycache && rm -rf .ycache"
         '''
       }
@@ -119,7 +120,9 @@ pipeline {
     stage('test') {
       steps {
         sh '''
-          # Run rspec tests, with JUNit-formatted output
+          # Run rspec tests, with "documentation" formatter (for the
+          # console log) and JUnit-formatted output (to a file) for
+          # Jenkins stats
           docker-compose exec -T test bash -c "bundle exec rspec --format documentation --format RspecJunitFormatter --out rspec.xml spec/controllers/groups_controller_spec.rb"
         '''
       }
