@@ -120,9 +120,8 @@ pipeline {
       post {
         always {
           sh '''
-            # Clean up temporary files created by Docker image that are owned
-            # by "root"
-            docker-compose exec -T test bash -c "rm -rf ./tmp/cache ./public/packs-test ./config/controlled_vocabulary.yml ./node_modules"
+            # Reset ownership of files, so Jenkins can clean up.
+            docker-compose exec -T test bash -c "chown -R 6056:6056 /home/app/avalon"
           '''
 
           sh '''
