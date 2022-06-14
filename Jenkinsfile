@@ -39,7 +39,10 @@ pipeline {
   }
 
   environment {
-    CI_USER_ID = "${env.UID}"
+    // Retrieve the CI user id, so it can be used later to chown all the files
+    // back to the CI user. Shell command suggestd in
+    // https://stackoverflow.com/a/51775022
+    CI_USER_ID = sh(script: "id -u ${USER}", returnStdout: true).trim()
 
     DEFAULT_RECIPIENTS = "${ \
       sh(returnStdout: true, \
