@@ -40,9 +40,9 @@ pipeline {
 
   environment {
     // Retrieve the CI user id, so it can be used later to chown all the files
-    // back to the CI user. Shell command suggestd in
+    // back to the CI user. Shell command suggestwd in
     // https://stackoverflow.com/a/51775022
-    CI_USER_ID = sh(script: "id -u ${USER}", returnStdout: true).trim()
+    CI_USER_ID = sh(script: "id -u", returnStdout: true).trim()
 
     DEFAULT_RECIPIENTS = "${ \
       sh(returnStdout: true, \
