@@ -108,11 +108,6 @@ pipeline {
 
           # Start the Avalon Docker containers for testing
           docker-compose up -d test
-
-          # This following line is a bit of voodoo -- without it, yarn almost
-          # always seems to encounter an error downloading packages.
-          # See https://github.com/yarnpkg/yarn/issues/2629#issuecomment-685088015
-          docker-compose exec -T test bash -c "yarn install --check-files --cache-folder .ycache && rm -rf .ycache"
         '''
       }
     }
@@ -120,6 +115,11 @@ pipeline {
     stage('test') {
       steps {
         sh '''
+          # This following line is a bit of voodoo -- without it, yarn almost
+          # always seems to encounter an error downloading packages.
+          # See https://github.com/yarnpkg/yarn/issues/2629#issuecomment-685088015
+          docker-compose exec -T test bash -c "yarn install --check-files --cache-folder .ycache && rm -rf .ycache"
+
           # Run rspec tests, with "documentation" formatter (for the
           # console log) and JUnit-formatted output (to a file) for
           # Jenkins stats
