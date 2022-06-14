@@ -39,6 +39,8 @@ pipeline {
   }
 
   environment {
+    CI_USER_ID = "${env.UID}"
+
     DEFAULT_RECIPIENTS = "${ \
       sh(returnStdout: true, \
          script: 'echo $JENKINS_DEFAULT_EMAIL_RECIPIENTS').trim() \
@@ -98,6 +100,7 @@ pipeline {
     stage('build') {
       steps {
         sh '''
+          echo CI_USER_ID=$CI_USER_ID
           # Purge any volumes not in use by a container
           docker system prune --force --volumes
 
