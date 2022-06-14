@@ -105,6 +105,7 @@ pipeline {
           docker-compose up -d test
 
           # Make sure "docker_init.sh" script has run
+          docker-compose exec -T test bash -c "yarn install --check-files --cache-folder .ycache && rm -rf .ycache"
           docker-compose exec -T test bash -c "/home/app/avalon/docker_init.sh"
         '''
       }
