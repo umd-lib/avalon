@@ -103,7 +103,6 @@ pipeline {
     stage('build') {
       steps {
         sh '''
-          echo CI_USER_ID=$CI_USER_ID
           # Purge any volumes not in use by a container
           docker system prune --force --volumes
 
@@ -128,7 +127,7 @@ pipeline {
         always {
           sh '''
             # Reset ownership of files, so Jenkins can clean up.
-            docker-compose exec -T test bash -c "chown -R 6056:6056 /home/app/avalon"
+            docker-compose exec -T test bash -c "chown -R $CI_USER_ID:$CI_USER_ID /home/app/avalon"
           '''
 
           sh '''
