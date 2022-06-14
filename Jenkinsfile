@@ -111,7 +111,7 @@ pipeline {
       steps {
         sh '''
           # Run rspec tests, with JUNit-formatted output
-          docker-compose exec -T test bash -c "bundle exec rspec --format RspecJunitFormatter --out rspec.xml spec/controllers/groups_controller_spec.rb"
+          docker-compose exec -T test bash -c "bundle exec rspec --format documentation --format RspecJunitFormatter --out rspec.xml spec/controllers/groups_controller_spec.rb"
         '''
       }
       post {
