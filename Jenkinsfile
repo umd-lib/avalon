@@ -102,7 +102,10 @@ pipeline {
           docker system prune --force --volumes
 
           # Start the Avalon Docker containers for testing
-          docker-compose up -d test
+          docker-compose up --build -d test
+
+          # Make sure "docker_init.sh" script has run
+          docker-compose exec -T test bash -c "/home/app/avalon/docker_init.sh"
         '''
       }
     }
