@@ -120,6 +120,12 @@ pipeline {
       post {
         always {
           sh '''
+            # Clean up temporary files created by Docker image that are owned
+            # by "root"
+            docker-compose exec -T test bash -c "rm -rf ./tmp/cache ./public/packs-test ./config/controlled_vocabulary.yml ./node_modules"
+          '''
+
+          sh '''
             # Stop Avalon Docker containers, using "--volumes" flag to delete
             # all volumes
             docker-compose down --volumes
