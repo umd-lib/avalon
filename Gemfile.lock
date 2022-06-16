@@ -1294,6 +1294,8 @@ GEM
       multipart-post (>= 1.2, < 3)
     faraday-encoding (0.0.4)
       faraday
+    faraday_json (0.1.4)
+      faraday (~> 0.10)
     fastimage (2.1.7)
     fcrepo_wrapper (0.9.0)
       ruby-progressbar
@@ -1868,6 +1870,7 @@ DEPENDENCIES
   factory_bot_rails
   fakefs
   faker
+  faraday_json
   fastimage
   fcrepo_wrapper
   fedora-migrate!

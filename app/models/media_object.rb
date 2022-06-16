@@ -362,7 +362,8 @@ class MediaObject < ActiveFedora::Base
         actors << "users in specific groups"
       end
 
-      actors << "users in specific IP Ranges" if ip_read_groups.any? || leases('ip').any?
+      actors << "users in specific IP Ranges" if ip_read_groups.any? || leases('ip').any? ||
+                                                 umd_ip_manager_read_groups.any? || leases('umd_ip_manager').any?
     end
 
     "This item is accessible by: #{actors.join(', ')}."

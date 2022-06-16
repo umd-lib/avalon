@@ -248,6 +248,64 @@ describe Admin::CollectionsController, type: :controller do
         expect(JSON.parse(response.body)["errors"].first.class).to eq String
       end
     end
+
+    context "Assign Special Access - UMD IP Manager Groups" do
+      it "should provide an error message if UMD IP Manager group retrieval fails" do
+        login_user collection.managers.first
+
+        allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(UmdIPManager::GroupsResult.new(errors: ['An error occurred!']))
+        get 'show', params: { id: collection.id }
+
+        expect(controller.instance_variable_get('@umd_ip_manager_error')).to_not be(nil)
+        expect(controller.instance_variable_get('@umd_ip_manager_groups')).to be_empty
+        expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to be_empty
+      end
+
+      context "when UMD IP Manager group retrieval succeeds" do
+        let (:test_group1) { UmdIPManager::Group.new(key: 'test1', name: 'Test Group 1') }
+        let (:test_group2) { UmdIPManager::Group.new(key: 'test2', name: 'Test Group 2') }
+
+        before(:each) do
+          login_user collection.managers.first
+
+          allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(
+            UmdIPManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
+          )
+        end
+
+        it "should display groups" do
+          get 'show', params: { id: collection.id }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups').count).to eq(0)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group1, test_group2)
+        end
+
+        it "dropdown should not contain already selected groups" do
+          collection.default_read_groups = [test_group1.prefixed_key]
+          collection.save!
+
+          get 'show', params: { id: collection.id }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups')).to contain_exactly(test_group1)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group2)
+        end
+
+        it "a group in collection.default_read_groups that has been deleted from IP Manager should be ignored" do
+          deleted_group = UmdIPManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
+
+          collection.default_read_groups = [test_group1.prefixed_key, deleted_group.prefixed_key]
+          collection.save!
+
+          get 'show', params: { id: collection.id }
+
+          expect(controller.instance_variable_get('@umd_ip_manager_error')).to be(nil)
+          expect(controller.instance_variable_get('@umd_ip_manager_groups')).to contain_exactly(test_group1)
+          expect(controller.instance_variable_get('@addable_umd_ip_manager_groups')).to contain_exactly(test_group2)
+        end
+      end
+    end
   end
 
   describe "#items" do
@@ -386,13 +444,17 @@ describe Admin::CollectionsController, type: :controller do
       it "IP address/range" do
         expect{ put 'update', params: { id: collection.id, submit_add_ipaddress: "Add", add_ipaddress: "255.0.0.1" }}.to change{ collection.reload.default_read_groups.size }.by(1)
       end
+
+      it "UMD IP Manager Group" do
+        expect{ put 'update', params: { id: collection.id, submit_add_umd_ip_manager_group: "Add", add_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(1)
+      end
     end
 
 
     context "remove existing special access" do
       before do
         collection.default_read_users = ["test1@example.com"]
-        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1"]
+        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1", "#{UmdIPManager::GROUP_PREFIX}TestGroup"]
         collection.save!
       end
       it "user" do
@@ -409,6 +471,10 @@ describe Admin::CollectionsController, type: :controller do
 
       it "IP address/range" do
         expect{ put 'update', params: { id: collection.id, remove_ipaddress: "255.0.1.1" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
+      end
+
+      it "UMD IP Manager Group" do
+        expect{ put 'update', params: { id: collection.id, remove_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
       end
     end
 

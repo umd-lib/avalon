@@ -105,6 +105,9 @@ gem 'with_locking'
 # Health Check
 gem 'health_check'
 
+# for UMD IP Manager API
+gem 'faraday_json'
+
 group :development do
   gem 'capistrano', '~>3.6'
   gem 'capistrano-passenger', require: false

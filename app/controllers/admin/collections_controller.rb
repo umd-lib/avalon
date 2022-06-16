@@ -59,6 +59,13 @@ class Admin::CollectionsController < ApplicationController
 
         @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
         @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
+
+        all_umd_ip_manager_groups = UmdIPManager.new.groups
+        @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless all_umd_ip_manager_groups.success?
+
+        umd_ip_manager_read_groups = @collection.default_umd_ip_manager_read_groups
+        @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
+        @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
       }
     end
   end
@@ -261,7 +268,7 @@ class Admin::CollectionsController < ApplicationController
 
   def update_access(collection, params)
     # If Save Access Setting button or Add/Remove User/Group button has been clicked
-    ["group", "class", "user", "ipaddress"].each do |title|
+    ["group", "class", "user", "ipaddress", "umd_ip_manager_group"].each do |title|
       if params["submit_add_#{title}"].present?
         if params["add_#{title}"].present?
           val = params["add_#{title}"].strip
@@ -282,7 +289,7 @@ class Admin::CollectionsController < ApplicationController
       end
 
       if params["remove_#{title}"].present?
-        if ["group", "class", "ipaddress"].include? title
+        if ["group", "class", "ipaddress", "umd_ip_manager_group"].include? title
           # This is a hack to deal with the fact that calling default_read_groups#delete isn't marking the record as dirty
           # TODO: Ensure default_read_groups is tracked by ActiveModel::Dirty
           collection.default_read_groups_will_change!

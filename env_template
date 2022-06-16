@@ -12,7 +12,9 @@ SAML_SP_CERTIFICATE="-----BEGIN CERTIFICATE-----
 ...
 -----END CERTIFICATE-----"
 
-
 # Handle Configuration
 UMD_HANDLE_SERVER_URL=
 UMD_HANDLE_JWT_TOKEN=
+
+# IP Manager Configuration
+IP_MANAGER_SERVER_URL=

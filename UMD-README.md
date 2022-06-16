@@ -23,28 +23,37 @@ Edit the "/etc/hosts" file and add
     cp env_template .env
     ```
 
-    Determine the values for the "SAML_SP_PRIVATE_KEY" and "SAML_SP_CERTIFICATE"
-    variables:
+3) Edit the '.env" file:
+
+    ```bash
+    vi .env
+    ```
+
+4) (Required) Determine the values for the "SAML_SP_PRIVATE_KEY" and
+    "SAML_SP_CERTIFICATE" variables:
 
     ```bash
     kubectl -n test get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_PRIVATE_KEY}' | base64 --decode
     kubectl -n test get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_CERTIFICATE}' | base64 --decode
     ```
 
-    Edit the '.env" file:
-
-    ```bash
-    vi .env
-    ```
-
-    and set the parameters:
+    and set the parameters in the .env file:
 
     | Parameter              | Value                                |
     | ---------------------- | ------------------------------------ |
     | SAML_SP_PRIVATE_KEY    | (Output from first kubectl command)  |
     | SAML_SP_CERTIFICATE    | (Output from second kubectl command) |
 
-3) Start the server
+5) (Optional) In the .env file, also set the following parameters:
+
+* UMD_HANDLE_SERVER_URL - URL of the Handle server (i.e.,
+    <https://handle-test.lib.umd.edu/>)
+* UMD_HANDLE_JWT_TOKEN - JWT Token for accessing the Handle server. See
+    <https://github.com/umd-lib/umd-handle#jwt-tokens> for more information.
+* IP_MANAGER_SERVER_URL - URL of the IP Manager server (i.e.,
+    <https://ipmanager-test.lib.umd.edu>)
+
+6) Start the server
 
     ```bash
     docker-compose pull

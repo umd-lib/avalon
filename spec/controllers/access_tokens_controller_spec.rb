@@ -1,6 +1,53 @@
 require 'rails_helper'
 
 RSpec.describe AccessTokensController, type: :controller do
+  describe 'security' do
+    let(:access_token) { FactoryBot.create(:access_token) }
+
+    describe 'ingest api' do
+      it "all routes should return 401 when no token is present" do
+        expect(get :index, params: { format: 'json' }).to have_http_status(401)
+        expect(post :create, params: { format: 'json' }).to have_http_status(401)
+        expect(get :new, params: { format: 'json' }).to have_http_status(401)
+        expect(get :edit, params: { id: access_token.id, format: 'json' }).to have_http_status(401)
+        expect(get :show, params: { id: access_token.id, format: 'json' }).to have_http_status(401)
+        expect(put :update, params: { id: access_token.id, format: 'json' }).to have_http_status(401)
+        expect(put :destroy, params: { id: access_token.id, format: 'json' }).to have_http_status(401)
+      end
+      it "all routes should return 403 when a bad token in present" do
+        request.headers['Avalon-Api-Key'] = 'badtoken'
+        expect(get :index, params: { format: 'json' }).to have_http_status(403)
+        expect(post :create, params: { format: 'json' }).to have_http_status(403)
+        expect(get :new, params: { format: 'json' }).to have_http_status(403)
+        expect(get :edit, params: { id: access_token.id, format: 'json' }).to have_http_status(403)
+        expect(get :show, params: { id: access_token.id, format: 'json' }).to have_http_status(403)
+        expect(put :update, params: { id: access_token.id, format: 'json' }).to have_http_status(403)
+        expect(put :destroy, params: { id: access_token.id, format: 'json' }).to have_http_status(403)
+      end
+    end
+
+    describe 'normal auth' do
+      context 'with end-user' do
+        before do
+          login_as :user
+        end
+        # New is isolated here due to issues caused by the controller instance not being regenerated
+        it "should redirect to restricted content page" do
+          expect(get :new).to render_template('errors/restricted_pid')
+        end
+        it "all routes should redirect to restricted content page" do
+          expect(get :index).to render_template('errors/restricted_pid')
+          expect(post :create).to render_template('errors/restricted_pid')
+          expect(post :new).to render_template('errors/restricted_pid')
+          expect(get :edit, params: { id: access_token.id }).to render_template('errors/restricted_pid')
+          expect(get :show, params: { id: access_token.id }).to render_template('errors/restricted_pid')
+          expect(put :update, params: { id: access_token.id }).to render_template('errors/restricted_pid')
+          expect(patch :update, params: { id: access_token.id }).to render_template('errors/restricted_pid')
+          expect(delete :destroy, params: { id: access_token.id }).to render_template('errors/restricted_pid')
+        end
+      end
+    end
+  end
 
   context '#new' do
     context 'when a "media_object_id" param is not provided' do
@@ -97,8 +144,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
   context '#show' do
     it 'provides a link to the Media Object Access Control page' do
-      login_as(:administrator)
-      access_token = FactoryBot.create(:access_token)
+      user = login_as(:administrator)
+      access_token = FactoryBot.create(:access_token, user: user)
 
       get :show, params: { id: access_token.id }
 
@@ -108,8 +155,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
     context 'for active tokens' do
       it 'includes a text snippet containing information to provide to the patron' do
-        login_as(:administrator)
-        access_token = FactoryBot.create(:access_token)
+        user = login_as(:administrator)
+        access_token = FactoryBot.create(:access_token, user: user)
 
         get :show, params: { id: access_token.id }
         expect(controller.instance_variable_get('@info_for_patron_snippet')).to_not be_empty
@@ -117,8 +164,8 @@ RSpec.describe AccessTokensController, type: :controller do
     end
     context 'for expired or revoked tokens' do
       it 'does not include a text snippet containing information to provide to the patron' do
-        login_as(:administrator)
-        access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now)
+        user = login_as(:administrator)
+        access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now, user: user)
 
         # Expired token
         travel_to(1.hour.from_now) do
@@ -137,8 +184,8 @@ RSpec.describe AccessTokensController, type: :controller do
 
   context '#edit' do
     it 'provides a Cancel link back to the "show" access page' do
-      login_as(:administrator)
-      access_token = FactoryBot.create(:access_token)
+      user = login_as(:administrator)
+      access_token = FactoryBot.create(:access_token, user: user)
 
       get :edit, params: { id: access_token.id }
       cancel_link = controller.instance_variable_get('@cancel_link')

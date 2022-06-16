@@ -37,7 +37,12 @@ class Ability
     @user_groups |= current_user.groups if current_user and current_user.respond_to? :groups
     @user_groups |= ['registered'] unless current_user.new_record?
     @user_groups |= @options[:virtual_groups] if @options.present? and @options.has_key? :virtual_groups
-    @user_groups |= [@options[:remote_ip]] if @options.present? and @options.has_key? :remote_ip
+    if @options.present? and @options.has_key? :remote_ip
+      remote_ip = @options[:remote_ip]
+      @user_groups |= [remote_ip]
+      umd_ip_manager_groups = UmdIPManager.new.groups(ip_address: remote_ip)
+      @user_groups |= umd_ip_manager_groups.map { |g| g.prefixed_key }
+    end
 
     if @options.present? && @options.has_key?(:access_token)
       token = @options[:access_token]
@@ -116,6 +121,14 @@ class Ability
       end
 
       # End customization for LIBAVALON-196
+
+      can [:create, :update], AccessToken do |access_token|
+        is_member_of?(access_token.media_object.collection)
+      end
+
+      can :list_all, AccessToken if is_administrator?
+
+      can :manage, AccessToken if (is_member_of_any_collection? or @user_groups.include? 'manager')
 
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
