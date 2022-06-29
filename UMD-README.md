@@ -1,5 +1,12 @@
 # Avalon
 
+## UMD documentation
+
+UMD-generated documentation for Avalon should be placed in the
+"[umd_docs](umd_docs/)" subdirectory.
+
+* [Avalon Permissons](umd_docs/AvalonPermissions.md)
+
 ## Development Setup
 
 Prerequisite:
