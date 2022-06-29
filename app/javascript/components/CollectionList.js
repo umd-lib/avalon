@@ -32,7 +32,7 @@ class CollectionList extends Component {
       searchResult: [],
       filteredResult: [],
       maxItems: 4,
-      sort: 'unit',
+      sort: props.sort ? props.sort : 'unit',
       isLoading: false
     };
   }
