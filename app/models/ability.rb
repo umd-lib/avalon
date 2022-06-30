@@ -308,7 +308,8 @@ class Ability
 
     if @options.has_key?(:access_token)
       token = @options[:access_token]
-      allowed = allowed || AccessToken.allow_streaming_of?(token, media_object.id)
+      # access token should only override other permissions for published objects
+      allowed = allowed || (media_object.published? && AccessToken.allow_streaming_of?(token, media_object.id))
     end
 
     allowed
