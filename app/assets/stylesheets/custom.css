@@ -304,3 +304,6 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
   color: white;
   font-size: x-large;
 }
+.restricted-video-message a {
+  color: #f0ad4e
+}
