@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -151,7 +151,7 @@ class MediaObjectsController < ApplicationController
         playlist.items += [PlaylistItem.new(clip: clip, playlist: playlist)]
       end
     end
-    link = view_context.link_to('View Playlist', playlist_path(playlist), class: "btn btn-primary btn-xs")
+    link = view_context.link_to('View Playlist', playlist_path(playlist), class: "btn btn-primary btn-sm")
     render json: {message: "<p>Playlist items created successfully.</p> #{link}", status: 200}
   end
 
@@ -447,7 +447,8 @@ class MediaObjectsController < ApplicationController
       if cannot? :update, media_object
         errors += ["#{media_object.title} (#{id}) (permission denied)."]
       else
-        case status
+        begin
+          case status
           when 'publish'
             media_object.publish!(user_key)
             # additional save to set permalink
@@ -460,11 +461,14 @@ class MediaObjectsController < ApplicationController
             else
               errors += ["#{media_object.title} (#{id}) (permission denied)."]
             end
+          end
+        rescue ActiveFedora::RecordInvalid => e
+          errors += [e.message]
         end
       end
     end
-    message = "#{success_count} #{'media object'.pluralize(success_count)} successfully #{status}ed."
-    message += "These objects were not #{status}ed:</br> #{ errors.join('<br/> ') }" if errors.count > 0
+    message = "#{success_count} #{'media object'.pluralize(success_count)} successfully #{status}ed." if success_count.positive?
+    message = "Unable to publish #{'item'.pluralize(errors.count)}: #{ errors.join('<br/> ') }" if errors.count > 0
     redirect_back(fallback_location: root_path, flash: {notice: message.html_safe})
   end
 

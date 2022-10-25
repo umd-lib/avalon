@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,7 +14,7 @@
 
 module MasterFileBuilder
   class BuildError < Exception; end
-  Spec = Struct.new(:content, :original_filename, :content_type, :workflow)
+  Spec = Struct.new(:content, :original_filename, :content_type, :workflow, :file_size, :auth_header)
 
   def self.build(media_object, params)
     builder = if params.has_key?(:Filedata) and params.has_key?(:original)
@@ -39,7 +39,7 @@ module MasterFileBuilder
       end
 
       master_file = MasterFile.new()
-      master_file.setContent(spec.content)
+      master_file.setContent(spec.content, file_name: spec.original_filename, file_size: spec.file_size, auth_header: spec.auth_header, dropbox_dir: media_object.collection.dropbox_absolute_path)
       master_file.set_workflow(spec.workflow)
       
       # Start LIBAVALON-128
@@ -98,10 +98,10 @@ module MasterFileBuilder
 
   module DropboxUpload
     def self.build(params)
-      params[:selected_files].values.collect do |entry|
+      params.require(:selected_files).permit!.values.collect do |entry|
         uri = Addressable::URI.parse(entry[:url])
-        path = URI.decode(uri.path)
-        Spec.new(uri, File.basename(path), Rack::Mime.mime_type(File.extname(path)), params[:workflow])
+        path = entry["file_name"] || Addressable::URI.unencode(uri.path)
+        Spec.new(uri, File.basename(path), Rack::Mime.mime_type(File.extname(path)), params[:workflow], entry["file_size"], entry["auth_header"]&.to_h)
       end
     end
   end

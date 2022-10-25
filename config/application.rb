@@ -8,7 +8,7 @@ require 'resolv-replace'
 Bundler.require(*Rails.groups)
 
 module Avalon
-  VERSION = '7.2.0-umd-8'
+  VERSION = '7.4.0-umd-0'
 
   class Application < Rails::Application
     require 'avalon/configuration'
@@ -18,7 +18,7 @@ module Avalon
     end
 
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 5.1
+    config.load_defaults 6.0
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration should go into files in config/initializers
@@ -41,6 +41,7 @@ module Avalon
         origins '*'
         resource '/media_objects/*/manifest*', headers: :any, methods: [:get]
         resource '/master_files/*/thumbnail', headers: :any, methods: [:get]
+        resource '/master_files/*/transcript/*/*', headers: :any, methods: [:get]
         resource '/master_files/*/structure.json', headers: :any, methods: [:get, :post, :delete]
         resource '/master_files/*/waveform.json', headers: :any, methods: [:get]
         resource '/master_files/*/*.m3u8', headers: :any, methods: [:get, :head]

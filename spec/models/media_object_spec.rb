@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -78,14 +78,14 @@ describe MediaObject do
           '[1667,1668,1670..1672]' => ['1667','1668','1670','1671','1672'],
           '{1667,1668,1670..1672}' => ['1667','1668','1670','1671','1672'],
           '159u' => ['1590','1591','1592','1593','1594','1595','1596','1597','1598','1599'],
-          '159u-12' => [],
+          '159u-12' => ['1590','1591','1592','1593','1594','1595','1596','1597','1598','1599'],
           '159u-12-25' => ['1590','1591','1592','1593','1594','1595','1596','1597','1598','1599'],
           '159x' => ['1590','1591','1592','1593','1594','1595','1596','1597','1598','1599'],
           '2011-(06-04)~' => ['2011'],
           'unknown/unknown' => ['Unknown']
         }}
       it "should not accept invalid EDTF formatted dates" do
-        [Faker::Lorem.sentence(4),'-999','17000'].each do |d|
+        [Faker::Lorem.sentence(word_count: 4),'-999','17000'].each do |d|
           media_object.date_issued = d
           expect(media_object.valid?).to be_falsey
           expect(media_object.errors[:date_issued].present?).to be_truthy
