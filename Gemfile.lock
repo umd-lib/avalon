@@ -612,6 +612,9 @@ GEM
     omniauth-identity (3.0.9)
       bcrypt
       omniauth
+    omniauth-rails_csrf_protection (1.0.1)
+      actionpack (>= 4.2)
+      omniauth (~> 2.0)
     omniauth-saml (2.0.0)
       omniauth (~> 2.0)
       ruby-saml (~> 1.9)
@@ -1041,6 +1044,7 @@ DEPENDENCIES
   omniauth (~> 2.0)
   omniauth-identity (>= 2.0.0)
   omniauth-lti!
+  omniauth-rails_csrf_protection
   omniauth-saml (~> 2.0)
   parallel
   pg

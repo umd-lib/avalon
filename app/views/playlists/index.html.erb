@@ -15,7 +15,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 %>
 
 <% if current_user.nil? %>
-<%= link_to 'Please login to view your playlists.', new_user_session_path %>
+<%= link_to 'Please login to view your playlists.', user_saml_omniauth_authorize_path, :method => "post" %>
 <% end %>
 <% unless current_user.nil? %>
   <% playlists = Playlist.where(user_id: current_user.id) %>
