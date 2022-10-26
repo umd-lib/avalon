@@ -651,7 +651,7 @@ describe MediaObjectsController, type: :controller do
       it "should provide an error message if UMD IP Manager group retrieval fails" do
         login_user media_object.collection.managers.first
 
-        allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(UmdIPManager::GroupsResult.new(errors: ['An error occurred!']))
+        allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(UmdIpManager::GroupsResult.new(errors: ['An error occurred!']))
         get 'edit', params: { id: media_object.id, step: 'access-control' }
 
         expect(controller.instance_variable_get('@umd_ip_manager_error')).to_not be(nil)
@@ -660,14 +660,14 @@ describe MediaObjectsController, type: :controller do
       end
 
       context "when UMD IP Manager group retrieval succeeds" do
-        let (:test_group1) { UmdIPManager::Group.new(key: 'test1', name: 'Test Group 1') }
-        let (:test_group2) { UmdIPManager::Group.new(key: 'test2', name: 'Test Group 2') }
+        let (:test_group1) { UmdIpManager::Group.new(key: 'test1', name: 'Test Group 1') }
+        let (:test_group2) { UmdIpManager::Group.new(key: 'test2', name: 'Test Group 2') }
 
         before(:each) do
           login_user media_object.collection.managers.first
 
-          allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(
-            UmdIPManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
+          allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(
+            UmdIpManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
           )
         end
 
@@ -691,7 +691,7 @@ describe MediaObjectsController, type: :controller do
         end
 
         it "a group in media_object.read_groups that has been deleted from IP Manager should be ignored" do
-          deleted_group = UmdIPManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
+          deleted_group = UmdIpManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
 
           media_object.read_groups = [test_group1.prefixed_key, deleted_group.prefixed_key]
           media_object.save!
@@ -1332,7 +1332,7 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
-      let!(:umd_ip_manager_group) { "#{UmdIPManager::GROUP_PREFIX}TestGroup" }
+      let!(:umd_ip_manager_group) { "#{UmdIpManager::GROUP_PREFIX}TestGroup" }
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do

@@ -159,7 +159,7 @@ private
     return nil if group.nil?
     return "ip" if IPAddr.new(group) rescue false
     return "local" if Admin::Group.exists? group
-    return "umd_ip_manager" if UmdIPManager::Group.valid_prefixed_key?(group)
+    return "umd_ip_manager" if UmdIpManager::Group.valid_prefixed_key?(group)
     return "external"
   end
 

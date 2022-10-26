@@ -33,7 +33,7 @@ Unless required by applicable law or agreed to in writing, software distributed
    @visibility = visibility if @media_objects.all? {|mo| mo.visibility == visibility}
    @shown = @media_objects.all? {|doc| doc.hidden? == false}
    @hidden = @media_objects.all? {|doc| doc.hidden? == true}
-   @all_umd_ip_manager_groups = UmdIPManager.new.groups
+   @all_umd_ip_manager_groups = UmdIpManager.new.groups
    @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless @all_umd_ip_manager_groups.success?
   %>
 

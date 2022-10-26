@@ -26,7 +26,7 @@
       end
 
       def umd_ip_manager_read_groups
-        self.read_groups.select {|g| UmdIPManager::Group.valid_prefixed_key?(g) }
+        self.read_groups.select {|g| UmdIpManager::Group.valid_prefixed_key?(g) }
       end
 
       def virtual_read_groups

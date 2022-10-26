@@ -14,7 +14,6 @@
 ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.acronym 'RDF'
   inflect.acronym 'AF'
-  inflect.acronym 'IP'
 end
 
 

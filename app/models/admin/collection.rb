@@ -233,7 +233,7 @@ class Admin::Collection < ActiveFedora::Base
   end
 
   def default_umd_ip_manager_read_groups
-    self.default_read_groups.select {|g| UmdIPManager::Group.valid_prefixed_key?(g) }
+    self.default_read_groups.select {|g| UmdIpManager::Group.valid_prefixed_key?(g) }
   end
 
   def default_virtual_read_groups

@@ -31,7 +31,7 @@ describe VirtualGroups do
     let(:virtual_groups) {["vgroup1", "vgroup2"]}
     let(:ip_groups) {[Faker::Internet.ip_v4_address, Faker::Internet.ip_v6_address, Faker::Internet.ip_v4_address + "/24"]}
     let(:umd_ip_manager_groups) {
-      ["#{UmdIPManager::GROUP_PREFIX}UmdIPTestGroup1", "#{UmdIPManager::GROUP_PREFIX}UmdIPTestGroup2"]
+      ["#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup1", "#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup2"]
     }
 
     before(:each) do

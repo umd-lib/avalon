@@ -222,7 +222,7 @@ module ApplicationHelper
   end
 
   def umd_ip_manager_group_display(value)
-    if value.is_a?(UmdIPManager::Group)
+    if value.is_a?(UmdIpManager::Group)
       # For groups without leases, just return the human-readable name for the
       # groups
       return value.name
@@ -232,14 +232,14 @@ module ApplicationHelper
       # or the value itself if it is not found.
       return @umd_ip_manager_keys_to_names.fetch(value, value)
     end
-    # This shouldn't happen, but if not a UmdIPManager::Group, and
+    # This shouldn't happen, but if not a UmdIpManager::Group, and
     # @umd_ip_manager_keys_to_names is not provided, simply return the given
     # value
     value
   end
 
   def umd_ip_manager_group_access_object_remove_helper(value)
-    if value.is_a?(UmdIPManager::Group)
+    if value.is_a?(UmdIpManager::Group)
       # For groups without leases, return the prefixed_key, so it will be
       # used as the id for the "remove"
       value.prefixed_key

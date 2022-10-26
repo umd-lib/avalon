@@ -311,7 +311,7 @@ class MediaObjectsController < ApplicationController
       @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
       @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
 
-      all_umd_ip_manager_groups = UmdIPManager.new.groups
+      all_umd_ip_manager_groups = UmdIpManager.new.groups
       @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless all_umd_ip_manager_groups.success?
 
       # The following hash is needed to map the Group prefixed_key in leases to the human-readable name for display

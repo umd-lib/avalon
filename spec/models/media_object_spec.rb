@@ -1008,17 +1008,17 @@ describe MediaObject do
     end
 
     context "private item" do
-      let (:group) { UmdIPManager::Group.new(key: 'test_umd_ip_manager_group', name: 'Test UMD IP Manager Group') }
+      let (:group) { UmdIpManager::Group.new(key: 'test_umd_ip_manager_group', name: 'Test UMD IP Manager Group') }
       before do
         media_object.visibility = "private"
       end
 
-      it 'with UmdIPManager::Group, returns text indicating item is accessible for specific IP ranges' do
+      it 'with UmdIpManager::Group, returns text indicating item is accessible for specific IP ranges' do
         media_object.read_groups += [group.prefixed_key]
         media_object.save!
         expect(media_object.access_text).to eq("This item is accessible by: collection staff, users in specific IP Ranges.")
       end
-      it 'with UmdIPManager::Group lease, returns text indicating item is accessible for specific IP ranges' do
+      it 'with UmdIpManager::Group lease, returns text indicating item is accessible for specific IP ranges' do
         media_object.governing_policies += [FactoryBot.create(:lease, inherited_read_groups: [group.prefixed_key])]
         expect(media_object.access_text).to eq("This item is accessible by: collection staff, users in specific IP Ranges.")
       end

@@ -34,7 +34,7 @@ def stub_ip_check_list_request(ip_address:, groups: {})
     )
 end
 
-describe UmdIPManager do
+describe UmdIpManager do
   before(:each) do
     disable_umd_ip_manager_mock
   end
@@ -45,8 +45,8 @@ describe UmdIPManager do
   }
 
   context '#groups' do
-    it 'returns a GroupsResult with a list of UmdIPManager::Groups on success' do
-      test_group = UmdIPManager::Group.new(key: 'test-group', name: 'Test Group')
+    it 'returns a GroupsResult with a list of UmdIpManager::Groups on success' do
+      test_group = UmdIpManager::Group.new(key: 'test-group', name: 'Test Group')
       allow(ip_manager.api).to receive(:all_groups) {
         [test_group]
       }
@@ -77,13 +77,13 @@ describe UmdIPManager do
       result = ip_manager.groups(ip_address: '127.0.0.1')
       expect(result.success?).to be(true)
       expect(result.groups.length).to eq(2)
-      expected_prefixed_keys = [ UmdIPManager::Group.as_prefixed_key('test1'), UmdIPManager::Group.as_prefixed_key('test4') ]
+      expected_prefixed_keys = [ UmdIpManager::Group.as_prefixed_key('test1'), UmdIpManager::Group.as_prefixed_key('test4') ]
       expect(result.groups.map {|g| g.prefixed_key}).to match_array(expected_prefixed_keys)
     end
   end
 end
 
-describe UmdIPManager::GroupsResult do
+describe UmdIpManager::GroupsResult do
   context '#success?' do
     it 'returns true when there are no errors' do
       groups_result = described_class.new
@@ -99,8 +99,8 @@ describe UmdIPManager::GroupsResult do
   end
 
   it 'returns a list of provided groups' do
-    group1 = UmdIPManager::Group.new(key: 'group-1', name: 'Group 1')
-    group2 = UmdIPManager::Group.new(key: 'group-2', name: 'Group 2')
+    group1 = UmdIpManager::Group.new(key: 'group-1', name: 'Group 1')
+    group2 = UmdIpManager::Group.new(key: 'group-2', name: 'Group 2')
     groups = [group1, group2]
 
     groups_result = described_class.new(groups: groups)
@@ -114,7 +114,7 @@ describe UmdIPManager::GroupsResult do
   end
 end
 
-describe UmdIPManager::Group do
+describe UmdIpManager::Group do
   EXPECTED_PREFIX = 'umd.ip.manager:'
 
   it 'provides the prefixed_key for a group' do
@@ -159,7 +159,7 @@ describe UmdIPManager::Group do
       end
     end
 
-    it 'returns the given key prefixed with UmdIPManager::Group.PREFIX' do
+    it 'returns the given key prefixed with UmdIpManager::Group.PREFIX' do
       expect(described_class.as_prefixed_key('foo')).to eq("#{EXPECTED_PREFIX}foo")
     end
   end
