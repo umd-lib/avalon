@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -211,7 +211,7 @@ module ApplicationHelper
 
   def build_solr_request_from_response
     qs = @response['responseHeader']['params'].reject { |k,v| k == 'wt' }.collect do |k,v|
-      v.is_a?(Array) ? v.collect { |v1| [k,URI.encode(v1.to_s)].join('=') } : [k,URI.encode(v.to_s)].join('=')
+      v.is_a?(Array) ? v.collect { |v1| [k, Addressable::URI.escape(v1.to_s)].join('=') } : [k, Addressable::URI.escape(v.to_s)].join('=')
     end.flatten.join('&')
     ActiveFedora.solr.conn.uri.merge("select?#{qs}").to_s.html_safe
   end
@@ -222,7 +222,7 @@ module ApplicationHelper
   end
 
   def umd_ip_manager_group_display(value)
-    if value.is_a?(UmdIPManager::Group)
+    if value.is_a?(UmdIpManager::Group)
       # For groups without leases, just return the human-readable name for the
       # groups
       return value.name
@@ -232,14 +232,14 @@ module ApplicationHelper
       # or the value itself if it is not found.
       return @umd_ip_manager_keys_to_names.fetch(value, value)
     end
-    # This shouldn't happen, but if not a UmdIPManager::Group, and
+    # This shouldn't happen, but if not a UmdIpManager::Group, and
     # @umd_ip_manager_keys_to_names is not provided, simply return the given
     # value
     value
   end
 
   def umd_ip_manager_group_access_object_remove_helper(value)
-    if value.is_a?(UmdIPManager::Group)
+    if value.is_a?(UmdIpManager::Group)
       # For groups without leases, return the prefixed_key, so it will be
       # used as the id for the "remove"
       value.prefixed_key

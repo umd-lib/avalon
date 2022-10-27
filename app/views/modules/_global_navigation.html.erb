@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+Copyright 2011-2022, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -13,21 +13,18 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
-<div id="header-navbar" class="navbar navbar-default navbar-static-top" role="menu" aria-label="main menu">
-  <div class="container">
+<div id="header-navbar" class="navbar navbar-expand-md navbar-light bg-primary mb-3" role="menu" aria-label="main menu">
+  <div class="container-md">
     <div class="navbar-header">
       <div class="row">
         <div class="col">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#user-util-collapse">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
+        <%= link_to "//www.lib.umd.edu/", class: "desktop-hidden" do %><%= image_tag "liblogo.png", class: "img-responvies lib-logo", alt: "University Libraries Homepage" %><% end %>
+        <%= link_to "Digital Collections", ENV['DIGITAL_COLLECTIONS_URL'], class: "brand desktop-hidden" %>
         </div>
         <div class="col">
-          <%= link_to "//www.lib.umd.edu/", class: "desktop-hidden" do %><%= image_tag "liblogo.png", class: "img-responvies lib-logo", alt: "University Libraries Homepage" %><% end %>
-          <%= link_to "Digital Collections", ENV['DIGITAL_COLLECTIONS_URL'], class: "brand desktop-hidden" %>
+          <button type="button" class="navbar-toggler navbar-toggler-right float-right" data-toggle="collapse" data-target="#user-util-collapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
         </div>
       </div>
     </div>

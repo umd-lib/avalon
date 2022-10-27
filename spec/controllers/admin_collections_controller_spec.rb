@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -253,7 +253,7 @@ describe Admin::CollectionsController, type: :controller do
       it "should provide an error message if UMD IP Manager group retrieval fails" do
         login_user collection.managers.first
 
-        allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(UmdIPManager::GroupsResult.new(errors: ['An error occurred!']))
+        allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(UmdIpManager::GroupsResult.new(errors: ['An error occurred!']))
         get 'show', params: { id: collection.id }
 
         expect(controller.instance_variable_get('@umd_ip_manager_error')).to_not be(nil)
@@ -262,14 +262,14 @@ describe Admin::CollectionsController, type: :controller do
       end
 
       context "when UMD IP Manager group retrieval succeeds" do
-        let (:test_group1) { UmdIPManager::Group.new(key: 'test1', name: 'Test Group 1') }
-        let (:test_group2) { UmdIPManager::Group.new(key: 'test2', name: 'Test Group 2') }
+        let (:test_group1) { UmdIpManager::Group.new(key: 'test1', name: 'Test Group 1') }
+        let (:test_group2) { UmdIpManager::Group.new(key: 'test2', name: 'Test Group 2') }
 
         before(:each) do
           login_user collection.managers.first
 
-          allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(
-            UmdIPManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
+          allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(
+            UmdIpManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
           )
         end
 
@@ -293,7 +293,7 @@ describe Admin::CollectionsController, type: :controller do
         end
 
         it "a group in collection.default_read_groups that has been deleted from IP Manager should be ignored" do
-          deleted_group = UmdIPManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
+          deleted_group = UmdIpManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
 
           collection.default_read_groups = [test_group1.prefixed_key, deleted_group.prefixed_key]
           collection.save!
@@ -339,7 +339,7 @@ describe Admin::CollectionsController, type: :controller do
       # allow(mock_email).to receive(:deliver_later)
       # expect(NotificationsMailer).to receive(:new_collection).and_return(mock_email)
       # FIXME: This delivers two instead of one for some reason
-      expect {post 'create', params: { format:'json', admin_collection: {name: collection.name, description: collection.description, unit: collection.unit, managers: collection.managers} }}.to have_enqueued_job(ActionMailer::DeliveryJob).twice
+      expect {post 'create', params: { format:'json', admin_collection: {name: collection.name, description: collection.description, unit: collection.unit, managers: collection.managers} }}.to have_enqueued_job(ActionMailer::MailDeliveryJob).twice
       # post 'create', format:'json', admin_collection: {name: collection.name, description: collection.description, unit: collection.unit, managers: collection.managers}
     end
     it "should create a new collection" do
@@ -375,7 +375,7 @@ describe Admin::CollectionsController, type: :controller do
       # expect(mock_delay).to receive(:update_collection)
       @collection = FactoryBot.create(:collection)
       # put 'update', id: @collection.id, admin_collection: {name: "#{@collection.name}-new", description: @collection.description, unit: @collection.unit}
-      expect {put 'update', params: { id: @collection.id, admin_collection: {name: "#{@collection.name}-new", description: @collection.description, unit: @collection.unit} }}.to have_enqueued_job(ActionMailer::DeliveryJob).once
+      expect {put 'update', params: { id: @collection.id, admin_collection: {name: "#{@collection.name}-new", description: @collection.description, unit: @collection.unit} }}.to have_enqueued_job(ActionMailer::MailDeliveryJob).once
     end
 
     context "update REST API" do
@@ -446,7 +446,7 @@ describe Admin::CollectionsController, type: :controller do
       end
 
       it "UMD IP Manager Group" do
-        expect{ put 'update', params: { id: collection.id, submit_add_umd_ip_manager_group: "Add", add_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(1)
+        expect{ put 'update', params: { id: collection.id, submit_add_umd_ip_manager_group: "Add", add_umd_ip_manager_group: "#{UmdIpManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(1)
       end
     end
 
@@ -454,7 +454,7 @@ describe Admin::CollectionsController, type: :controller do
     context "remove existing special access" do
       before do
         collection.default_read_users = ["test1@example.com"]
-        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1", "#{UmdIPManager::GROUP_PREFIX}TestGroup"]
+        collection.default_read_groups = ["test_group", "external_group", "255.0.1.1", "#{UmdIpManager::GROUP_PREFIX}TestGroup"]
         collection.save!
       end
       it "user" do
@@ -474,7 +474,7 @@ describe Admin::CollectionsController, type: :controller do
       end
 
       it "UMD IP Manager Group" do
-        expect{ put 'update', params: { id: collection.id, remove_umd_ip_manager_group: "#{UmdIPManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
+        expect{ put 'update', params: { id: collection.id, remove_umd_ip_manager_group: "#{UmdIpManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
       end
     end
 
@@ -608,7 +608,7 @@ describe Admin::CollectionsController, type: :controller do
     it 'returns the poster' do
       get :poster, params: { id: collection.id }
       expect(response).to have_http_status(:ok)
-      expect(response.content_type).to eq "image/png"
+      expect(response.content_type).to eq "image/png; charset=utf-8"
       expect(response.body).not_to be_blank
     end
   end

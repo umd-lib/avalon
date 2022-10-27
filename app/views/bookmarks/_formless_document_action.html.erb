@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+Copyright 2011-2022, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -19,4 +19,4 @@ Unless required by applicable law or agreed to in writing, software distributed
             id: document_action_config.fetch(:id, "#{document_action_config.key}Link"),
             class: "btn btn-default",
             method: :post,
-            data: {}.merge(({ajax_modal: "trigger"} if document_action_config.modal != false) || {}) %>
+            data: {}.merge(({blacklight_modal: "trigger"} if document_action_config.modal != false) || {}) %>

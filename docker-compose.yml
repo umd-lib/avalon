@@ -14,7 +14,7 @@ networks:
 
 services:
   db: &db-avalon
-    image: postgres:10-alpine
+    image: postgres:14-alpine
     volumes:
       - database:/data
     environment:
@@ -43,12 +43,11 @@ services:
     volumes: []
 
   solr: &solr
-    image: solr:6.6.4-alpine
+    image: solr:8-slim
     volumes:
-      - ./solr/config:/opt/solr/avalon_conf
+      - ./solr/conf:/opt/solr/avalon_conf
       - solr:/opt/solr/server/solr/mycores
-    entrypoint:
-      - docker-entrypoint.sh
+    command:
       - solr-precreate
       - avalon
       - /opt/solr/avalon_conf
@@ -57,7 +56,7 @@ services:
   solr-test:
     <<: *solr
     volumes:
-      - ./solr/config:/opt/solr/avalon_conf
+      - ./solr/conf:/opt/solr/avalon_conf
 
   hls:
     image: avalonmediasystem/nginx
@@ -78,11 +77,11 @@ services:
     <<: *redis
 
   avalon: &avalon
-    image: avalonmediasystem/avalon:7.1-slim-dev-20200807
+    image: avalonmediasystem/avalon:7.4.0-dev
     build:
       context: .
       target: dev
-    command: bash -c "/docker_init.sh && bin/rails server -b 0.0.0.0"
+    command: bash -c "/docker_init.sh && bundle exec rails server -b 0.0.0.0"
     depends_on:
       - db
       - fedora
@@ -97,9 +96,11 @@ services:
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
       - DATABASE_URL=postgres://postgres:password@db/avalon
       - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
+      - DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL=true
       - FEDORA_NAMESPACE=avalon
       - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fedora/rest
       - RAILS_ENV=development
+      - RAILS_ADDITIONAL_HOSTS=avalon
       - SETTINGS__REDIS__HOST=redis
       - SETTINGS__REDIS__PORT=6379
       - SECRET_KEY_BASE=abcd
@@ -139,6 +140,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@db-test/avalon
       - DIGITAL_COLLECTIONS_URL=https://digital-test.lib.umd.edu/
+      - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
       - SETTINGS__REDIS__HOST=redis-test
       - SETTINGS__REDIS__PORT=6379
       - FEDORA_URL=http://fedora-test:8080/fedora/rest

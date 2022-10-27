@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -62,22 +62,22 @@ describe MediaObjectsController, type: :controller do
       context 'with unauthenticated user' do
         # New is isolated here due to issues caused by the controller instance not being regenerated
         it "should redirect to sign in" do
-          expect(get :new).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
+          expect(get :new).to render_template('errors/restricted_pid')
         end
         # Item page is isolated since it does not require user authentication before action
         it "item page should redirect to restricted content page" do
           expect(get :show, params: { id: media_object.id }).to render_template('errors/restricted_pid')
         end
         it "all routes should redirect to sign in" do
-          expect(get :edit, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(get :confirm_remove, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(put :update, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(put :update_status, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(get :tree, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(get :deliver_content, params: { id: media_object.id, file: 'descMetadata' }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(delete :destroy, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(get :add_to_playlist_form, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
-          expect(post :add_to_playlist, params: { id: media_object.id }).to redirect_to(/#{Regexp.quote(new_user_session_path)}\?url=.*/)
+          expect(get :edit, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(get :confirm_remove, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(put :update, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(put :update_status, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(get :tree, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(get :deliver_content, params: { id: media_object.id, file: 'descMetadata' }).to render_template('errors/restricted_pid')
+          expect(delete :destroy, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(get :add_to_playlist_form, params: { id: media_object.id }).to render_template('errors/restricted_pid')
+          expect(post :add_to_playlist, params: { id: media_object.id }).to render_template('errors/restricted_pid')
         end
         it "json routes should return 401" do
           expect(post :create, format: 'json').to have_http_status(401)
@@ -483,7 +483,7 @@ describe MediaObjectsController, type: :controller do
           put 'json_update', params: { format: 'json', id: media_object.id, files: [master_file], collection_id: media_object.collection_id }
           media_object.reload
           expect(media_object.master_files.to_a.size).to eq 1
-          expect(ExtractStillJob).to have_been_enqueued.with(media_object.master_files.first.id,{type:'both',offset:2000})
+          expect(ExtractStillJob).to have_been_enqueued.with(media_object.master_files.first.id, { type: 'both', offset: 2000, headers: nil })
         end
         it "should update the waveform for its masterfile" do
           media_object = FactoryBot.create(:media_object)
@@ -651,7 +651,7 @@ describe MediaObjectsController, type: :controller do
       it "should provide an error message if UMD IP Manager group retrieval fails" do
         login_user media_object.collection.managers.first
 
-        allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(UmdIPManager::GroupsResult.new(errors: ['An error occurred!']))
+        allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(UmdIpManager::GroupsResult.new(errors: ['An error occurred!']))
         get 'edit', params: { id: media_object.id, step: 'access-control' }
 
         expect(controller.instance_variable_get('@umd_ip_manager_error')).to_not be(nil)
@@ -660,14 +660,14 @@ describe MediaObjectsController, type: :controller do
       end
 
       context "when UMD IP Manager group retrieval succeeds" do
-        let (:test_group1) { UmdIPManager::Group.new(key: 'test1', name: 'Test Group 1') }
-        let (:test_group2) { UmdIPManager::Group.new(key: 'test2', name: 'Test Group 2') }
+        let (:test_group1) { UmdIpManager::Group.new(key: 'test1', name: 'Test Group 1') }
+        let (:test_group2) { UmdIpManager::Group.new(key: 'test2', name: 'Test Group 2') }
 
         before(:each) do
           login_user media_object.collection.managers.first
 
-          allow_any_instance_of(UmdIPManager).to receive(:groups).and_return(
-            UmdIPManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
+          allow_any_instance_of(UmdIpManager).to receive(:groups).and_return(
+            UmdIpManager::GroupsResult.new(groups: [ test_group1, test_group2 ])
           )
         end
 
@@ -691,7 +691,7 @@ describe MediaObjectsController, type: :controller do
         end
 
         it "a group in media_object.read_groups that has been deleted from IP Manager should be ignored" do
-          deleted_group = UmdIPManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
+          deleted_group = UmdIpManager::Group.new(key: 'deleted_group', name: 'Deleted Group')
 
           media_object.read_groups = [test_group1.prefixed_key, deleted_group.prefixed_key]
           media_object.save!
@@ -819,7 +819,7 @@ describe MediaObjectsController, type: :controller do
 
     end
     context "Test lease access control" do
-      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private') }
+      let!(:media_object) { FactoryBot.create(:published_media_object, :with_master_file, visibility: 'private') }
       let!(:user) { FactoryBot.create(:user) }
       before :each do
         login_user user.user_key
@@ -1200,11 +1200,6 @@ describe MediaObjectsController, type: :controller do
         expect(media_object.permalink).to be_present
       end
 
-      it "should fail when id doesn't exist" do
-        get 'update_status', params: { id: 'this-id-is-fake', status: 'publish' }
-        expect(response.code).to eq '404'
-      end
-
       it "should publish multiple items" do
         media_objects = []
         3.times { media_objects << FactoryBot.create(:media_object, collection: collection) }
@@ -1214,6 +1209,25 @@ describe MediaObjectsController, type: :controller do
           mo.reload
           expect(mo).to be_published
           expect(mo.permalink).to be_present
+        end
+      end
+
+      context "should fail when" do
+        it "id doesn't exist" do
+          get 'update_status', params: { id: 'this-id-is-fake', status: 'publish' }
+          expect(response.code).to eq '404'
+        end
+
+        it "item is invalid" do
+          media_object = FactoryBot.create(:media_object, collection: collection)
+          media_object.title = nil
+          media_object.date_issued = nil
+          media_object.workflow.last_completed_step = 'file-upload'
+          media_object.save!(validate: false)
+          get 'update_status', params: { id: media_object.id, status: 'publish' }
+          expect(flash[:notice]).to eq("Unable to publish item: Validation failed: Title field is required., Date issued field is required.")
+          media_object.reload
+          expect(media_object).not_to be_published
         end
       end
     end
@@ -1318,7 +1332,7 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
-      let!(:umd_ip_manager_group) { "#{UmdIPManager::GROUP_PREFIX}TestGroup" }
+      let!(:umd_ip_manager_group) { "#{UmdIpManager::GROUP_PREFIX}TestGroup" }
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
@@ -1514,7 +1528,7 @@ describe MediaObjectsController, type: :controller do
     it 'returns descMetadata' do
       get :deliver_content, params: { id: media_object.id, file: 'descMetadata' }
       expect(response.status).to eq 200
-      expect(response.content_type).to eq 'text/xml'
+      expect(response.content_type).to eq 'text/xml; charset=utf-8'
       expect(response.body).to eq media_object.descMetadata.content
     end
   end
@@ -1529,7 +1543,7 @@ describe MediaObjectsController, type: :controller do
     it 'returns a json preview of the media object' do
       get :move_preview, params: { id: media_object.id, format: 'json' }
       expect(response.status).to eq 200
-      expect(response.content_type).to eq 'application/json'
+      expect(response.content_type).to eq 'application/json; charset=utf-8'
       json_preview = JSON.parse(response.body)
       expect(json_preview.keys).to eq ['id', 'title', 'collection', 'main_contributors', 'publication_date', 'published_by', 'published']
     end
@@ -1544,7 +1558,7 @@ describe MediaObjectsController, type: :controller do
       it 'returns a json preview of the media object' do
         get :move_preview, params: { id: media_object.id, format: 'json' }
         expect(response.status).to eq 200
-        expect(response.content_type).to eq 'application/json'
+        expect(response.content_type).to eq 'application/json; charset=utf-8'
         json_preview = JSON.parse(response.body)
         expect(json_preview.keys).to eq ['id', 'title', 'collection', 'main_contributors', 'publication_date', 'published_by', 'published']
       end

@@ -45,6 +45,7 @@ Rails.application.routes.draw do
       post 'intercom_push'
       get 'merge'
       post 'merge'
+      get 'count', constraints: { format: 'json' }
     end
   end
 
@@ -144,6 +145,7 @@ Rails.application.routes.draw do
       get :embed
       post 'attach_structure'
       post 'attach_captions'
+      delete 'captions', action: :delete_captions, as: 'delete_captions'
       get :captions
       get :waveform
       match ':quality.m3u8', to: 'master_files#hls_manifest', via: [:get], as: :hls_manifest
@@ -151,6 +153,7 @@ Rails.application.routes.draw do
       post 'structure', to: 'master_files#set_structure', constraints: { format: 'json' }
       delete 'structure', to: 'master_files#delete_structure', constraints: { format: 'json' }
       post 'move'
+      get 'transcript/:t_id', to: 'master_files#transcript'
     end
 
     # Supplemental Files
@@ -228,4 +231,12 @@ Rails.application.routes.draw do
   get '/jobs(.:format)', to: redirect('/')
 
   resources :access_tokens
+
+  scope :persona, as: 'persona' do
+    resources :users, only: [:paged_index], controller: 'samvera/persona/users' do
+      collection do
+        post 'paged_index'
+      end
+    end
+  end
 end
