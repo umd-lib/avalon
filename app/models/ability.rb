@@ -142,8 +142,7 @@ class Ability
         end
 
         can :update_access_control, MediaObject do |media_object|
-          @user.in?(media_object.collection.managers) ||
-            (is_editor_of?(media_object.collection) && !media_object.published?)
+          @user.in?(media_object.collection.managers) || is_editor_of?(media_object.collection)
         end
 
         can :unpublish, MediaObject do |media_object|
