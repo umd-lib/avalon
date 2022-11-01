@@ -43,13 +43,16 @@ module MasterFileBuilder
       master_file.set_workflow(spec.workflow)
       
       # Start LIBAVALON-128
-      collection_path = media_object.collection.dropbox_absolute_path
-      original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
-      desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), original_filename)
-      unless master_file.move_file_to_path(desination_path)
-        response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
-        master_file.destroy
-        next
+      # if upload file, move from /tmp dir to collection dir in masterfiles volume.
+      if spec.content.is_a? ActionDispatch::Http::UploadedFile
+        collection_path = media_object.collection.dropbox_absolute_path
+        original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
+        desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), original_filename)
+        unless master_file.move_file_to_path(desination_path)
+          response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
+          master_file.destroy
+          next
+        end
       end
       # End LIBAVALON-128
 
