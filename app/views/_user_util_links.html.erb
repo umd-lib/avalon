@@ -49,7 +49,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         </button>
         <ul class="dropdown-menu manage-dropdown-menu bg-primary" aria-labelledby="manageDropdown">
           <% if can? :manage, AccessToken %>
-          <li class=<%= active_for_controller('access_tokens') %>>
+          <li class="nav-item <%= active_for_controller('access_tokens') %>">
             <%= link_to 'Manage Access Tokens', main_app.access_tokens_path, class: 'nav-link' %></li>
           <% end %>
           <% if can? :read, Admin::Collection %>
