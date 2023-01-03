@@ -139,8 +139,8 @@ Unless required by applicable law or agreed to in writing, software distributed
             <%= text_field_tag "add_#{access_object}_begin", nil, placeholder: 'Begin Date (yyyy-mm-dd)', class: 'form-control date-input access_date', autocomplete: 'off' %>
             <br>
             <%= text_field_tag "add_#{access_object}_end", nil, placeholder: 'End Date (yyyy-mm-dd)', class: 'form-control date-input access_date', autocomplete: 'off' %>
-            <%= button_tag "Add", name: "submit_add_#{access_object}", class:'btn btn-default', value: 'Add'  %>
-            <%= button_tag "Remove", name: "submit_remove_#{access_object}", class:'btn btn-default remove_access', value: 'Remove' %>
+            <%= button_tag "Add", name: "submit_add_#{access_object}", class:'btn btn-outline', value: 'Add'  %>
+            <%= button_tag "Remove", name: "submit_remove_#{access_object}", class:'btn btn-outline remove_access', value: 'Remove' %>
           <% else %>
               <%= render partial: "modules/tooltip", locals: { form: form, field: access_object, tooltip: t("access_control.#{access_object}"), options: {display_label: (t("access_control.#{access_object}label")+'*').html_safe} } %><br />
               <div class="alert alert-danger"><%= @umd_ip_manager_error %></div>
