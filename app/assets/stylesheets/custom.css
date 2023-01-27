@@ -307,3 +307,36 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 .restricted-video-message a {
   color: #f0ad4e
 }
+
+#browse-everything {
+  margin-top: 4em;
+}
+
+#browse-everything > .modal-content {
+  padding: 15px;
+}
+
+/* Selected Items buttons styling */
+.bookmarksTools > a.btn{
+  background-color: white;
+  color: #0a2326;
+  border: 1px solid #999;
+  height: -webkit-fit-content;
+  height: -moz-fit-content;
+  height: fit-content;
+}
+
+.bookmarksTools > a.btn:hover {
+  background-color: #f2f2f2;
+  border-color: #999;
+}
+
+.bookmarksTools > a.btn:focus {
+  box-shadow: none;
+}
+
+.bookmarksTools > a.btn:active {
+  background-color: #f2f2f2 !important;
+  border-color: #999 !important;
+  box-shadow: none;
+}
