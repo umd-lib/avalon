@@ -307,3 +307,12 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 .restricted-video-message a {
   color: #f0ad4e
 }
+
+#browse-everything {
+  margin-top: 4em;
+}
+
+#browse-everything > .modal-content {
+  padding: 15px;
+}
+
