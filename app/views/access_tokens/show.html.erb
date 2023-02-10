@@ -57,13 +57,13 @@
 
   <%= form_with model: @access_token, local: true do |form| %>
     <% unless @access_token.expired? %>
-      <%= link_to edit_access_token_url(@access_token), class: "btn btn-default" do %>
+      <%= link_to edit_access_token_url(@access_token), class: "btn btn-outline" do %>
         <i class="fa fa-edit"></i> Edit
       <% end %>
 
       <% if @access_token.revoked? %>
         <%= form.hidden_field :revoked, value: false %>
-        <%= form.submit 'Un-revoke', class: 'btn btn-default' %>
+        <%= form.submit 'Un-revoke', class: 'btn btn-outline' %>
       <% else %>
         <%= form.hidden_field :revoked, value: true %>
         <%= form.submit 'Revoke', class: 'btn btn-danger' %>

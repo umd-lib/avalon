@@ -6,6 +6,6 @@
   <input type='hidden' name='CallNumber' value='<%= @media_object.other_identifier.pluck(:id).join(', ') %>' />
   <input type='hidden' name='ReferenceNumber' value='<%= @media_object.permalink %>' />
 
-  <button type="submit" class="btn btn-default" title="Request from Special Collections">Request from Special Collections
+  <button type="submit" class="btn btn-outline" title="Request from Special Collections">Request from Special Collections
   </button>
 <% end %>

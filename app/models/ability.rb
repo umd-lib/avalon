@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -18,7 +18,7 @@ class Ability
   include Hydra::MultiplePolicyAwareAbility
 
   self.ability_logic += [ :playlist_permissions, :playlist_item_permissions, :marker_permissions, :encode_dashboard_permissions ]
-  self.ability_logic += [ :timeline_permissions ] if Settings['timeliner'].present?
+  self.ability_logic += [ :timeline_permissions ]
 
   def encode_dashboard_permissions
     can :read, :encode_dashboard if is_administrator?
@@ -40,7 +40,7 @@ class Ability
     if @options.present? and @options.has_key? :remote_ip
       remote_ip = @options[:remote_ip]
       @user_groups |= [remote_ip]
-      umd_ip_manager_groups = UmdIPManager.new.groups(ip_address: remote_ip)
+      umd_ip_manager_groups = UmdIpManager.new.groups(ip_address: remote_ip)
       @user_groups |= umd_ip_manager_groups.map { |g| g.prefixed_key }
     end
 
@@ -142,8 +142,7 @@ class Ability
         end
 
         can :update_access_control, MediaObject do |media_object|
-          @user.in?(media_object.collection.managers) ||
-            (is_editor_of?(media_object.collection) && !media_object.published?)
+          @user.in?(media_object.collection.managers) || is_editor_of?(media_object.collection)
         end
 
         can :unpublish, MediaObject do |media_object|
@@ -186,7 +185,7 @@ class Ability
           is_member_of?(media_object.collection)
         end
 
-        can [:edit, :update, :destroy], MasterFile do |master_file|
+        can [:edit, :destroy, :update], MasterFile do |master_file|
           can? :edit, master_file.media_object
         end
 
@@ -308,7 +307,8 @@ class Ability
 
     if @options.has_key?(:access_token)
       token = @options[:access_token]
-      allowed = allowed || AccessToken.allow_streaming_of?(token, media_object.id)
+      # access token should only override other permissions for published objects
+      allowed = allowed || (media_object.published? && AccessToken.allow_streaming_of?(token, media_object.id))
     end
 
     allowed

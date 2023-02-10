@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+Copyright 2011-2022, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -17,5 +17,6 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% if user_signed_in? %>
 <%= user_key %> | <%= link_to t('auth.sign_out'), main_app.destroy_user_session_path %>
 <% else %>
-<%= link_to t('auth.sign_in'), main_app.new_user_session_path, :class => "btn btn-info" %>
+
+<%= link_to t('auth.sign_in'), user_saml_omniauth_authorize_path, :method => "post", :class => "btn btn-info" %>
 <% end %>

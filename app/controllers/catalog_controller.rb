@@ -1,11 +1,11 @@
-# Copyright 2011-2020, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -26,6 +26,15 @@ class CatalogController < ApplicationController
   before_action :load_home_page_collections, only: :index, if: proc { helpers.current_page? root_path }
 
   configure_blacklight do |config|
+
+    # Default component configuration
+    config.add_results_document_tool(:bookmark, partial: 'bookmark_control', if: :render_bookmarks_control?)
+    config.add_results_collection_tool(:sort_widget)
+    config.add_results_collection_tool(:per_page_widget)
+    config.add_results_collection_tool(:view_type_group)
+    config.add_show_tools_partial(:bookmark, partial: 'bookmark_control', if: :render_bookmarks_control?)
+    config.add_nav_action(:bookmark, partial: 'blacklight/nav/bookmark', if: :render_bookmarks_control?)
+
     ## Class for sending and receiving requests from a search index
     # config.repository_class = Blacklight::Solr::Repository
     #
@@ -79,11 +88,13 @@ class CatalogController < ApplicationController
     config.add_facet_field 'unit_ssim', label: 'Unit', limit: 5
     config.add_facet_field 'language_sim', label: 'Language', limit: 5
     # Hide these facets if not a Collection Manager
-    config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
-    config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
-    config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow", helper_method: :vgroup_display
-    config.add_facet_field 'date_digitized_sim', label: 'Date Digitized', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"#, partial: 'blacklight/hierarchy/facet_hierarchy'
-    config.add_facet_field 'date_ingested_sim', label: 'Date Ingested', limit: 5, if: Proc.new {|context, config, opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}, group: "workflow"
+    current_user_is_manager = Proc.new {|context, _config, _opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}
+    config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: current_user_is_manager, group: "workflow"
+    config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: current_user_is_manager, group: "workflow"
+    config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
+    config.add_facet_field 'date_digitized_sim', label: 'Date Digitized', limit: 5, if: current_user_is_manager, group: "workflow"
+    config.add_facet_field 'date_ingested_sim', label: 'Date Ingested', limit: 5, if: current_user_is_manager, group: "workflow"
+    config.add_facet_field 'read_access_group_ssim', label: 'Access Control', limit: 5, if: current_user_is_manager, group: "workflow"
 
     # Have BL send all facet field names to Solr, which has been the default
     # previously. Simply remove these lines if you'd rather use Solr request
@@ -95,9 +106,12 @@ class CatalogController < ApplicationController
 
     # solr fields to be displayed in the index (search results) view
     #   The ordering of the field names is the order of the display
+    config.add_index_field 'title_tesi', label: 'Title', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
     config.add_index_field 'date_ssi', label: 'Date', helper_method: :combined_display_date
     config.add_index_field 'creator_ssim', label: 'Main contributors', helper_method: :contributor_index_display
     config.add_index_field 'summary_ssi', label: 'Summary', helper_method: :description_index_display
+    config.add_index_field 'duration_ssi', label: 'Duration', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
+    config.add_index_field 'section_id_ssim', label: 'Sections', if: Proc.new {|context, _field_config, _document| context.request.format == :json }, helper_method: :section_id_json_index_display
 
     # solr fields to be displayed in the show (single result) view
     #   The ordering of the field names is the order of the display
@@ -191,7 +205,7 @@ class CatalogController < ApplicationController
       featured_collections = Settings.home_page&.featured_collections
       if featured_collections.present?
         builder = ::CollectionSearchBuilder.new(self).rows(100_000)
-        response = repository.search(builder)
+        response = blacklight_config.repository.search(builder)
         collection = response.documents.select { |doc| featured_collections.include? doc.id }.sample
         @featured_collection = ::Admin::CollectionPresenter.new(collection) if collection
       end

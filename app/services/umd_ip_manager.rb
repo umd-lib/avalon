@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class UmdIPManager
+class UmdIpManager
   # Prefix for UMD IP Manager groups, so that they can be identified
   # in the collection/media_object "read_groups"
   GROUP_PREFIX = 'umd.ip.manager:'
@@ -28,7 +28,7 @@ class UmdIPManager
       end
     end
 
-    # Returns an array of UmdIPManager::Group, or raises an exception
+    # Returns an array of UmdIpManager::Group, or raises an exception
     def all_groups
       response = @connection.get('/groups')
       raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
@@ -52,7 +52,7 @@ class UmdIPManager
   class APIError < StandardError; end
 
   class Group
-    PREFIX = UmdIPManager::GROUP_PREFIX
+    PREFIX = UmdIpManager::GROUP_PREFIX
 
     attr_reader :prefixed_key, :name
 

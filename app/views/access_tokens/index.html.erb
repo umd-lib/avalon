@@ -38,7 +38,7 @@
         <td><%= token.expiration %><br>(<%= approximate_time_distance(token) %>)</td>
         <td><%= token.user.username %></td>
         <td>
-          <%= link_to 'View', token, class: 'btn btn-default' %>
+          <%= link_to 'View', token, class: 'btn btn-outline' %>
         </td>
       </tr>
     <% end %>
