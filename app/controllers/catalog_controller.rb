@@ -197,6 +197,10 @@ class CatalogController < ApplicationController
     config.spell_max = 5
 
     config.fetch_many_document_params = { fl: "*" }
+
+    # Enable raw json endpoint used by searcher (See https://umd-dit.atlassian.net/browse/LIBWEB-5803)
+    # The raw endpoint is accessible at /catalog/:id/raw.json
+    config.raw_endpoint.enabled = true
   end
 
   private
