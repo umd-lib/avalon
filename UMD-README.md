@@ -108,6 +108,11 @@ MacBooks. These steps can be ignored when running on other platforms.
       docker build -t avalonmediasystem/fedora:4.7.5 .
       ```
 
+    c) Close the terminal (the directory containing the
+       "avalonmediasystem/avalon-docker" checkout can also be deleted, if
+       desired). The remaining steps should be done in the original
+       terminal and directory with the "umd-lib/avalon" checkout.
+
 7) Start the server
 
     ```bash
