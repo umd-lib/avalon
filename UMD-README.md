@@ -83,6 +83,22 @@ precedence over the configuration in the [settings.yml](./config/settings.yml).
 - `SAML_SP_PRIVATE_KEY`: Overrides the `private_key` configuration.
 - `SAML_SP_CERTIFICATE`: Overrides the `certificate` configuration.
 
+## Matomo Analytics
+
+The UMD instance of Avalon uses Matomo Analytics (<https://matomo.org/>) for
+tracking user activity.
+
+Matomo tracking is enabled when all of the following environment variables are
+configured with the appropriate values, which can be obtained from the
+"Digital Collection - Audiovisual (Avalon)" website configuration on the UMD
+Matomo dashboard:
+
+* MATOMO_ANALYTICS_URL - URL of the UMD Matomo website
+* MATOMO_ANALYTICS_SITE_ID - The Matomo-provided site id
+* MATOMO_ANALYTICS_CDN_SRC = CDN URL to the UMD Matomo JavaScript script
+
+If any of the values are not provided, Matomo tracking will be disabled.
+
 ## Docker Build for K8s Deployment
 
 The k8s-avalon stack uses the avalon image built from this repository.
