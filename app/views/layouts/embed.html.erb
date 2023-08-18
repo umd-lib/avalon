@@ -31,6 +31,9 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= yield :page_styles %>
     <%= yield :additional_head_content %>
     <%= render "modules/google_analytics" %>
+    <!-- UMD Customization -->
+    <%= render "modules/matomo_analytics" %>
+    <!-- End UMD Customization -->
   </head>
 
   <body>
