@@ -87,6 +87,7 @@ describe 'Sign in page' do
     expect(page).to have_button('Connect')
   end
   it 'validates presence of items on register page' do
+    pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
     visit '/users/sign_up'
     expect(page).to have_content('Username')
     expect(page).to have_content('Email')
@@ -94,6 +95,7 @@ describe 'Sign in page' do
     expect(page).to have_content('Password confirmation')
   end
   it 'is able to create new account' do
+    pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
     hide_const('Avalon::GROUP_LDAP')
     visit '/users/sign_up'
     fill_in 'Username', with: 'user1@example.com'
