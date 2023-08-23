@@ -23,7 +23,7 @@ The following instructions include steps marked **(M-series)** which are
 required when setting up and running Avalon on M-series (Apple Silicon)
 MacBooks. These steps can be ignored when running on other platforms.
 
-1) Checkout the application and swtich to the directory:
+1) Checkout the application and switch to the directory:
 
     ```zsh
     git clone git@github.com:umd-lib/avalon.git
@@ -93,11 +93,12 @@ MacBooks. These steps can be ignored when running on other platforms.
 8) **(M-series)** Build the "avalonmediasystem/fedora:4.7.5" for the "arm64"
    architecture:
 
-    a) In a separate terminal and directory, clone the
-      "avalonmediasystem/avalon-docker" GitHub repository and switch into the
-      directory:
+    a) Switch to the directory containing the "avalon" clone as a subdirectory,
+       clone the  "avalonmediasystem/avalon-docker" GitHub repository and switch into the
+       directory:
 
       ```zsh
+      cd ..
       git clone https://github.com/avalonmediasystem/avalon-docker.git
       cd avalon-docker/fedora
       ```
@@ -108,12 +109,14 @@ MacBooks. These steps can be ignored when running on other platforms.
       docker build -t avalonmediasystem/fedora:4.7.5 .
       ```
 
-    c) Close the terminal (the directory containing the
-       "avalonmediasystem/avalon-docker" checkout can also be deleted, if
-       desired). The remaining steps should be done in the original
-       terminal and directory with the "umd-lib/avalon" checkout.
+    c) Switch back to the "avalon" directory (with the remaining steps done
+       in the directory with the "umd-lib/avalon" checkout):
 
-7) Start the server
+      ```zsh
+      cd ../../avalon
+      ```
+
+9) Start the server
 
     ```bash
     docker-compose up avalon worker
@@ -121,9 +124,45 @@ MacBooks. These steps can be ignored when running on other platforms.
 
 Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
-**Known issue**:  Both, umd-handle web app and avalon web app use SAML certificates that require them to run on port 3000. When testing Avalon integration with umd-handle, run the umd-handle server on a different port (e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST API, the umd-handle integration can be tested without requiring a working SAML setup for umd-handle.
+**Note:** Avalon may take several minutes to become available.
+
+**Known issue**:  Both, umd-handle web app and avalon web app use SAML
+certificates that require them to run on port 3000. When testing Avalon
+integration with umd-handle, run the umd-handle server on a different port
+(e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST
+API, the umd-handle integration can be tested without requiring a working SAML
+setup for umd-handle.
 
 See [Readme](./README.md#Development) for more information.
+
+### Running the tests
+
+To run the Avalon tests:
+
+1) In the "avalon" project directory, start the "test" Docker Compose stack:
+
+    ```zsh
+    docker-compose up test
+    ```
+
+2) In a second terminal, run a Bash shell in the "avalon-test-1" container:
+
+    ```zsh
+    docker exec -it avalon-test-1 /bin/bash
+    ```
+
+3) Run the tests:
+
+    ```zsh
+    bundle exec rspec
+    ```
+
+   **Note:** Running all the tests will likely take about 5 hours. To run
+   individual tests, supply the path of the RSpec file to test:
+
+    ```zsh
+    bundle exec rspec spec/controllers/master_files_controller_spec.rb
+    ```
 
 ## SAML Environment Specific Configuration
 
@@ -147,7 +186,7 @@ Matomo dashboard:
 
 * MATOMO_ANALYTICS_URL - URL of the UMD Matomo website
 * MATOMO_ANALYTICS_SITE_ID - The Matomo-provided site id
-* MATOMO_ANALYTICS_CDN_SRC = CDN URL to the UMD Matomo JavaScript script
+* MATOMO_ANALYTICS_CDN_SRC - CDN URL to the UMD Matomo JavaScript script
 
 If any of the values are not provided, Matomo tracking will be disabled.
 

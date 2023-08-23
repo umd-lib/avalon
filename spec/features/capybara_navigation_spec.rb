@@ -57,7 +57,7 @@ describe 'checks navigation after logging in' do
       login_as user, scope: :user
       visit '/'
       click_link('Manage Access Tokens')
-      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_current_path('/access_tokens')
       expect(page).to have_content('Access')
       expect(page).to have_content('Create a new token')
     end
@@ -66,7 +66,7 @@ describe 'checks navigation after logging in' do
       login_as user, scope: :user
       visit '/'
       click_link('Manage Access Tokens')
-      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_current_path('/access_tokens')
       expect(page).to have_content('Access')
       expect(page).to have_content('Create a new token')
     end
@@ -76,7 +76,7 @@ describe 'checks navigation after logging in' do
       login_as user, scope: :user
       visit '/'
       click_link('Manage Access Tokens')
-      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_current_path('/access_tokens')
       expect(page).to have_content('Access')
       expect(page).to have_content('Create a new token')
     end
@@ -86,7 +86,7 @@ describe 'checks navigation after logging in' do
       login_as user, scope: :user
       visit '/'
       click_link('Manage Access Tokens')
-      expect(page.current_url).to eq('http://www.example.com/access_tokens')
+      expect(page).to have_current_path('/access_tokens')
       expect(page).to have_content('Access')
       expect(page).to have_content('Create a new token')
     end

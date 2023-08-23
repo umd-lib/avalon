@@ -20,7 +20,11 @@ class MasterFilesController < ApplicationController
   # include Avalon::Controller::ControllerBehavior
 
   before_action :authenticate_user!, :only => [:create]
-  before_action :set_masterfile, except: [:create, :oembed]
+  before_action :set_masterfile, except: [:create, :oembed,
+    # UMD Customization
+    :download
+    # End UMD Customization
+  ]
   before_action :ensure_readable_filedata, :only => [:create]
   skip_before_action :verify_authenticity_token, only: [:set_structure, :delete_structure]
 
@@ -68,6 +72,7 @@ class MasterFilesController < ApplicationController
     redirect_to id_section_media_object_path(@master_file.media_object_id, @master_file.id, params.except(:id, :action, :controller))
   end
 
+  # UMD Customization
   def download
     begin
       master_file = MasterFile.find(params[:id])
@@ -95,6 +100,7 @@ class MasterFilesController < ApplicationController
       return
     end
   end
+  # End UMD Customization
 
   def embed
     if can? :read, @master_file
@@ -317,7 +323,9 @@ class MasterFilesController < ApplicationController
       opts = { :type => params[:type], :size => params[:size], :offset => params[:offset].to_f*1000, :preview => true }
       @master_file.extract_still(opts)
     else
+      # UMD Customization
       authorize! :minimal_read, @master_file, message: "You do not have sufficient privileges to view this file"
+      # End UMD Customization
       whitelist = ["thumbnail", "poster"]
       if whitelist.include? params[:type]
         ds = @master_file.send(params[:type].to_sym)
