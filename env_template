@@ -18,3 +18,8 @@ UMD_HANDLE_JWT_TOKEN=
 
 # IP Manager Configuration
 IP_MANAGER_SERVER_URL=
+
+# Matomo Analytics configuration
+MATOMO_ANALYTICS_URL=https://umd.matomo.cloud/
+MATOMO_ANALYTICS_SITE_ID=
+MATOMO_ANALYTICS_CDN_SRC= //cdn.matomo.cloud/umd.matomo.cloud/matomo.js

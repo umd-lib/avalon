@@ -9,37 +9,43 @@ UMD-generated documentation for Avalon should be placed in the
 
 ## Development Setup
 
-Prerequisite:
+### Prerequisites
 
-Edit the "/etc/hosts" file and add
+1) Edit the "/etc/hosts" file and add
 
 ```text
 127.0.0.1 av-local
 ```
 
-1) Checkout the application and swtich to the directory:
+### Setup Instructions
 
-    ```bash
+The following instructions include steps marked **(M-series)** which are
+required when setting up and running Avalon on M-series (Apple Silicon)
+MacBooks. These steps can be ignored when running on other platforms.
+
+1) Checkout the application and switch to the directory:
+
+    ```zsh
     git clone git@github.com:umd-lib/avalon.git
     cd avalon
     ```
 
 2) Copy the "env_template" file to ".env":
 
-    ``` bash
+    ``` zsh
     cp env_template .env
     ```
 
 3) Edit the '.env" file:
 
-    ```bash
+    ```zsh
     vi .env
     ```
 
 4) (Required) Determine the values for the "SAML_SP_PRIVATE_KEY" and
     "SAML_SP_CERTIFICATE" variables:
 
-    ```bash
+    ```zsh
     kubectl -n test get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_PRIVATE_KEY}' | base64 --decode
     kubectl -n test get secret avalon-common-env-secret -o jsonpath='{.data.SAML_SP_CERTIFICATE}' | base64 --decode
     ```
@@ -60,18 +66,103 @@ Edit the "/etc/hosts" file and add
 * IP_MANAGER_SERVER_URL - URL of the IP Manager server (i.e.,
     <https://ipmanager-test.lib.umd.edu>)
 
-6) Start the server
+6) **(M-series)** Edit the "config/environments/development.rb" file:
+
+    ```zsh
+    vi config/environments/development.rb
+    ```
+
+    and commenting out the line:
+
+    ```text
+    config.file_watcher = ActiveSupport::EventedFileUpdateChecker
+    ```
+
+    by changing it to:
+
+    ```text
+    # config.file_watcher = ActiveSupport::EventedFileUpdateChecker
+    ```
+
+7) Retrieve the Docker images necessary to run Avalon:
+
+    ```zsh
+    docker-compose pull
+    ```
+
+8) **(M-series)** Build the "avalonmediasystem/fedora:4.7.5" for the "arm64"
+   architecture:
+
+    a) Switch to the directory containing the "avalon" clone as a subdirectory,
+       clone the  "avalonmediasystem/avalon-docker" GitHub repository and switch into the
+       directory:
+
+      ```zsh
+      cd ..
+      git clone https://github.com/avalonmediasystem/avalon-docker.git
+      cd avalon-docker/fedora
+      ```
+
+    b) Build the "avalonmediasystem/fedora:4.7.5" Docker image:
+
+      ```zsh
+      docker build -t avalonmediasystem/fedora:4.7.5 .
+      ```
+
+    c) Switch back to the "avalon" directory (with the remaining steps done
+       in the directory with the "umd-lib/avalon" checkout):
+
+      ```zsh
+      cd ../../avalon
+      ```
+
+9) Start the server
 
     ```bash
-    docker-compose pull
     docker-compose up avalon worker
     ```
 
 Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
-**Known issue**:  Both, umd-handle web app and avalon web app use SAML certificates that require them to run on port 3000. When testing Avalon integration with umd-handle, run the umd-handle server on a different port (e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST API, the umd-handle integration can be tested without requiring a working SAML setup for umd-handle.
+**Note:** Avalon may take several minutes to become available.
+
+**Known issue**:  Both, umd-handle web app and avalon web app use SAML
+certificates that require them to run on port 3000. When testing Avalon
+integration with umd-handle, run the umd-handle server on a different port
+(e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST
+API, the umd-handle integration can be tested without requiring a working SAML
+setup for umd-handle.
 
 See [Readme](./README.md#Development) for more information.
+
+### Running the tests
+
+To run the Avalon tests:
+
+1) In the "avalon" project directory, start the "test" Docker Compose stack:
+
+    ```zsh
+    docker-compose up test
+    ```
+
+2) In a second terminal, run a Bash shell in the "avalon-test-1" container:
+
+    ```zsh
+    docker exec -it avalon-test-1 /bin/bash
+    ```
+
+3) Run the tests:
+
+    ```zsh
+    bundle exec rspec
+    ```
+
+   **Note:** Running all the tests will likely take about 5 hours. To run
+   individual tests, supply the path of the RSpec file to test:
+
+    ```zsh
+    bundle exec rspec spec/controllers/master_files_controller_spec.rb
+    ```
 
 ## SAML Environment Specific Configuration
 
@@ -79,17 +170,37 @@ The following variables were added to facilate configuring environment
 specific SAML configuration. These environment varaibles will take
 precedence over the configuration in the [settings.yml](./config/settings.yml).
 
-- `SAML_ISSUER`: Overrides the `issuer` configuration.
-- `SAML_SP_PRIVATE_KEY`: Overrides the `private_key` configuration.
-- `SAML_SP_CERTIFICATE`: Overrides the `certificate` configuration.
+* `SAML_ISSUER`: Overrides the `issuer` configuration.
+* `SAML_SP_PRIVATE_KEY`: Overrides the `private_key` configuration.
+* `SAML_SP_CERTIFICATE`: Overrides the `certificate` configuration.
+
+## Matomo Analytics
+
+The UMD instance of Avalon uses Matomo Analytics (<https://matomo.org/>) for
+tracking user activity.
+
+Matomo tracking is enabled when all of the following environment variables are
+configured with the appropriate values, which can be obtained from the
+"Digital Collection - Audiovisual (Avalon)" website configuration on the UMD
+Matomo dashboard:
+
+* MATOMO_ANALYTICS_URL - URL of the UMD Matomo website
+* MATOMO_ANALYTICS_SITE_ID - The Matomo-provided site id
+* MATOMO_ANALYTICS_CDN_SRC - CDN URL to the UMD Matomo JavaScript script
+
+If any of the values are not provided, Matomo tracking will be disabled.
 
 ## Docker Build for K8s Deployment
 
 The k8s-avalon stack uses the avalon image built from this repository.
 
+**Note:** On M-series MacBooks, the Docker images should be built in the
+Kubernetes cluster to ensure that they have the correct architecture. See
+<https://github.com/umd-lib/k8s/blob/main/docs/DockerBuilds.md>.
+
 1. Build and tag the image
 
-    ```bash
+    ```zsh
     # Substitute IMAGE_TAG with appropriate value
     # Example IMAGE_TAG values for differnt scenarios:
     #    Dev Build: docker.lib.umd.edu/avalon:latest
@@ -101,7 +212,7 @@ The k8s-avalon stack uses the avalon image built from this repository.
 
 2. Push it to UMD Nexus
 
-    ```bash
+    ```zsh
     # Substitute IMAGE_TAG with appropriate value
     docker push IMAGE_TAG
     ```
@@ -130,13 +241,13 @@ are missing.
 To perform a "dry run", use a "dry_run" environment variable (lower-case,
 because lower-case is used in supplying arguments to other Avalon Rake tasks):
 
-```bash
+```zsh
 dry_run=true rails umd:move_dropbox_files_to_archive
 ```
 
 To perform the actual migration:
 
-```bash
+```zsh
 rails umd:move_dropbox_files_to_archive
 ```
 

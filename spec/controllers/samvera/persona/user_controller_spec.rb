@@ -86,6 +86,11 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
 
       let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
       it "returns results filtered by date" do
+        # UMD Note: This stock Avalon test fails because of timezone issues
+        # and is replaced in Avalon 7.6, so marking as "pending" so that
+        # it is skipped.
+        pending('UMD LIBAVALON-178')
+
         post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'May' } } )
         parsed_response = JSON.parse(response.body)
         expect(parsed_response['recordsFiltered']).to eq(2)
