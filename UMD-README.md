@@ -77,6 +77,21 @@ The host name will also need to be configured if umd-handle is not being run thr
 UMD_HANDLE_SERVER_URL=http://host.docker.internal:3001/api/v1/handles
 ```
 
+And config/application.rb in UMD-Handles should be updated to allow the host:
+
+```bash
+# HOST should be ignored (and config.hosts not set) when running the tests.
+    if ENV['HOST'].present? && !Rails.env.test?
+      config.hosts << /\A10\.\d+\.\d+\.\d+\z/
+      config.hosts << ENV['HOST']
+      config.hosts << ENV['K8S_INTERNAL_HOST'] if ENV['K8S_INTERNAL_HOST']
+      config.action_mailer.default_url_options = { host: ENV['HOST'] }
+    end
+
+    ### Add this line here ###
+    config.hosts << 'host.docker.internal'
+```
+
 See [Readme](./README.md#Development) for more information.
 
 ## SAML Environment Specific Configuration
