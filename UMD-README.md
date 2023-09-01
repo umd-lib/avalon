@@ -71,6 +71,12 @@ Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
 **Known issue**:  Both, umd-handle web app and avalon web app use SAML certificates that require them to run on port 3000. When testing Avalon integration with umd-handle, run the umd-handle server on a different port (e.g. 3001). As Avalon uses JWT authentication to talk to the umd-handle REST API, the umd-handle integration can be tested without requiring a working SAML setup for umd-handle.
 
+The host name will also need to be configured if umd-handle is not being run through docker, since both will be on different networks. So in the .env file the handle server url should be:
+
+```bash
+UMD_HANDLE_SERVER_URL=http://host.docker.internal:3001/api/v1/handles
+```
+
 See [Readme](./README.md#Development) for more information.
 
 ## SAML Environment Specific Configuration
