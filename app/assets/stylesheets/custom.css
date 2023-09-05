@@ -1,5 +1,5 @@
 @charset "UTF-8";
-/* Library cusotm css to overwrite Avalon default css stytles */
+/* Library custom css to overwrite Avalon default css stytles */
 
 .block {
   display: inline;
@@ -18,6 +18,11 @@
   margin: 10px 10px 10px 3px;
   width: 395px;
   height: 68px;
+  /* For very small widths (down to 320px), shrink the logo image so that the
+     "hamburger" menu stays to the right of the logo */
+  @media (max-width: 494.98px) {
+    max-width: 223px;
+  }
 }
 
 .header-logo img {
