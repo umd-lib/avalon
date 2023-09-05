@@ -17,10 +17,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="container-md">
     <header class="header-wrapper">
       <div class="header-logo">
-        <%= link_to "//www.lib.umd.edu/" do %><%= image_tag "liblogo.png", class: "img-fluid lib-logo", alt: "University Libraries Homepage" %><% end %>
-        <%= link_to ENV['DIGITAL_COLLECTIONS_URL'] do %>
-          <span class="brand">Digital Collections</span>
-        <% end %>
+        <%= link_to ENV['DIGITAL_COLLECTIONS_URL'] do %><%= image_tag "umd-lib-digital-collections-logo.svg", class: "img-fluid lib-logo", alt: "UMD Digital Collections" %><% end %>
       </div>
 
       <% unless current_page?(main_app.root_path) %>
