@@ -1,14 +1,30 @@
 @charset "UTF-8";
-/* Library cusotm css to overwrite Avalon default css stytles */
+/* Library custom css to overwrite Avalon default css stytles */
 
 .block {
   display: inline;
 }
-.lib-logo {
-  margin: 15px 10px 15px 3px;
-  width: 161px;
-  height: 50px;
+
+/* Overriding the @include media-breakpoint-down(md) for
+   .header-wrapper .header-logo in stock
+   app/assets/stylesheets/avalon/_header.scss */
+@media (max-width: 991.98px) {
+  .header-wrapper .header-logo img {
+    max-width: 395px;
+  }
 }
+
+.lib-logo {
+  margin: 10px 10px 10px 3px;
+  width: 395px;
+  height: 68px;
+  /* For very small widths (down to 320px), shrink the logo image so that the
+     "hamburger" menu stays to the right of the logo */
+  @media (max-width: 494.98px) {
+    max-width: 223px;
+  }
+}
+
 .header-logo img {
   display: inline;
 }
@@ -72,7 +88,7 @@ a:focus#skip-to-content {
 }
 .btn-info {
   color: #000;
-  background-color: #f0ad4e; 
+  background-color: #f0ad4e;
   border-color: #f0ad4e;
   font-weight: 500px;
 }
@@ -88,7 +104,7 @@ a:focus#skip-to-content {
 /* Carousel */
 .homepage-splash-collections-title a {
   color: #035e8c;
-  
+
 }
 .homepage-splash-collections {
     background: #F0F0F0;
@@ -254,8 +270,8 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 }
 @media (max-width: 414px){
   .lib-logo {
-    width:120px;
-    height: auto;
+    width: 290px;
+    height: 50px;
     margin: 10px 10px 10px 0;
   }
   #header-navbar .navbar-brand {
