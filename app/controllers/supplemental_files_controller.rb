@@ -145,7 +145,8 @@ class SupplementalFilesController < ApplicationController
     end
 
     def authorize_object
-      action = action_name.to_sym
+      action = action_name.to_sym == :show ? :show : :edit
+      # Only display supplemental files if user has full_read permission
       action = :full_read if action == :show && @object.is_a?(MediaObject)
       authorize! action, @object, message: "You do not have sufficient privileges to #{action_name} this supplemental file"
     end
