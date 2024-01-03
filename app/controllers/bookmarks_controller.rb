@@ -68,7 +68,8 @@ class BookmarksController < CatalogController
     @response, @documents = action_documents
     @valid_user_actions = [:delete, :unpublish, :publish, :merge, :move, :update_access_control, :add_to_playlist]
     @valid_user_actions += [:intercom_push] if Settings.intercom.present?
-    mos = @documents.collect { |doc| MediaObject.find( doc.id ) }
+    # Commenting unused expensive calls to fedora (https://umd-dit.atlassian.net/browse/LIBAVALON-334)
+    # mos = @documents.collect { |doc| MediaObject.find( doc.id ) }
     @documents.each do |doc|
       mo = MediaObject.find(doc.id)
       @valid_user_actions.delete :delete if @valid_user_actions.include? :delete and cannot? :destroy, mo
