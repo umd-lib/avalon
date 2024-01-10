@@ -15,7 +15,11 @@
 # Mark each item on page as bookmarks when 'Select All' is clicked
 $("#bookmarks_selectall").on "change", (e) ->
   if @checked
-    $("label.toggle-bookmark:not(.checked) input.toggle-bookmark").click()
+    allowed = Number($('#bookmarks_selectall')[0].dataset.limit) - Number($('[data-role=bookmark-counter]').text());
+    $("label.toggle-bookmark:not(.checked) input.toggle-bookmark:lt(" + allowed + ")").click()
+    if allowed < $("label.toggle-bookmark:not(.checked) input.toggle-bookmark").length
+      alert("Could not select all items. Max selection limit reached: " + $('#bookmarks_selectall')[0].dataset.limit)
+      $('#bookmarks_selectall')[0].checked = false
   else
     $("label.toggle-bookmark.checked input.toggle-bookmark").click()
   return
