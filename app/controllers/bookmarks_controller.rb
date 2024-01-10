@@ -15,6 +15,8 @@
 class BookmarksController < CatalogController
 
   before_action :authenticate_user!
+  before_action :check_limit, only: [:update]
+  before_action :truncate_to_limit, only: [:create]
 
   include Blacklight::Bookmarks
 
@@ -59,7 +61,6 @@ class BookmarksController < CatalogController
   #   return val
   # end
 
-
   def user_can? action
     @valid_user_actions.include? action
   end
@@ -79,6 +80,25 @@ class BookmarksController < CatalogController
       @valid_user_actions.delete :move if @valid_user_actions.include? :move and cannot? :update, mo
       @valid_user_actions.delete :update_access_control if @valid_user_actions.include? :update_access_control and cannot? :update_access_control, mo
       @valid_user_actions.delete :intercom_push if @valid_user_actions.include? :intercom_push and cannot? :intercom_push, mo
+    end
+  end
+
+  def check_limit
+    if current_or_guest_user.bookmarks.count >= helpers.bookmarks_limit
+      if request.xhr?
+        render(plain: "", status: "500")
+      else
+        flash[:error] = I18n.t('blacklight.bookmarks.add.failure', count: @bookmarks.length)
+        redirect_back fallback_location: bookmarks_path
+      end
+    end
+  end
+
+  def truncate_to_limit
+    check_limit
+    if params[:bookmarks] &&
+        (params[:bookmarks].length + current_or_guest_user.bookmarks.count) > helpers.bookmarks_limit
+      params[:bookmarks] = params[:bookmarks].take(helpers.bookmarks_limit - current_or_guest_user.bookmarks.count)
     end
   end
 

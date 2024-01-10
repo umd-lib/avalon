@@ -305,4 +305,9 @@ module ApplicationHelper
     kwargs[:role] = 'checkbox' unless kwargs[:role]
     rails_default_check_box_tag(*args, **kwargs)
   end
+
+  # Max allowed bookmarks
+  def bookmarks_limit
+    Rails.application.config.bookmarks_limit
+  end
 end
