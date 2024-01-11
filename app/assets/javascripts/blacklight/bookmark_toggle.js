@@ -38,7 +38,8 @@
     }
 
 Blacklight.onLoad(function() {
-  if (Number($('[data-role=bookmark-counter]').text() >= Number($('#bookmarks_selectall')[0].dataset.limit))) {
+  if ($('#bookmarks_selectall')[0] &&
+      Number($('[data-role=bookmark-counter]').text() >= Number($('#bookmarks_selectall')[0].dataset.limit))) {
     Blacklight.toggleBookmarkCheckboxDisabled();
   }
 });
