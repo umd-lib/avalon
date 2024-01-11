@@ -55,7 +55,7 @@ $('button[name="save_label"]').on('click', (e) => {
 
 /* Show feedback message inline after saving */
 $('.supplemental-file-form')
-  .on('ajax:success', (event, data, status, xhr) => {
+  .on('ajax:success', (event) => {
     var $row = $(event.currentTarget.parentElement);
     const { masterfileId, fileId } = event.currentTarget.dataset;
 
@@ -77,7 +77,7 @@ $('.supplemental-file-form')
     $row.find('.visible-inline').html('Successfully updated.');
     $row.find('.visible-inline').addClass('alert');
   })
-  .on('ajax:error', (event, xhr, status, error) => {
+  .on('ajax:error', (event) => {
     var alert = $(event.currentTarget.parentElement).find('.visible-inline');
 
     // Show flash warning for failed attempt
