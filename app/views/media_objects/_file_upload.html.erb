@@ -316,9 +316,9 @@ Unless required by applicable law or agreed to in writing, software distributed
       $(this).closest('form').submit();
     });
 
-    $('.master-file-form').on("ajax:success", (event, data, status, xhr) => {
+    $('.master-file-form').on("ajax:success", (event) => {
       $(event.currentTarget).find('.flash-message').html("Successfully updated.")
-    }).on("ajax:error", (event, xhr, status, error) => {
+    }).on("ajax:error", (event) => {
       $(event.currentTarget).find('.flash-message').html("Failed to update.")
     });
   </script>
