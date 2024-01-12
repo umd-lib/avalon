@@ -8,7 +8,7 @@ require 'resolv-replace'
 Bundler.require(*Rails.groups)
 
 module Avalon
-  VERSION = '7.4.0-umd-2.3'
+  VERSION = '7.4.0-umd-3'
 
   class Application < Rails::Application
     require 'avalon/configuration'
@@ -50,5 +50,7 @@ module Avalon
     end
 
     config.active_storage.service = (Settings&.active_storage&.service.presence || "local").to_sym
+
+    config.bookmarks_limit = ENV['BOOKMARKS_LIMIT'] ? Integer(ENV['BOOKMARKS_LIMIT']) : 400
   end
 end
