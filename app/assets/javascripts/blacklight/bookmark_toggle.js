@@ -22,18 +22,24 @@
     Blacklight.toggleBookmarkCheckboxDisabled = function() {
         if ( Number($('[data-role=bookmark-counter]').text()) >= Number($('#bookmarks_selectall')[0].dataset.limit) ) {
             message = "Max selection limit reached: " + $('#bookmarks_selectall')[0].dataset.limit;
-            if (!$('#bookmarks_selectall')[0].checked) {
-                $('#bookmarks_selectall')[0].disabled = true;
-            }
-            $('#bookmarks_selectall')[0].title = message;
+            $('#bookmarks_selectall').not('.checked').attr('disabled', true);
+            $('#bookmarks_selectall').not('.checked').attr('data-toggle', "tooltip");
+            $('#bookmarks_selectall').not('.checked').attr('data-placement', "right");
+            $('#bookmarks_selectall').not('.checked').attr('title', message);
+            $('#bookmarks_selectall').not('.checked').bstooltip()
             $('label.toggle-bookmark').not('.checked').children('input').attr('disabled', true);
+            $('label.toggle-bookmark').not('.checked').children('input').attr('data-toggle', "tooltip");
+            $('label.toggle-bookmark').not('.checked').children('input').attr('data-placement', "right");
             $('label.toggle-bookmark').not('.checked').children('input').attr('title', message);
+            $('label.toggle-bookmark').not('.checked').children('input').bstooltip()
             
         } else {
-            $('#bookmarks_selectall')[0].disabled = false;
-            $('#bookmarks_selectall')[0].title = "";
-            $('label.toggle-bookmark').not('.checked').children('input').attr('disabled', false);
-            $('label.toggle-bookmark').not('.checked').children('input').attr('title', "");
+            $('#bookmarks_selectall').not('.checked').removeAttr('disabled');
+            $('#bookmarks_selectall').not('.checked').removeAttr('title');
+            $('#bookmarks_selectall').not('.checked').bstooltip('dispose')
+            $('label.toggle-bookmark').not('.checked').children('input').removeAttr('disabled');
+            $('label.toggle-bookmark').not('.checked').children('input').removeAttr('title');
+            $('label.toggle-bookmark').not('.checked').children('input').bstooltip('dispose')
         }
     }
 
