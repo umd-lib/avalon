@@ -46,7 +46,7 @@ $('.marker_title').click(function(e) {
     currentPlayer.setCurrentTime(parseFloat(this.dataset['offset']) || 0);
   }
 });
-$('.edit_avalon_marker').on('ajax:success', handle_edit_save).on('ajax:error', function(e, xhr, status, error) {
+$('.edit_avalon_marker').on('ajax:success', handle_edit_save).on('ajax:error', function(e) {
   alert('Request failed.');
 });
 $('button[name="delete_marker"]').popover({
