@@ -50,5 +50,7 @@ module Avalon
     end
 
     config.active_storage.service = (Settings&.active_storage&.service.presence || "local").to_sym
+
+    config.bookmarks_limit = ENV['BOOKMARKS_LIMIT'] ? Integer(ENV['BOOKMARKS_LIMIT']) : 400
   end
 end

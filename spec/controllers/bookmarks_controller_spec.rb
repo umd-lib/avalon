@@ -458,4 +458,20 @@ describe BookmarksController, type: :controller do
       expect(JSON.parse(response.body)["count"]).to eq(3)
     end
   end
+
+  describe "#create" do
+    it 'allow bookmark creation with in the max limit' do
+      Rails.application.config.bookmarks_limit = media_objects.length + 1
+      mo = FactoryBot.create(:media_object, collection: collection)
+      expect(post :create, params: { id: mo.id }, xhr: true).to have_http_status(200)
+      delete :destroy, params: { id: mo.id }, xhr: true
+    end
+
+    it 'does allow bookmark creation beyond the max limit' do
+      Rails.application.config.bookmarks_limit = media_objects.length
+      mo = FactoryBot.create(:media_object, collection: collection)
+      expect(post :create, params: { id: mo.id }, xhr: true).to have_http_status(500)
+      delete :destroy, params: { id: mo.id }, xhr: true
+    end
+  end
 end

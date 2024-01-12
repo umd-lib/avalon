@@ -20,7 +20,7 @@ Unless required by applicable law or agreed to in writing, software distributed
       <% all_selected = @response.documents.all? do |d|
            current_or_guest_user.bookmarks.where({ document_id: d.id }).exists?
          end %>
-      <%= check_box_tag('bookmarks_selectall', '', all_selected) %>
+      <%= check_box_tag('bookmarks_selectall', '', all_selected, data: { "limit" => bookmarks_limit }) %>
       <%= label_tag 'bookmarks_selectall', t('blacklight.bookmarks.addall.button'), class: 'font-weight-bold' %>
   </div>
 <% end %>
