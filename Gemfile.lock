@@ -234,6 +234,7 @@ GEM
     babel-transpiler (0.7.0)
       babel-source (>= 4.0, < 6)
       execjs (~> 2.0)
+    base64 (0.2.0)
     bcrypt (3.1.16)
     bindex (0.8.1)
     bixby (3.0.2)
@@ -605,9 +606,9 @@ GEM
       activesupport
       nokogiri (>= 1.4.2)
       solrizer (~> 3.3)
-    omniauth (2.0.4)
+    omniauth (2.1.2)
       hashie (>= 3.4.6)
-      rack (>= 1.6.2, < 3)
+      rack (>= 2.2.3)
       rack-protection
     omniauth-identity (3.0.9)
       bcrypt
@@ -615,9 +616,9 @@ GEM
     omniauth-rails_csrf_protection (1.0.1)
       actionpack (>= 4.2)
       omniauth (~> 2.0)
-    omniauth-saml (2.0.0)
+    omniauth-saml (2.1.0)
       omniauth (~> 2.0)
-      ruby-saml (~> 1.9)
+      ruby-saml (~> 1.12)
     orm_adapter (0.5.0)
     os (1.1.4)
     ostruct (0.5.5)
@@ -646,8 +647,9 @@ GEM
     rack (2.2.4)
     rack-cors (1.1.1)
       rack (>= 2.0.0)
-    rack-protection (2.2.0)
-      rack
+    rack-protection (3.2.0)
+      base64 (>= 0.1.0)
+      rack (~> 2.2, >= 2.2.4)
     rack-proxy (0.7.2)
       rack
     rack-test (2.0.2)
@@ -815,7 +817,7 @@ GEM
       multipart-post
       oauth2
     ruby-progressbar (1.11.0)
-    ruby-saml (1.14.0)
+    ruby-saml (1.12.3)
       nokogiri (>= 1.10.5)
       rexml
     rubyzip (1.3.0)
@@ -1069,6 +1071,7 @@ DEPENDENCIES
   rspec-rails
   rspec-retry
   rspec_junit_formatter
+  ruby-saml (~> 1.12.3)
   samvera-persona (~> 0.3)
   sass (= 3.4.22)
   selenium-webdriver
