@@ -35,7 +35,7 @@ ActiveRecord::Schema.define(version: 2022_08_22_170237) do
     t.string "state"
     t.string "adapter"
     t.string "title"
-    t.text "raw_object", limit: 16777215
+    t.text "raw_object"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "create_options"
@@ -134,7 +134,7 @@ ActiveRecord::Schema.define(version: 2022_08_22_170237) do
   end
 
   create_table "checkouts", force: :cascade do |t|
-    t.integer "user_id"
+    t.bigint "user_id"
     t.string "media_object_id"
     t.datetime "checkout_time"
     t.datetime "return_time"
