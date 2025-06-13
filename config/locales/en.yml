@@ -14,6 +14,10 @@ en:
       If you are an instructor, you cannot view these items in student mode.
       Please switch back to instructor mode to view. If you are a student and
       receiving this message, please contact us at <a href="mailto:%s">%s</a>.
+    general_auth_error: You are not authorized to access this content.
+    general_500_error: There was an error with this request.
+    controlled_vocabulary_error: |
+      %s Please contact support to report this error: <a href="mailto:%s">%s</a>.
     messages:
       blank: "field is required."
       taken: "is taken."
@@ -38,6 +42,14 @@ en:
     error_no_file: "Download failed: Original file not stored."
     error_file_not_found: "Download failed: File not found at: %{location}"
     download_not_permitted: "Download not permitted."
+    cdl:
+      checkout_message: "<p>Borrow this item to access media resources.</p>"
+      not_available_message: "<p>This resource is currently checked out by another user. </br></br> This item is due to be returned on </br><span data-utc-time='%{time}' />.</p>"
+      time_remaining: "<p>Time <br />remaining: </p>"
+      unauthenticated_message: "<p>You are not signed in. You may be able to borrow this item after signing in.</p>"
+      expire:
+        heading: "Check Out Expired!"
+        message: "Your lending period has been expired. Please return the item, and check for availability later."
   metadata_tip:
     abstract: |
       Summary provides a space for describing the contents of the item. Examples
@@ -152,6 +164,7 @@ en:
     classlabel: "External Group"
     ipaddresslabel: "IP Address or Range"
     umd_ip_manager_grouplabel: "UMD IP Manager"
+    lending_periodlabel: "Lending Period"
     depositor: |
       Depositors add media to the collection and describe it with metadata.
       They can publish items but not unpublish. They can only modify or
@@ -182,6 +195,9 @@ en:
       Start and end dates are not required; if included, access for the specified IP Address(es) will start at the beginning of the start date and end at the beginning of the end date. Otherwise, access will be open ended for the specified IP Address(es).
     umd_ip_manager_group: |
       Select an UMD IP Manager group from the dropdown list below to grant it access to an item or collection.  Start and end dates are not required; if included, access for the specified group will start at the beginning of the start date and end at the beginning of the end date. Otherwise, access will be open ended for the specified group.
+    lending_period: |
+      Lending Period is the length of time that an item may be checked out for.
+      Day and Hour values must be positive integers.
 
   contact:
     title: 'Contact Us - %{application_name}'

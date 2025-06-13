@@ -773,7 +773,7 @@ describe MediaObject do
 
   describe '#collection=' do
     let(:new_media_object) { MediaObject.new }
-    let(:collection) { FactoryBot.create(:collection, default_hidden: true, default_read_users: ['archivist1@example.com'], default_read_groups: ['TestGroup', 'public'])}
+    let(:collection) { FactoryBot.create(:collection, default_hidden: true, default_read_users: ['archivist1@example.com'], default_read_groups: ['TestGroup', 'public'], default_lending_period: 86400)}
 
     it 'sets hidden based upon collection for new media objects' do
       expect {new_media_object.collection = collection}.to change {new_media_object.hidden?}.to(true).from(false)
@@ -788,11 +788,15 @@ describe MediaObject do
       expect(new_media_object.read_groups).not_to include "TestGroup"
       expect {new_media_object.collection = collection}.to change {new_media_object.read_groups}.to include 'TestGroup'
     end
+    it 'sets lending_period based upon collection for new media objects' do
+      expect {new_media_object.collection = collection}.to change {new_media_object.lending_period}.to(86400).from(nil)
+    end
     it 'does not change access control fields if not new media object' do
       expect {media_object.collection = collection}.not_to change {new_media_object.hidden?}
       expect {media_object.collection = collection}.not_to change {new_media_object.visibility}
       expect {media_object.collection = collection}.not_to change {new_media_object.read_users}
       expect {media_object.collection = collection}.not_to change {new_media_object.read_users}
+      expect {media_object.collection = collection}.not_to change {new_media_object.lending_period}
     end
   end
 
@@ -1026,4 +1030,39 @@ describe MediaObject do
   end
 
   it_behaves_like "an object that has supplemental files"
+
+  describe 'lending_status' do
+    it 'is available when no active checkouts' do
+      expect(media_object.lending_status).to eq "available"
+    end
+
+    context 'with an active checkout' do
+      before { FactoryBot.create(:checkout, media_object_id: media_object.id) }
+
+      it 'is checked_out' do
+        expect(media_object.lending_status).to eq "checked_out"
+      end
+    end
+  end
+
+  describe 'lending_period' do
+    context 'there is not a custom lending period' do
+      it 'sets the lending period to the system default' do
+        expect(media_object.lending_period).to eq ActiveSupport::Duration.parse(Settings.controlled_digital_lending.default_lending_period).to_i
+      end
+    end
+    context 'the parent collection has a custom lending period' do
+      let(:collection) { FactoryBot.create(:collection, default_lending_period: 86400) }
+      let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id) }
+      it "sets the lending period to equal the collection's default lending period" do
+        expect(media_object.lending_period).to eq collection.default_lending_period
+      end
+      context 'the media object has a custom lending period' do
+        let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id, lending_period: 172800)}
+        it "leaves the lending period equal to the custom value" do
+          expect(media_object.lending_period).to eq 172800
+        end
+      end
+    end
+  end
 end

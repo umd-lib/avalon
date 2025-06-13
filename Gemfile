@@ -3,10 +3,12 @@ source 'https://rubygems.org'
 # Core rails
 gem 'bootsnap', require: false
 gem 'listen'
-gem 'rails', '=6.0.5.1'
+gem 'rails', '=6.0.6.1'
 gem 'sprockets', '~>3.7.2'
 #gem 'sprockets-rails', require: 'sprockets/railtie'
 gem 'sqlite3'
+# Force newer version of mail for compatibility with rails 6.0.6.1
+gem 'mail', '> 2.8.0.1'
 
 # Assets
 gem 'bootstrap', '~> 4.0'
@@ -37,7 +39,7 @@ gem 'rdf-vocab', '< 3.1.5'
 gem 'blacklight', '~> 7.25'
 gem 'blacklight-access_controls', '>= 6.0.1' # ensure rails 6 support
 gem 'rdf', '~> 3.1'
-gem 'rsolr', '~> 1.0'
+gem 'rsolr', '~> 2.0'
 
 # Rails & Samvera Plugins
 gem 'about_page', git: 'https://github.com/avalonmediasystem/about_page.git', tag: 'avalon-r6.5'
@@ -54,7 +56,7 @@ gem 'rack-cors', require: 'rack/cors'
 gem 'rails_same_site_cookie'
 gem 'recaptcha', require: 'recaptcha/rails'
 gem 'samvera-persona', '~> 0.3'
-gem 'speedy-af', '~> 0.2'
+gem 'speedy-af', '~> 0.3'
 
 # Avalon Components
 gem 'avalon-workflow', git: "https://github.com/avalonmediasystem/avalon-workflow.git", tag: 'avalon-r6.5'
@@ -86,7 +88,7 @@ gem "ruby-saml", "~> 1.12.3"
 # End UMD Customization
 
 # Media Access & Transcoding
-gem 'active_encode', '~> 0.8.2'
+gem 'active_encode', '~> 1.0', '>= 1.1.2'
 gem 'audio_waveform-ruby', '~> 1.0.7', require: 'audio_waveform'
 gem 'browse-everything', git: "https://github.com/avalonmediasystem/browse-everything.git", branch: 'v1.2-avalon'
 gem 'fastimage'
