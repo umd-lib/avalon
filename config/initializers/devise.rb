@@ -297,23 +297,27 @@ Rails.application.reloader.to_prepare do
     # Add a new OmniAuth provider. Check the wiki for more information on setting
     # up on your models and hooks.
     # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
+    OmniAuth.config.logger = Rails.logger
     Avalon::Authentication::Providers.each do |provider|
       if provider[:provider] == :lti
-	provider[:params].merge!({consumers: Avalon::Lti::Configuration})
+        provider[:params].merge!({consumers: Avalon::Lti::Configuration})
       end
       if provider[:provider] == :identity
-	provider[:params].merge!({
+        provider[:params].merge!({
 				   on_login: AuthFormsController.action(:render_identity_request_form),
 				   on_registration: AuthFormsController.action(:render_identity_registration_form),
 				   on_failed_registration: AuthFormsController.action(:render_form_with_errors)
 				 })
       end
+      if provider[:provider] == :saml
+        OneLogin::RubySaml::Attributes.single_value_compatibility = false
+      end
       params = provider[:params]
       params = [params] unless params.is_a?(Array)
       begin
-	require "omniauth/#{provider[:provider]}"
+        require "omniauth/#{provider[:provider]}"
       rescue LoadError
-	require "omniauth-#{provider[:provider]}"
+        require "omniauth-#{provider[:provider]}"
       end
       config.omniauth provider[:provider], *params
     end
@@ -336,30 +340,6 @@ Rails.application.reloader.to_prepare do
     #
     # The router that invoked `devise_for`, in the example above, would be:
     # config.router_name = :my_engine
-    #
-    # When using OmniAuth, Devise cannot automatically set OmniAuth path,
-    # so you need to do it manually. For the users scope, it would be:
-    # config.omniauth_path_prefix = '/my_engine/users/auth'
-    OmniAuth.config.logger = Rails.logger
-
-    if provider[:provider] == :identity
-      provider[:params].merge!({
-                                 on_login: AuthFormsController.action(:render_identity_request_form),
-                                 on_registration: AuthFormsController.action(:render_identity_registration_form),
-                                 on_failed_registration: AuthFormsController.action(:render_form_with_errors)
-                               })
-    end
-    if provider[:provider] == :saml
-      OneLogin::RubySaml::Attributes.single_value_compatibility = false
-    end
-    params = provider[:params]
-    params = [params] unless params.is_a?(Array)
-    begin
-      require "omniauth/#{provider[:provider]}"
-    rescue LoadError
-      require "omniauth-#{provider[:provider]}"
-    end
-    config.omniauth provider[:provider], *params
   end
 
   # Override script_name to always return empty string and avoid looking in @env
