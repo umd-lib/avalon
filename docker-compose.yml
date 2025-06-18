@@ -199,3 +199,19 @@ services:
     volumes:
       - ./:/e2e
       - npms:/e2e/node_modules
+
+  # UMD Customization
+  # Nginx server configuration for supporting HTTPS connections from the
+  # local development environment
+  nginx:
+    image: nginx:1.25.2
+    ports:
+    - "80:80"
+    - "443:443"
+    volumes:
+    - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./docker/nginx/certs:/etc/nginx/certs:ro
+    networks:
+      internal:
+      external:
+  # End UMD Customization

@@ -81,4 +81,6 @@ Rails.application.configure do
   # config.action_cable.disable_request_forgery_protection = true
 
   config.web_console.permissions = '172.20.0.1'
+
+  config.hosts << 'av-local.lib.umd.edu'
 end
