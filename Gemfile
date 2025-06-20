@@ -72,21 +72,9 @@ gem 'omniauth', '~> 2.0'
 gem 'omniauth-identity', '>= 2.0.0'
 gem 'omniauth-lti', git: "https://github.com/avalonmediasystem/omniauth-lti.git", tag: 'avalon-r4'
 gem "omniauth-rails_csrf_protection"
-gem "omniauth-saml", "~> 2.0"
 # UMD Customization
-# This customization is needed to mitigate CVE-2024-45409
-# (see https://github.com/advisories/GHSA-jw9c-mfg7-9rx2).
-#
-# Without this pinning of the "ruby-saml" gem to 1.12.3, the "omniauth-saml"
-# gem will cause ruby-saml v1.14.0 to be used, which contains the vulnerability.
-#
-# It is not possible to update the "omniauth-saml" gem version to the patched
-# v2.2.1, because it requires Ruby 3.1 or greater.
-#
-# This customization can likely be removed when upgrading to a later
-# ArchivesSpace version (as long as the "ruby-saml" gem matches a version
-# containing the fix).
-gem "ruby-saml", "~> 1.12.3"
+# Backport of version specifier from Avalon v8.0
+gem "omniauth-saml", "~> 2.0", ">= 2.2.1"
 # End UMD Customization
 
 # Media Access & Transcoding
@@ -111,7 +99,9 @@ gem 'activejob-uniqueness'
 gem 'redis-rails'
 gem 'sidekiq', '~> 6.2'
 gem 'sidekiq-cron', '~> 1.9'
+# UMD Customization
 gem 'sidekiq-limit_fetch'
+# End UMD Customization
 
 # Coding Patterns
 gem 'config'
@@ -120,8 +110,10 @@ gem 'jbuilder', '~> 2.0'
 gem 'parallel'
 gem 'with_locking'
 
+# UMD Customization
 # Health Check
 gem 'health_check'
+# End UMD Customization
 
 group :development do
   gem 'capistrano', '~>3.6'
