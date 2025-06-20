@@ -459,6 +459,7 @@ describe BookmarksController, type: :controller do
     end
   end
 
+  # UMD Customization
   describe "#create" do
     it 'allow bookmark creation with in the max limit' do
       Rails.application.config.bookmarks_limit = media_objects.length + 1
@@ -474,4 +475,5 @@ describe BookmarksController, type: :controller do
       delete :destroy, params: { id: mo.id }, xhr: true
     end
   end
+  # End UMD Customization
 end

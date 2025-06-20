@@ -46,9 +46,11 @@ $('.marker_title').click(function(e) {
     currentPlayer.setCurrentTime(parseFloat(this.dataset['offset']) || 0);
   }
 });
+<%# UMD Customization %>
 $('.edit_avalon_marker').on('ajax:success', handle_edit_save).on('ajax:error', function(e) {
   alert('Request failed.');
 });
+<%# End UMD Customization %>
 $('button[name="delete_marker"]').popover({
   trigger: 'manual',
   html: true,

@@ -57,7 +57,9 @@ Rails.application.configure do
   # Include generic and useful information about system operation, but avoid logging too much
   # information to avoid inadvertent exposure of personally identifiable information (PII).
   config.log_level = :info
+  # UMD Customization
   config.log_level = ENV["LOG_LEVEL"] if ENV["LOG_LEVEL"].present?
+  # End UMD Customization
 
   # Suppress logger output for asset requests.
   config.assets.quiet = true

@@ -228,6 +228,7 @@ describe ApplicationHelper do
     end
   end
 
+  # UMD Customization
   describe '#umd_ip_manager_group_display' do
     before(:each) do
       @umd_ip_manager_keys_to_names = { 'test1' => 'Test Name 1',  'test2' => 'Test Name 2' }
@@ -267,4 +268,5 @@ describe ApplicationHelper do
       expect(helper.umd_ip_manager_group_access_object_remove_helper(value)).to eq(value)
     end
   end
+  # End UMD Customization
 end

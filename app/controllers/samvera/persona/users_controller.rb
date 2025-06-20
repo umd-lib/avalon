@@ -29,7 +29,9 @@ module Samvera
     end
 
     before_action :load_user, only: [:edit, :update, :destroy]
+    # UMD Customization
     before_action :reject_saml_user, only: [:edit, :update, :destroy]
+    # End UMD Customization
     before_action :app_view_path
     # NOTE: User creation/invitations handled by devise_invitable
     def index
@@ -179,11 +181,13 @@ module Samvera
       end
     end
 
+    # UMD Customization
     def reject_saml_user
       return if @user.provider.to_s != "saml"
       flash[:error] = "Updating remote user is not permitted!"
       redirect_to main_app.persona_users_path
     end
+    # End UMD Customization
 
     def app_view_path
       my_engine_root = Samvera::Persona::Engine.root.to_s

@@ -17,7 +17,9 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="container-md">
     <header class="header-wrapper">
       <div class="header-logo">
+        <%# UMD Customization %>
         <%= link_to ENV['DIGITAL_COLLECTIONS_URL'] do %><%= image_tag "umd-lib-digital-collections-logo.svg", class: "img-fluid lib-logo", alt: "UMD Digital Collections" %><% end %>
+        <%# End UMD Customization %>
       </div>
 
       <% unless current_page?(main_app.root_path) %>

@@ -168,6 +168,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% end %>
 
+<%# UMD Customization %>
 <div class="panel panel-default access-token">
   <div class="panel-heading">
     <h3 class="panel-title">Access Token</h3>
@@ -209,6 +210,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <% end %>
   </div>
 </div>
+<%# End UMD Customization %>
 
 
 <div class="card special-access">
@@ -232,6 +234,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= render "modules/access_object", object: object,
           access_object: "ipaddress", members: @ip_groups, leases: @ip_leases,
           input_disabled: !can_update %>
+    <%# UMD Customization %>
     <% if @umd_ip_manager_error.nil? %>
       <%= render "modules/access_object", object: object,
             access_object: "umd_ip_manager_group", members: @umd_ip_manager_groups, leases: @umd_ip_manager_leases,
@@ -247,5 +250,6 @@ Unless required by applicable law or agreed to in writing, software distributed
          <div class="alert alert-danger"><%= @umd_ip_manager_error %></div>
         <% end %>
     <% end %>
+    <%# End UMD Customization %>
   </div>
 </div>

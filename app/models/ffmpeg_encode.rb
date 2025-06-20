@@ -19,9 +19,11 @@ class FfmpegEncode < WatchedEncode
     encode.options.merge!(outputs: ffmpeg_outputs(encode.options))
   end
 
+  # UMD Customization
   after_create do |encode|
     Process.wait encode.input.id
   end
+  # End UMD Customization
 
   private
 

@@ -33,7 +33,9 @@
 //= require popper
 //= require twitter/typeahead
 //= require bootstrap
+// UMD Customization
 //= require bootstrap-tooltip-noconflict
+// End UMD Customization
 //= require jquery-ui
 //= require blacklight/blacklight
 //= require browse_everything

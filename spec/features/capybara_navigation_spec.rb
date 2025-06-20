@@ -46,6 +46,7 @@ describe 'checks navigation after logging in' do
     expect(page).to have_content('administrator')
     expect(page).to have_content('manager')
   end
+  # UMD Customization
   context 'checks navigation to Manage Access Tokens' do
     it 'displayed for administrators' do
       user = FactoryBot.create(:administrator)
@@ -92,6 +93,7 @@ describe 'checks navigation after logging in' do
       expect(page).to have_no_link('Manage Access Tokens')
     end
   end
+  # End UMD Customization
   it 'checks naviagtion to Playlist' do
     user = FactoryBot.create(:administrator)
     login_as user, scope: :user
@@ -112,14 +114,18 @@ end
 
 describe 'Search' do
   it 'is able to enter keyword and perform search' do
+    # UMD Customization
     pending('UMD LIBAVALON-178')
+    # End UMD Customization
     visit '/'
     fill_in('Search', with: 'Video', match: :first)
     click_button('global-search-submit', match: :first)
     expect(page).to have_current_path('/catalog?utf8=%E2%9C%93&search_field=all_fields&q=Video')
   end
   it 'gives appropriate error when keyword returns no results' do
+    # UMD Customization
     pending('UMD LIBAVALON-178')
+    # End UMD Customization
     visit '/'
     fill_in('Search', with: 'Video', match: :first)
     click_button('global-search-submit', match: :first)

@@ -329,10 +329,12 @@ Unless required by applicable law or agreed to in writing, software distributed
       $(this).closest('form').submit();
     });
 
+    <%# UMD Customization %>
     $('.master-file-form').on("ajax:success", (event) => {
       $(event.currentTarget).find('.flash-message').html("Successfully updated.")
     }).on("ajax:error", (event) => {
       $(event.currentTarget).find('.flash-message').html("Failed to update.")
     });
+    <%# End UMD Customization %>
   </script>
 <% end %>

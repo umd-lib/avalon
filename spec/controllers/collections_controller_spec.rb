@@ -56,7 +56,9 @@ describe CollectionsController, type: :controller do
       end
 
       it "managers should see their collections and collections with public items" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         login_user(collection.managers.first)
         get 'index'
         expect(response).to be_ok

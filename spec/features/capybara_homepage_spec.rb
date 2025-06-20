@@ -48,12 +48,16 @@ describe 'homepage' do
 end
 describe 'checks navigation to external links' do
   it 'checks navigation to Avalon Website' do
+    # UMD Customization
     pending('UMD LIBAVALON-178')
+    # End UMD Customization
     visit '/'
     expect(page).to have_link('Avalon Media System Project Website', href: "http://www.avalonmediasystem.org")
   end
   it 'checks navigation to Contact us page' do
+    # UMD Customization
     pending('UMD LIBAVALON-178')
+    # End UMD Customization
     visit '/'
     click_link('Contact Us')
     expect(page.current_path).to eq('/comments')
@@ -87,7 +91,9 @@ describe 'Sign in page' do
     expect(page).to have_button('Connect')
   end
   it 'validates presence of items on register page' do
+    # UMD Customization
     pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
+    # End UMD Customization
     visit '/users/sign_up'
     expect(page).to have_content('Username')
     expect(page).to have_content('Email')
@@ -95,7 +101,9 @@ describe 'Sign in page' do
     expect(page).to have_content('Password confirmation')
   end
   it 'is able to create new account' do
+    # UMD Customization
     pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
+    # End UMD Customization
     hide_const('Avalon::GROUP_LDAP')
     visit '/users/sign_up'
     fill_in 'Username', with: 'user1@example.com'

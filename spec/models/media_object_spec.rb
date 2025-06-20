@@ -166,7 +166,9 @@ describe MediaObject do
       it{ is_expected.to be_able_to(:destroy, media_object) }
       it{ is_expected.to be_able_to(:update_access_control, media_object) }
       it "should not be able to destroy and unpublish published item" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish! "someone"
         expect(subject).not_to be_able_to(:destroy, media_object)
         expect(subject).not_to be_able_to(:update, media_object)
@@ -201,7 +203,9 @@ describe MediaObject do
 
       it{ is_expected.to be_able_to(:share, MediaObject) }
       it "should not be able to read unauthorized, published MediaObject" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish! "random"
         media_object.reload
         expect(subject.can?(:read, media_object)).to be false
@@ -239,7 +243,9 @@ describe MediaObject do
       end
 
       it 'should not be able to read unauthorized, published MediaObject' do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.read_groups += [Faker::Internet.ip_v4_address]
         media_object.publish! "random"
         media_object.reload
@@ -1028,6 +1034,7 @@ describe MediaObject do
       end
     end
 
+    # UMD Customization
     context "private item" do
       let (:group) { UmdIpManager::Group.new(key: 'test_umd_ip_manager_group', name: 'Test UMD IP Manager Group') }
       before do
@@ -1044,6 +1051,7 @@ describe MediaObject do
         expect(media_object.access_text).to eq("This item is accessible by: collection staff, users in specific IP Ranges.")
       end
     end
+    # End UMD Customization
   end
 
   it_behaves_like "an object that has supplemental files"

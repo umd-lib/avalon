@@ -13,7 +13,9 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 require 'rails_helper'
+# UMD Customization
 require "cancan/matchers"
+# End UMD Customization
 
 describe Ability, type: :model do
   describe 'non-logged in users' do
@@ -22,6 +24,7 @@ describe Ability, type: :model do
     end
   end
 
+  # UMD Customization
   describe '#user_groups' do
     context 'when options has an "access_token" entry' do
       it 'does not add "allow_download" group if the access token has expired' do
@@ -379,4 +382,5 @@ describe Ability, type: :model do
       end
     end
   end
+  # End UMD Customization
 end

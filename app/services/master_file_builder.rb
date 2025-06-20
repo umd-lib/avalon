@@ -38,6 +38,7 @@ module MasterFileBuilder
         raise BuildError, 'The file you have uploaded has invalid characters in its name.'
       end
 
+      # UMD Customization
       # Start LIBAVALON-128, LIBAVALON-286
       collection_path = media_object.collection.dropbox_absolute_path
       original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
@@ -52,18 +53,19 @@ module MasterFileBuilder
       if content.is_a? ActionDispatch::Http::UploadedFile
         FileUtils.mv(content.path, desination_path)
         content = Addressable::URI.join('file:///', desination_path)
-      # else, if Google drive file, copy to the local dropbox upload dir before processing -- the authorization 
+      # else, if Google drive file, copy to the local dropbox upload dir before processing -- the authorization
       # header is not available to the post processing move task, and therefore, it is unable to move/copy the
       # file from the google drive to the archive directory to make it available for downloads.
       elsif content.to_s.starts_with?('https://www.googleapis.com')
         IO.copy_stream(URI.open(content, spec.auth_header), desination_path)
         content = Addressable::URI.join('file:///', desination_path)
       end
-      
+
       master_file = MasterFile.new()
       master_file.setContent(content, file_name: spec.original_filename, file_size: spec.file_size, auth_header: nil, dropbox_dir: media_object.collection.dropbox_absolute_path)
       master_file.set_workflow(spec.workflow)
       # End LIBAVALON-128, LIBAVALON-286
+      # End UMD Customization
 
       if 'Unknown' == master_file.file_format
         response[:flash][:error] << "The file was not recognized as audio or video - %s (%s)" % [spec.original_filename, spec.content_type]

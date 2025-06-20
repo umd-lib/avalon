@@ -46,7 +46,9 @@ require 'noid/rails/rspec'
 require "email_spec"
 require "email_spec/rspec"
 require 'webdrivers'
+# UMD Customization
 require_relative 'services/mock_umd_ip_manager'
+# End UMD Customization
 
 # require 'equivalent-xml/rspec_matchers'
 # require 'fakefs/safe'
@@ -147,7 +149,9 @@ RSpec.configure do |config|
     ActiveJob::Base.queue_adapter.enqueued_jobs = []
     ActiveJob::Base.queue_adapter.performed_jobs = []
     Settings.bib_retriever = { 'default' => { 'protocol' => 'sru', 'url' => 'http://zgate.example.edu:9000/db', 'retriever_class' => 'Avalon::BibRetriever::SRU', 'retriever_class_require' => 'avalon/bib_retriever/sru' } }
+    # UMD Customization
     enable_umd_ip_manager_mock
+    # End UMD Customization
   end
 
   config.after :each do
@@ -196,8 +200,10 @@ RSpec.configure do |config|
   config.include OptionalExample
   config.include Features::SessionHelpers, type: :feature
 
+  # UMD Customization
   # LIBAVALON-208 - include time helpers
   config.include ActiveSupport::Testing::TimeHelpers
+  # End UMD Customization
 end
 
 FactoryBot::SyntaxRunner.class_eval do

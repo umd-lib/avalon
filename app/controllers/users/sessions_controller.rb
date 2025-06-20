@@ -14,7 +14,9 @@
 
 class Users::SessionsController < Devise::SessionsController
   def new
+    # UMD Customization
     params[:request_uri] = session[:previous_url]
+    # End UMD Customization
     if Avalon::Authentication::VisibleProviders.length == 1 && params[:admin].blank?
       omniauth_params = params.reject { |k,v| ['controller','action'].include?(k) }
       omniauth_params.permit!

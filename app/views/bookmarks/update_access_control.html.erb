@@ -27,6 +27,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     </div>
   </div>
 <% else %>
+  <%# UMD Customization %>
   <%
    @media_objects = @documents.collect {|doc| MediaObject.find(doc.id)}
    visibility = @media_objects.first.visibility
@@ -36,6 +37,7 @@ Unless required by applicable law or agreed to in writing, software distributed
    @all_umd_ip_manager_groups = UmdIpManager.new.groups
    @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless @all_umd_ip_manager_groups.success?
   %>
+  <%# End UMD Customization %>
 
   <%= form_for "add", url: url_for(:controller => "bookmarks", :action => "update_access_control"), html: { :id => 'update_access_control_form' } do |form| %>
     <div class="modal-body">
@@ -122,6 +124,7 @@ Unless required by applicable law or agreed to in writing, software distributed
               <%= button_tag "Add", name: 'submit_add_ipaddress', class:'btn btn-outline', value: 'Add'  %>
               <%= button_tag "Remove", name: 'submit_remove_ipaddress', class:'btn btn-outline remove_access', value: 'Remove' %>
             <% end %>
+        <%# UMD Customization %>
         <%= label_tag "umd_ip_manager_group" do %>
           <% access_object = "umd_ip_manager_group" %>
           <% if @umd_ip_manager_error.nil? %>
@@ -145,6 +148,7 @@ Unless required by applicable law or agreed to in writing, software distributed
               <%= render partial: "modules/tooltip", locals: { form: form, field: access_object, tooltip: t("access_control.#{access_object}"), options: {display_label: (t("access_control.#{access_object}label")+'*').html_safe} } %><br />
               <div class="alert alert-danger"><%= @umd_ip_manager_error %></div>
           <% end %>
+          <%# End UMD Customization %>
       <% end %>
           </fieldset>
           <div class="modal-footer">

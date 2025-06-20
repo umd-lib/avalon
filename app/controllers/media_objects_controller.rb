@@ -311,11 +311,14 @@ class MediaObjectsController < ApplicationController
       @ip_leases = @media_object.leases('ip')
       @visibility = @media_object.visibility
 
+      # UMD Customization
       @active_access_tokens = AccessToken.active.where(media_object_id: @media_object.id).order(:expiration)
+      # End UMD Customization
 
       @addable_groups = Admin::Group.non_system_groups.reject { |g| @groups.include? g.name }
       @addable_courses = Course.all.reject { |c| @virtual_groups.include? c.context_id }
 
+      # UMD Customization
       all_umd_ip_manager_groups = UmdIpManager.new.groups
       @umd_ip_manager_error = t('errors.umd_ip_manager_error') unless all_umd_ip_manager_groups.success?
 
@@ -326,6 +329,7 @@ class MediaObjectsController < ApplicationController
       @umd_ip_manager_leases = @media_object.leases('umd_ip_manager')
       @umd_ip_manager_groups = all_umd_ip_manager_groups.select { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
       @addable_umd_ip_manager_groups = all_umd_ip_manager_groups.reject { |g| umd_ip_manager_read_groups.include? g.prefixed_key }
+      # End UMD Customization
     end
   end
 

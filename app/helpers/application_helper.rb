@@ -86,11 +86,13 @@ module ApplicationHelper
     end
   end
 
+  # UMD Customization
   def alt_for_thumbnail(image_url)
     return "sound recording icon" if image_url == asset_path('audio_icon.png')
     return "video clip and sound recording icon" if image_url == asset_path('hybrid_icon.png')
     "video clip icon"
   end
+  # End UMD Customization
 
   def avalon_image_tag(document, image_options)
     image_url = image_for(document)
@@ -221,6 +223,7 @@ module ApplicationHelper
     c.nil? ? value : (c.title || c.label || value)
   end
 
+  # UMD Customization
   def umd_ip_manager_group_display(value)
     if value.is_a?(UmdIpManager::Group)
       # For groups without leases, just return the human-readable name for the
@@ -248,6 +251,7 @@ module ApplicationHelper
       value
     end
   end
+  # End UMD Customization
 
   def truncate_center label, output_label_length, end_length = 0
     end_length = output_label_length / 2 - 3 if end_length == 0
@@ -299,6 +303,7 @@ module ApplicationHelper
     end
   end
 
+  # UMD Customization
   include ActionView::Helpers::FormTagHelper
   alias rails_default_check_box_tag check_box_tag
 
@@ -311,4 +316,5 @@ module ApplicationHelper
   def bookmarks_limit
     Rails.application.config.bookmarks_limit
   end
+  # End UMD Customization
 end

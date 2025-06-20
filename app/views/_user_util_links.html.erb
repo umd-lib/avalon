@@ -14,7 +14,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 ---  END LICENSE_HEADER BLOCK  ---
 %>
 <ul class="navbar-nav nav">
+  <%# UMD Customization %>
   <li class="nav-item"><%= link_to 'Home', main_app.root_path, class: 'nav-link' %></li>
+  <%# End UMD Customization %>
   <li class="nav-item"><%= link_to 'Browse', main_app.search_catalog_path(search_field: 'all_fields', utf8: '✓', q: ''), class: 'nav-link' %></li>
   <li class="nav-item <%= active_for_controller('collections') %>"><%= link_to 'Collections', main_app.collections_path, class: 'nav-link' %></li>
 
@@ -58,10 +60,12 @@ Unless required by applicable law or agreed to in writing, software distributed
           Manage
         </button>
         <ul class="dropdown-menu manage-dropdown-menu bg-primary" aria-labelledby="manageDropdown">
+          <%# UMD Customization %>
           <% if can? :manage, AccessToken %>
           <li class="nav-item <%= active_for_controller('access_tokens') %>">
             <%= link_to 'Manage Access Tokens', main_app.access_tokens_path, class: 'nav-link' %></li>
           <% end %>
+          <%# End UMD Customization %>
           <% if can? :read, Admin::Collection %>
           <li class="nav-item <%= active_for_controller('admin/collections') %>">
             <%= link_to 'Manage Content', main_app.admin_collections_path, class: 'nav-link' %></li>
@@ -91,20 +95,26 @@ Unless required by applicable law or agreed to in writing, software distributed
         </ul>
       </div>
     </li>
+    <%# UMD Customization %>
     <li class="nav-item">
       <%= link_to('https://hdl.handle.net/1903.1/49327', target: 'blank', class: 'nav-link') do %>
         Help <span class="fa fa-external-link"></span>
       <% end %>
     </li>
+    <%# End UMD Customization %>
   <% end %>
 
   <li class="nav-item desktop-hidden">
     <%= link_to_if user_signed_in?, 'Sign out', main_app.destroy_user_session_path, class: 'nav-link' do %>
       <%# Fallback if the test above fails %>
+      <%# UMD Customization %>
       <%= link_to 'Sign in', user_saml_omniauth_authorize_path, :method => "post", class: 'nav-link' %>
+      <%# End UMD Customization %>
     <% end %>
   </li>
   <% unless current_page?(main_app.root_path) %>
+    <%# UMD Customization %>
     <li class="desktop-hidden"><%= render partial: 'modules/avalon_search_form', locals: { type: 'mobile' } %></li>
+    <%# End UMD Customization %>
   <% end %>
 </ul>

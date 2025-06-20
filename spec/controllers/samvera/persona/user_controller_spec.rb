@@ -78,6 +78,7 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
       	  expect(parsed_response['data'][0][1]).to eq("<a href=\"/persona/users/2/edit\">zzzebra@example.edu</a>")
       	end
 
+      # UMD Customization
       let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
       it "returns results filtered by role" do
         post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'administrator' } } )
@@ -109,6 +110,7 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
         expect(parsed_response['data'].count).to eq(1)
         expect(parsed_response['data'][0][0]).to eq("<a href=\"/persona/users/2/edit\">zzzebra</a>")
       end
+      # End UMD Customization
     end
 
     context 'sorting' do

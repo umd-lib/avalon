@@ -4,17 +4,23 @@ identifier_types:
   local: Catalog Key
   oclc: OCLC
   lccn: LCCN
+  # UMD Customization
   fedora2: Fedora 2 PID
   filename: Filename
+  # End UMD Customization
   issue number: Issue Number
   matrix number: Matrix Number
   music publisher: Music Publisher/Label
   videorecording identifier: Videorecording Identifier
+  # UMD Customization
   handle: Handle Identifier
+  # End UMD Customization
   other: Other
 note_types:
   general: General Note
+  # UMD Customization
   access: Access
+  # End UMD Customization
   awards: Awards
   biographical/historical: Bibliographical/Historical Note
   creation/production credits: Creation/Production Credits

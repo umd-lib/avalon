@@ -151,7 +151,9 @@ Rails.application.routes.draw do
       post 'thumbnail', :to => 'master_files#set_frame', :defaults => { :type => 'thumbnail', :format => 'html' }
       post 'poster',    :to => 'master_files#set_frame', :defaults => { :type => 'poster', :format => 'html' }
       post 'still',     :to => 'master_files#set_frame', :defaults => { :format => 'html' }
+      # UMD Customization
       get :download
+      # End UMD Customization
       get :embed
       post 'attach_structure'
       post 'attach_captions'
@@ -241,7 +243,9 @@ Rails.application.routes.draw do
   end
   get '/jobs(.:format)', to: redirect('/')
 
+  # UMD Customization
   resources :access_tokens
+  # End UMD Customization
 
   scope :persona, as: 'persona' do
     resources :users, only: [:paged_index], controller: 'samvera/persona/users' do

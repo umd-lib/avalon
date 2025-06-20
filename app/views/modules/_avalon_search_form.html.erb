@@ -13,13 +13,18 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
+<%# UMD Customization %>
 <% type = local_assigns[:type] || 'default' %>
+<%# End UMD Customization %>
 <form accept-charset="UTF-8" action="/catalog" class="avalon-search-query-form avalon-form-search" method="get">
   <div style="margin:0;padding:0;display:inline">
     <input name="utf8" type="hidden" value="✓">
   </div>
+  <%# UMD Customization %>
   <input id="<%= "search_field-#{type}" %>" name="search_field" type="hidden" value="all_fields">
+  <%# UMD Customization %>
   <div>
+    <%# UMD Customization %>
     <label class="sr-only" for="<%= "searchField-#{type}" %>">Search</label>
     <div class="input-group input-group-lg global-search-wrapper">
       <input class="search-query q form-control global-search-input" id="<%= "searchField-#{type}" %>" name="q"
@@ -30,5 +35,6 @@ Unless required by applicable law or agreed to in writing, software distributed
         </button>
       </span>
     </div>
+    <%# End UMD Customization %>
   </div>
 </form>

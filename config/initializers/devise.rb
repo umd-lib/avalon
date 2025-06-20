@@ -213,7 +213,9 @@ Rails.application.reloader.to_prepare do
     # ==> Configuration for :timeoutable
     # The time you want to timeout the user session without activity. After this
     # time the user will be asked for credentials again. Default is 30 minutes.
+    # UMD Customization
     config.timeout_in = 12.hours
+    # End UMD Customization
 
     # ==> Configuration for :lockable
     # Defines which strategy will be used to lock an account.
@@ -297,7 +299,7 @@ Rails.application.reloader.to_prepare do
     # Add a new OmniAuth provider. Check the wiki for more information on setting
     # up on your models and hooks.
     # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
-    OmniAuth.config.logger = Rails.logger
+    # UMD Customization
     Avalon::Authentication::Providers.each do |provider|
       if provider[:provider] == :lti
         provider[:params].merge!({consumers: Avalon::Lti::Configuration})
@@ -321,6 +323,7 @@ Rails.application.reloader.to_prepare do
       end
       config.omniauth provider[:provider], *params
     end
+    # End UMD Customization
 
     # ==> Warden configuration
     # If you want to use other strategies, that are not supported by Devise, or
@@ -340,6 +343,11 @@ Rails.application.reloader.to_prepare do
     #
     # The router that invoked `devise_for`, in the example above, would be:
     # config.router_name = :my_engine
+    #
+    # When using OmniAuth, Devise cannot automatically set OmniAuth path,
+    # so you need to do it manually. For the users scope, it would be:
+    # config.omniauth_path_prefix = '/my_engine/users/auth'
+    OmniAuth.config.logger = Rails.logger
   end
 
   # Override script_name to always return empty string and avoid looking in @env

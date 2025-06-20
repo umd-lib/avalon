@@ -7,7 +7,11 @@ Dockerfile
 docker-compose.yml
 node_modules
 public/packs
+# UMD Customization
 public/packs-test
+# End UMD Customization
 tmp
+# UMD Customization
 log/*
 masterfiles
+# End UMD Customiztion

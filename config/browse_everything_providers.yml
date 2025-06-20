@@ -5,7 +5,9 @@
 ---
 file_system:
   :name: 'File Dropbox'
+  # UMD Customization
   :home: /masterfiles/dropbox
+  # End UMD Customization
 # drop_box:
 #   :app_key: YOUR_DROPBOX_APP_KEY
 #   :app_secret: YOUR_DROPBOX_APP_SECRET

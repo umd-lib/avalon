@@ -129,6 +129,7 @@ describe ApplicationController do
     end
   end
 
+  # UMD Customization
   describe '#current_ability' do
     it 'adds access_token to session options when "access_token" param is present' do
       access_token = FactoryBot.create(:access_token)
@@ -141,4 +142,5 @@ describe ApplicationController do
       expect(ability.options.has_key?(:access_token)).to be(false)
     end
   end
+  # End UMD Customization
 end

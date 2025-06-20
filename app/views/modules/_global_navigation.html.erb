@@ -13,12 +13,16 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
+<%# UMD Customization %>
 <div id="header-navbar" class="navbar navbar-expand-md navbar-light bg-primary mb-3" role="menu" aria-label="main menu">
+<%# End UMD Customization %>
   <div class="container-md">
     <div class="navbar-header">
       <div class="row">
         <div class="col">
+          <%# UMD Customization %>
           <%= link_to ENV['DIGITAL_COLLECTIONS_URL'] do %><%= image_tag "umd-lib-digital-collections-logo.svg", class: "img-responsive lib-logo desktop-hidden", alt: "UMD Digital Collections" %><% end %>
+          <%# End UMD Customization %>
         </div>
         <div class="col">
           <button type="button" class="navbar-toggler navbar-toggler-right float-right" data-toggle="collapse" data-target="#user-util-collapse" aria-expanded="false" aria-label="Toggle navigation">

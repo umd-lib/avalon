@@ -37,7 +37,9 @@ const CollectionListStickyUtils = ({
               onChange={handleFilterChange}
               name="q"
               className="form-control form-control-lg"
+              // UMD Customization
               aria-label="Search collections"
+              // End UMD Customization
               placeholder="Search collections..."
               autoFocus="autofocus"
             />

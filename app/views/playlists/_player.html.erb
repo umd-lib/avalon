@@ -31,7 +31,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 <span class="playlist_item_denied">
   You do not have permission to playback item <%= @current_masterfile.media_object_id %>.
   <% if !user_signed_in? %>
+  <%# UMD Customization %>
   <br>Have you tried <%= link_to 'logging in', user_saml_omniauth_authorize_path, :method => "post" %>?
+  <%# End UMD Customization %>
   <% end %>
 </span>
 <% end %>

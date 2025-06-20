@@ -27,11 +27,15 @@ class User < ActiveRecord::Base
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable
   # Registration is controlled via settings.yml
+  # UMD Customization
   devise_list = [ :database_authenticatable, :invitable, :omniauthable,
                   :recoverable, :rememberable, :trackable, :validatable,
                   :timeoutable ]
+  # End UMD Customization
   devise_list << :registerable if Settings.auth.registerable
+  # UMD Customization
   devise_list << { authentication_keys: [:login], omniauth_providers: [:saml] }
+  # End UMD Customization
 
   devise(*devise_list)
 
@@ -69,6 +73,7 @@ class User < ActiveRecord::Base
     Timeline.where(user_id:id).collect(&:tags).flatten.reject(&:blank?).uniq.sort
   end
 
+  # UMD Customization
   def self.sanitize_saml_roles(roles)
     roles.map do |role|
       role.downcase.sub(/^avalon-/, '').gsub(/-/, '_')
@@ -100,6 +105,7 @@ class User < ActiveRecord::Base
       end
     end
   end
+  # End UMD Customization
 
   def self.find_and_verify_by_username(username)
     user = User.find_by(username: username)
@@ -143,6 +149,7 @@ class User < ActiveRecord::Base
     find_or_create_by_username_or_email(username, email, 'generic')
   end
 
+  # UMD Customization
   def self.find_for_saml(auth_hash, signed_in_resource=nil)
     email = auth_hash.info.email.first
     username = email
@@ -152,6 +159,7 @@ class User < ActiveRecord::Base
     update_local_roles(username, roles)
     user
   end
+  # End UMD Customization
 
   def self.find_for_identity(access_token, signed_in_resource=nil)
     username = access_token.info['email']

@@ -42,7 +42,9 @@ describe MediaObjectsController, type: :controller do
           expect(get :show, params: { id: media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "returns 401 for published private items when no token is present" do
+          # UMD Customization
           pending('UMD LIBAVALON-178')
+          # End UMD Customization
           expect(get :show, params: { id: private_media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "permits published public items when no token is present" do
@@ -673,6 +675,7 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    # UMD Customization
     it "should display active Access Tokens" do
       media_object = FactoryBot.create(:media_object)
       user = login_user media_object.collection.managers.first
@@ -759,6 +762,7 @@ describe MediaObjectsController, type: :controller do
         end
       end
     end
+    # End UMD Customization
   end
 
   describe "#index" do
@@ -918,7 +922,9 @@ describe MediaObjectsController, type: :controller do
         login_user user.user_key
       end
       it "should not be available to a user on an inactive lease" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.governing_policies+=[Lease.create(begin_time: Date.today-2.day, end_time: Date.yesterday, inherited_read_users: [user.user_key])]
         media_object.save!
         get 'show', params: { id: media_object.id }
@@ -1201,6 +1207,7 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    # UMD Customization
     context "master_file_download" do
       it "should not display when there is no master file" do
         login_as(:administrator)
@@ -1258,6 +1265,7 @@ describe MediaObjectsController, type: :controller do
         expect(controller.instance_variable_get('@playback_restricted')).to be true
       end
     end
+    # End UMD Customization
 
     context "correctly handle unfound streams/sections" do
       subject(:mo){FactoryBot.create(:media_object, :with_master_file)}
@@ -1308,7 +1316,9 @@ describe MediaObjectsController, type: :controller do
 
     context "Items should not be available to unauthorized users" do
       it "should redirect to restricted content page when not logged in and item is unpublished" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         get 'show', params: { id: media_object.id }
@@ -1316,7 +1326,9 @@ describe MediaObjectsController, type: :controller do
       end
 
       it "should redirect to restricted content page when logged in and item is unpublished" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         login_as :user
@@ -1622,7 +1634,9 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
+      # UMD Customization
       let!(:umd_ip_manager_group) { "#{UmdIpManager::GROUP_PREFIX}TestGroup" }
+      # End UMD Customization
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
@@ -1642,10 +1656,12 @@ describe MediaObjectsController, type: :controller do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_ipaddress: ipaddr, submit_add_ipaddress: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([ipaddr])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_ipaddress: ipaddr, submit_remove_ipaddress: 'Remove' } }.to change { media_object.reload.read_groups }.from([ipaddr]).to([])
         end
+        # UMD Customization
         it "grants and revokes special read access to UMD IP Manager groups" do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_umd_ip_manager_group: umd_ip_manager_group, submit_add_umd_ip_manager_group: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([umd_ip_manager_group])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_umd_ip_manager_group: umd_ip_manager_group, submit_remove_umd_ip_manager_group: 'Remove' } }.to change { media_object.reload.read_groups }.from([umd_ip_manager_group]).to([])
         end
+        # End UMD Customization
       end
 
       context "grant and revoke time-based special read access" do

@@ -83,6 +83,7 @@ Unless required by applicable law or agreed to in writing, software distributed
           <td class='access_list_dates'></td>
           <% if !input_disabled %>
           <td class='access_list_remove'>
+            <%# UMD Customization %>
             <% if defined?(access_object_remove_helper) && access_object_remove_helper.present? %>
             <% remove_object = self.send(access_object_remove_helper, member_object) %>
             <% else %>
@@ -93,6 +94,7 @@ Unless required by applicable law or agreed to in writing, software distributed
                 polymorphic_path(object, "remove_#{access_object}".to_sym => remove_object, step: @active_step, donot_advance: true),
                 method: "put",
                 class: "btn btn-sm close remove" %>
+            <%# End UMD Customization %>
           </td>
           <% end %>
         </tr>

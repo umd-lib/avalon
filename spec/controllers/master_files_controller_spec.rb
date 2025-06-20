@@ -14,8 +14,11 @@
 
 require 'rails_helper'
 require 'equivalent-xml'
+# UMD Customization
 require 'pathname'
+# End UMD Customization
 
+# UMD Customization
 def with_temporary_copy_of_file(src_directory, src_filename)
   # Creates a temporary copy of the given file for use within the block.
   #
@@ -30,6 +33,7 @@ def with_temporary_copy_of_file(src_directory, src_filename)
       yield tmp_dest_file_pathname
   end
 end
+# End UMD Customization
 
 describe MasterFilesController do
 
@@ -169,6 +173,7 @@ describe MasterFilesController do
       end
 
       it "associates a dropbox file" do
+        # UMD Customization
         fixture_file_dir = Rails.root.join('spec', 'fixtures')
         fixture_filename = 'videoshort.mp4'
         with_temporary_copy_of_file(fixture_file_dir, fixture_filename) do |tmp_file_pathname|
@@ -182,9 +187,11 @@ describe MasterFilesController do
 
           expect(flash[:error]).to be_nil
         end
+        # End UMD Customization
       end
 
       it "associates a dropbox file that has a space in its name" do
+        # UMD Customization
         fixture_file_dir = Rails.root.join('spec', 'fixtures')
         fixture_filename = 'video short.mp4'
         with_temporary_copy_of_file(fixture_file_dir, fixture_filename) do |tmp_file_pathname|
@@ -199,6 +206,7 @@ describe MasterFilesController do
 
           expect(flash[:error]).to be_nil
         end
+        # End UMD Customization
       end
 
       it "does not fail when associating with a published media_object" do
@@ -247,6 +255,7 @@ describe MasterFilesController do
     end
   end
 
+  # UMD Customization
   describe "#download" do
     it "fails if invalid id is provided" do
       get(:download, params: { id: 'invalid_id'})
@@ -314,9 +323,9 @@ describe MasterFilesController do
         get(:download, params: { id: master_file_id})
       end
     end
-
-
   end
+  # UMD Customization
+
   describe "#show" do
     let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
 

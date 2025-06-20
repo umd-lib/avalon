@@ -32,7 +32,9 @@ class CollectionList extends Component {
       searchResult: [],
       filteredResult: [],
       maxItems: 4,
+      // UMD Customization
       sort: props.sort ? props.sort : 'unit',
+      // End UMD Customization
       isLoading: false
     };
   }

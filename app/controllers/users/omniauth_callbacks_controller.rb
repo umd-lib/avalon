@@ -25,6 +25,7 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     end
   end
 
+  # UMD Customization
   def saml
     @user = User.find_for_saml(request.env["omniauth.auth"], current_user)
     if @user.persisted?
@@ -38,8 +39,9 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       redirect_to(root_path)
     else
       redirect_to(relay_state)
-    end 
+    end
   end
+  # End UMD Customization
 
   def after_omniauth_failure_path_for(scope)
     case failed_strategy.name
