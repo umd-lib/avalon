@@ -42,9 +42,7 @@ RUN         chrome_version=`dpkg-deb -f /chrome.deb Version | cut -d '.' -f 1-3`
 RUN         chromedriver_version=`curl https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${chrome_version}`
 RUN         curl https://chromedriver.storage.googleapis.com/index.html?path=${chromedriver_version} -o /usr/local/bin/chromedriver \
          && chmod +x /usr/local/bin/chromedriver
-RUN         mkdir -p /tmp/ffmpeg && cd /tmp/ffmpeg \
-         && curl https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz | tar xJ \
-         && cp `find . -type f -executable` /usr/bin/
+RUN      apt-get -y update && apt-get install -y ffmpeg
 
 
 # Base stage for building final images
@@ -77,7 +75,6 @@ RUN         apt-get update && \
             zip \
             dumb-init \
             libsqlite3-dev \
-            shared-mime-info \
          && apt-get -y install mediainfo \
          && ln -s /usr/bin/lsof /usr/sbin/
 
