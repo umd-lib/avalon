@@ -77,6 +77,7 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
       	  expect(parsed_response['data'].count).to eq(1)
       	  expect(parsed_response['data'][0][1]).to eq("<a href=\"/persona/users/2/edit\">zzzebra@example.edu</a>")
       	end
+      end
 
       # UMD Customization
       let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
