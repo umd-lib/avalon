@@ -65,36 +65,18 @@ MacBooks. These steps can be ignored when running on other platforms.
    **Note:** If integrating with the umd-handler application running locally,
    see the ["umd-handle Integration"](#umd-handle-integration) section below.
 
-6) **(M-series)** Edit the "config/environments/development.rb" file:
-
-    ```zsh
-    vi config/environments/development.rb
-    ```
-
-    and commenting out the line:
-
-    ```text
-    config.file_watcher = ActiveSupport::EventedFileUpdateChecker
-    ```
-
-    by changing it to:
-
-    ```text
-    # config.file_watcher = ActiveSupport::EventedFileUpdateChecker
-    ```
-
-7) Retrieve the Docker images necessary to run Avalon:
+6) Retrieve the Docker images necessary to run Avalon:
 
     ```zsh
     docker-compose pull
     ```
 
-8) **(M-series)** Build the "avalonmediasystem/fedora:4.7.5" for the "arm64"
+7) **(M-series)** Build the "avalonmediasystem/fedora:4.7.5" for the "arm64"
    architecture:
 
     a) Switch to the directory containing the "avalon" clone as a subdirectory,
-       clone the  "avalonmediasystem/avalon-docker" GitHub repository and switch into the
-       directory:
+       clone the  "avalonmediasystem/avalon-docker" GitHub repository and switch
+       into the directory:
 
       ```zsh
       cd ..
@@ -115,9 +97,15 @@ MacBooks. These steps can be ignored when running on other platforms.
       cd ../../avalon
       ```
 
+8) Build the Docker images:
+
+   ```zsh
+   docker-compose build
+   ```
+
 9) Start the server
 
-    ```bash
+    ```zsh
     docker-compose up avalon worker
     ```
 
@@ -364,7 +352,7 @@ access to the "byebug" console for interactive debugging.
 
    ```yaml
      avalon: &avalon
-       image: avalonmediasystem/avalon:7.1-slim-dev-20200807
+       ...
        build:
          context: .
          target: dev
@@ -381,7 +369,7 @@ access to the "byebug" console for interactive debugging.
 
    ```yaml
      avalon: &avalon
-       image: avalonmediasystem/avalon:7.1-slim-dev-20200807
+       ...
        build:
          context: .
          target: dev
