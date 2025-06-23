@@ -1,4 +1,15 @@
-Rails.application.reloader.to_prepare do
+# UMD Customization
+# Commenting out "Rails.application.reloader.to_prepare" wrapper as it
+# interferes with Devise configuration, see:
+#
+# https://github.com/heartcombo/devise/issues/5699
+# https://github.com/heartcombo/devise/commit/7eccc91f615fd9bbb8a347ed05a9fb34b1664bf3
+#
+# This customization should be removed when the "devise" gem is upgraded to a
+# version that includes https://github.com/heartcombo/devise/commit/7eccc91f615fd9bbb8a347ed05a9fb34b1664bf3
+
+# Rails.application.reloader.to_prepare do
+# End UMD Customization
   # Use this hook to configure devise mailer, warden hooks and so forth.
   # Many of these configuration options can be set straight in your model.
   Devise.setup do |config|
@@ -358,4 +369,6 @@ Rails.application.reloader.to_prepare do
       ''
     end
   end
-end
+# UMD Customization
+# end
+# End UMD Customization

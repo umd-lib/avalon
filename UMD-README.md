@@ -106,3 +106,58 @@ and failed deletions.
 This Rails task is intended to be idempotent -- running the task multiple times
 should be safe, as once a file has been moved to the archive, it is no longer
 affected by this task.
+
+## Configuration Oddities
+
+### config/initializers/devise.rb
+
+In Avalon 7.6, the configuration code in "config/initializers/devise.rb" was
+wrapped in a "Rails.application.reloader.to_prepare" block, presumably to
+silence a warning related to Devise autoloaded constants, see:
+
+* <https://github.com/avalonmediasystem/avalon/commit/3f8a3bb8dff35c0b6936d70f0e99ddd35d15e03f>
+
+However, there is a known Devise issue, where this wrapper interferes
+with the configuration of Devise, see:
+
+* <https://github.com/heartcombo/devise/issues/5699>
+
+As of June 2025, the "Devise" fix indicated in the above issue has not been
+incorporated into any Devise version. To workaround this issue, simply commented
+out the wrapper.
+
+Also, In the "Troubleshooting" section of the "Devise" gem, there is a
+'"Request phase initiated" doesn't trigger' section:
+
+<https://github.com/heartcombo/devise/wiki/OmniAuth:-Overview#request-phase-initiated-doesnt-trigger>
+
+that suggests that the Devise configuration should *not* be placed within a
+"Rails.application.reloader.to_prepare" wrapper.
+
+A similar situation is described in detail in
+
+<https://github.com/fxn/zeitwerk/issues/143>
+
+but it is not clear if the proposed solutions apply here, because it is
+discussion a custom strategy, not a strategy encapsulated in a Ruby gem.
+
+One way to test if the customization in "config/initializers/devise.rb" can be
+removed is to run:
+
+```zsh
+$ bin/rails middleware
+```
+
+in the Avalon Docker container. The resulting list should include:
+
+```text
+use OmniAuth::Strategies::SAML
+```
+
+If it does not, the customization is still needed.
+
+**Note**: It is possible the "Rails.application.reloader.to_prepare" wrapper is
+not needed. because running `bin/rails zeitwerk:check` (as suggested in
+<https://guides.rubyonrails.org/v7.0/autoloading_and_reloading_constants.html#manual-testing>
+to find Zeitwerk issues), does not report any issues related to Devise when
+the wrapper is commented out.
