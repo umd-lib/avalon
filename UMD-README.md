@@ -5,7 +5,7 @@
 UMD-generated documentation for Avalon should be placed in the
 "[umd_docs](umd_docs/)" subdirectory.
 
-* [Avalon Permissons](umd_docs/AvalonPermissions.md)
+* [Avalon Permissions](umd_docs/AvalonPermissions.md)
 * [umd-handle Integration](umd_docs/UmdHandleIntegration.md)
 
 ## Development Setup
@@ -15,8 +15,8 @@ Instructions for building and running Avalon locally can be found in
 
 ## SAML Environment Specific Configuration
 
-The following variables were added to facilate configuring environment
-specific SAML configuration. These environment varaibles will take
+The following variables were added to facilitate configuring environment
+specific SAML configuration. These environment variables will take
 precedence over the configuration in the [settings.yml](./config/settings.yml).
 
 * `SAML_ISSUER`: Overrides the `issuer` configuration.
@@ -51,7 +51,7 @@ Kubernetes cluster to ensure that they have the correct architecture. See
 
     ```zsh
     # Substitute IMAGE_TAG with appropriate value
-    # Example IMAGE_TAG values for differnt scenarios:
+    # Example IMAGE_TAG values for different scenarios:
     #    Dev Build: docker.lib.umd.edu/avalon:latest
     #    RC Build: docker.lib.umd.edu/avalon:7.1-umd-0-rc2
     #    Release Build: docker.lib.umd.edu/avalon:7.1-umd-0
@@ -183,7 +183,7 @@ with the following error in the browser console:
 
 The session cookie is configured by the "config/initializers/session_store.rb"
 file. In a stock Avalon, the "SameSite" attribute of the cookie is never set,
-and the "Secure" flag is only set for production environments (and the when the
+and the "Secure" flag is only set for production environments (and when the
 HTTP protocol is "https").
 
 As documented by [MDN][mdn-browser-compatibility], when the "SameSite" attribute
@@ -193,8 +193,8 @@ attribute to "Lax".
 Setting the "SameSite" attribute to "None" requires the "Secure" flag, but this
 usually isn't an issue for local development, because browsers do not enforce
 this requirement when the hostname is "localhost". However, because UMD has
-customized Avalon to use the "av-local" hostname, this requirement is enforced,
-the cookie is rejected, and the infinite redirect loop occurs.
+customized Avalon to use the "av-local" hostname, this requirement *is*
+enforced, the cookie is rejected, and the infinite redirect loop occurs.
 
 This is not an issue for Chrome, because it defaults the "SameSite" attribute
 to "Lax".
