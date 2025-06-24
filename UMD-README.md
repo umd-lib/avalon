@@ -161,3 +161,56 @@ not needed. because running `bin/rails zeitwerk:check` (as suggested in
 <https://guides.rubyonrails.org/v7.0/autoloading_and_reloading_constants.html#manual-testing>
 to find Zeitwerk issues), does not report any issues related to Devise when
 the wrapper is commented out.
+
+### Session Cookie, Login, and Local Development
+
+Avalon uses a "session" cookie ("_session_id") to control logins. Without
+this cookie, the Devise authentication process falls into an infinite redirect
+loop between the "/users/auth/saml" and "/users/sign_in" endpoints.
+
+The UMD CAS web application firewall rejects any HTTP request with a
+“service” HTTP parameter of “localhost” or “127.0.0.1”. Because of this,
+UMD has customized Avalon to use "av-local" (instead of "localhost") for the
+hostname in the local development environment.
+
+The combination of the need for the session cookie, and the use of the
+"av-local" hostname causes local development logins to fail when using the
+Firefox web browser. This is because Firefox is rejecting the session cookie
+with the following error in the browser console:
+
+> Cookie “_session_id” rejected because it has the “SameSite=None” attribute
+> but is missing the “secure” attribute.
+
+The session cookie is configured by the "config/initializers/session_store.rb"
+file. In a stock Avalon, the "SameSite" attribute of the cookie is never set,
+and the "Secure" flag is only set for production environments (and the when the
+HTTP protocol is "https").
+
+As documented by [MDN][mdn-browser-compatibility], when the "SameSite" attribute
+is not set, Firefox defaults the attribute to "None", while Chrome defaults the
+attribute to "Lax".
+
+Setting the "SameSite" attribute to "None" requires the "Secure" flag, but this
+usually isn't an issue for local development, because browsers do not enforce
+this requirement when the hostname is "localhost". However, because UMD has
+customized Avalon to use the "av-local" hostname, this requirement is enforced,
+the cookie is rejected, and the infinite redirect loop occurs.
+
+This is not an issue for Chrome, because it defaults the "SameSite" attribute
+to "Lax".
+
+To restore the ability to login with Firefox in the local development
+environment, the session cookie configuration in
+"config/initializers/session_store.rb" was modified to set the "SameSite"
+attribute to "Lax" when the application is run in Rails "development" mode.
+
+**Note:** After logging in a browser warning will be displayed (in both Firefox
+and Chrome - the wording below is from Firefox):
+
+> The information you have entered on this page will be sent over an insecure
+> connection and could be read by a third party.
+
+This is expected, and pre-existed this customization.
+
+---
+[mdn-browser-compatibility]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#browser_compatibility
