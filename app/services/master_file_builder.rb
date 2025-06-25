@@ -43,7 +43,7 @@ module MasterFileBuilder
       collection_path = media_object.collection.dropbox_absolute_path
       original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
       desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), DateTime.now.strftime("%H%M%S%L"), original_filename)
-      if (File.exists?(desination_path))
+      if (File.exist?(desination_path))
         response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
         next
       end
