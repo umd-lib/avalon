@@ -191,7 +191,10 @@ RSpec.describe "/checkouts", type: :request do
         end
         it "sets the return time based on the given lending period" do
           post checkouts_url, params: { checkout: valid_attributes }
-          expect(Checkout.find_by(media_object_id: media_object.id).return_time).to eq DateTime.current + 1.day
+          # UMD Customization
+          # Use "Time.zone.now" due to use of EST/EDT timezone in config/application.rb
+          expect(Checkout.find_by(media_object_id: media_object.id).return_time).to eq Time.zone.now + 1.day
+          # End UMD Customization
         end
       end
     end
@@ -253,7 +256,10 @@ RSpec.describe "/checkouts", type: :request do
     it "updates the return time of requested checkout" do
       patch return_checkout_url(checkout)
       checkout.reload
-      expect(checkout.return_time).to be <= DateTime.current
+      # UMD Customization
+      # Use "Time.zone.now" due to use of EST/EDT timezone in config/application.rb
+      expect(checkout.return_time).to be <= Time.zone.now
+      # End UMD Customization
     end
     context "user is on the checkouts page" do
       it "redirects to the checkouts page" do
@@ -285,7 +291,10 @@ RSpec.describe "/checkouts", type: :request do
     context "as a regular user" do
       it "updates the user's active checkouts" do
         patch return_all_checkouts_url
-        expect(Checkout.where(user_id: user.id).first.return_time).to be <= DateTime.current
+        # UMD Customization
+        # Use "Time.zone.now" due to use of EST/EDT timezone in config/application.rb
+        expect(Checkout.where(user_id: user.id).first.return_time).to be <= Time.zone.now
+        # End UMD Customization
       end
       it "does not update other checkouts" do
         patch return_all_checkouts_url
