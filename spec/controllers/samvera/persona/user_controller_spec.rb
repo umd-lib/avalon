@@ -78,40 +78,6 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
       	  expect(parsed_response['data'][0][1]).to eq("<a href=\"/persona/users/2/edit\">zzzebra@example.edu</a>")
       	end
       end
-
-      # UMD Customization
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by role" do
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'administrator' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(1)
-        expect(parsed_response['data'].count).to eq(1)
-        expect(parsed_response['data'][0][0]).to eq("<a href=\"/persona/users/1/edit\">aardvark</a>")
-      end
-
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by date" do
-        # UMD Note: This stock Avalon test fails because of timezone issues
-        # and is replaced in Avalon 7.6, so marking as "pending" so that
-        # it is skipped.
-        pending('UMD LIBAVALON-178')
-
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'May' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(2)
-        expect(parsed_response['data'].count).to eq(2)
-        expect(parsed_response['data'][0][3]).to eq("<relative-time datetime=\"2022-05-15T00:00:00Z\" title=\"2022-05-15 00:00:00 UTC\">May 15th, 2022 00:00</relative-time>")
-      end
-
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by status" do
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'Pending' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(1)
-        expect(parsed_response['data'].count).to eq(1)
-        expect(parsed_response['data'][0][0]).to eq("<a href=\"/persona/users/2/edit\">zzzebra</a>")
-      end
-      # End UMD Customization
     end
 
     context 'sorting' do
