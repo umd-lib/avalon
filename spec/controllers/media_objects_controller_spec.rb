@@ -826,7 +826,12 @@ describe MediaObjectsController, type: :controller do
 
       it "should return list of media_objects that the user is authorized to view" do
         get 'index', format: 'json'
-        expect(json.count).to eq(1)
+        # UMD Customization
+        # Update test for UMD customizations to permissions.
+        # All published items are viewable, so number of items returned should
+        # be 2
+        expect(json.count).to eq(2)
+        # End UMD Customization
         expect(json.first['id']).to eq(media_object.id)
         expect(json.first['title']).to eq(media_object.title)
         expect(json.first['collection']).to eq(media_object.collection.name)
