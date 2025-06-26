@@ -39,13 +39,6 @@ en:
     empty_share_link: ""
     empty_share_link_notice: "After processing has started the embedded link will be available."
     empty_share_section_permalink_notice: "After processing has started the section link will be available."
-  # UMD Customization
-  master_file:
-    error_id_not_found: "Download failed: Cannot find master file with id: %{id}"
-    error_no_file: "Download failed: Original file not stored."
-    error_file_not_found: "Download failed: File not found at: %{location}"
-    download_not_permitted: "Download not permitted."
-  # End UMD Customization
     cdl:
       checkout_message: "<p>Borrow this item to access media resources.</p>"
       not_available_message: "<p>This resource is currently checked out by another user. </br></br> This item is due to be returned on </br><span data-utc-time='%{time}' />.</p>"
@@ -54,6 +47,13 @@ en:
       expire:
         heading: "Check Out Expired!"
         message: "Your lending period has been expired. Please return the item, and check for availability later."
+  # UMD Customization
+  master_file:
+    error_id_not_found: "Download failed: Cannot find master file with id: %{id}"
+    error_no_file: "Download failed: Original file not stored."
+    error_file_not_found: "Download failed: File not found at: %{location}"
+    download_not_permitted: "Download not permitted."
+  # End UMD Customization
   metadata_tip:
     abstract: |
       Summary provides a space for describing the contents of the item. Examples
