@@ -1,5 +1,9 @@
 domain:
   host: test.host
+  # UMD Customization
+  # Override UMD-customized "port: 3000", in "settings.yml"
+  port: 80
+  # End UMD Customization
 dropbox:
   upload_uri: smb://test.host/dropbox
 auth:

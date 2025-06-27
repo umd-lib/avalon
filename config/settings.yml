@@ -1,6 +1,9 @@
 name: 'Avalon Media System' # used in page titles
 # UMD Customization
-domain: http://av-local:3000
+domain:
+  host: av-local
+  port: 3000
+  protocol: http
 # End UMD Customization
 dropbox:
   # UMD Customization
