@@ -84,9 +84,6 @@ end
 
 describe 'Sign in page' do
   it 'validates presence of items on login page' do
-    # UMD Customization
-    pending('Test fails because of UMD Customization - registerable: false in avalon/config/settings.yml')
-    # End UMD Customization
     visit '/users/sign_in'
     expect(page).to have_content('Username or email')
     expect(page).to have_content('Password')
@@ -94,9 +91,6 @@ describe 'Sign in page' do
     expect(page).to have_button('Connect')
   end
   it 'validates presence of items on register page' do
-    # UMD Customization
-    pending('Test fails because of UMD Customization - registerable: false in avalon/config/settings.yml')
-    # End UMD Customization
     visit '/users/sign_up'
     expect(page).to have_content('Username')
     expect(page).to have_content('Email')
@@ -104,9 +98,6 @@ describe 'Sign in page' do
     expect(page).to have_content('Password confirmation')
   end
   it 'is able to create new account' do
-    # UMD Customization
-    pending('Test fails because of UMD Customization - registerable: false in avalon/config/settings.yml')
-    # End UMD Customization
     hide_const('Avalon::GROUP_LDAP')
     visit '/users/sign_up'
     fill_in 'Username', with: 'user1@example.com'

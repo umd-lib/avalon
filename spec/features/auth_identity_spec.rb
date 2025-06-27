@@ -17,9 +17,6 @@ require 'rails_helper'
 describe 'Identity' do
   after { Warden.test_reset! }
   it 'returns error when a user is created twice' do
-    # UMD Customization
-    pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
-    # End UMD Customization
     test_username = 'Identity User'
     test_email = 'identity_user_1@example.com'
     test_password = 'identity'
