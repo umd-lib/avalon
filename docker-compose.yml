@@ -106,7 +106,9 @@ services:
     environment:
       # UMD Customization
       - APP_NAME=avalon
-      - SETTINGS__DOMAIN=http://av-local:3000
+      - SETTINGS__DOMAIN__PROTOCOL=http
+      - SETTINGS__DOMAIN_HOST=av-local
+      - SETTINGS__DOMAIN_PORT=3000
       - BUNDLE_FLAGS=--with development postgres --without production test
       - ENCODE_WORK_DIR=/streamfiles
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml

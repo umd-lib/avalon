@@ -39,7 +39,11 @@ module Avalon
     saml_config = Config.find { |conf| conf[:provider] == :saml }
     if saml_config
       saml_config[:params][:issuer] = ENV['SAML_ISSUER'] if ENV['SAML_ISSUER']
-      saml_config[:params][:assertion_consumer_service_url] = URI::join(Settings.domain, "/users/auth/saml/callback").to_s
+      domain = "#{Settings[:domain][:protocol]}://#{Settings[:domain][:host]}"
+      unless Settings[:domain][:port].blank?
+        domain = "#{domain}:#{Settings[:domain][:port]}"
+      end
+      saml_config[:params][:assertion_consumer_service_url] = URI::join(domain, "/users/auth/saml/callback").to_s
       saml_config[:params][:private_key] = ENV['SAML_SP_PRIVATE_KEY'] if ENV['SAML_SP_PRIVATE_KEY']
       saml_config[:params][:certificate] = ENV['SAML_SP_CERTIFICATE'] if ENV['SAML_SP_CERTIFICATE']
     end
