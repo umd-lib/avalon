@@ -35,7 +35,7 @@ services:
 
   fedora: &fedora
     # UMD Customization
-    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.5.1
+    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.6
     # End UMD Customization
     depends_on:
       - db
@@ -51,7 +51,7 @@ services:
 
   solr: &solr
     # UMD Customization
-    image: docker.lib.umd.edu/solr:avalon-7.5.1
+    image: docker.lib.umd.edu/solr:avalon-7.6
     # End UMD Customization
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
@@ -69,10 +69,12 @@ services:
 
   hls:
     # UMD Customization
-    image: docker.lib.umd.edu/nginx:avalon-7.5.1-umd-1
+    image: docker.lib.umd.edu/nginx:avalon-7.6-umd-0
+    platform: linux/amd64
     # End UMD Customization
     environment:
       - AVALON_DOMAIN=http://avalon:3000
+      - AVALON_STREAMING_BASE_URL=http://localhost:8880
     # UMD Customization
     volumes:
       - streaming:/data
@@ -91,7 +93,7 @@ services:
 
   avalon: &avalon
     # UMD Customization
-    image: docker.lib.umd.edu/avalon:7.5.1-umd-1
+    image: docker.lib.umd.edu/avalon:7.6-umd-0
     # End UMD Customization
     build:
       context: .
