@@ -7,17 +7,17 @@ of Avalon using Docker.
 
 ### Prerequisites
 
-1) Edit the "/etc/hosts" file and add
+1) Ensure that the necessary Docker images from
+   [umd-lib/avalon-docker](https://github.umd.edu/umd-lib/avalon-docker)
+   have been built and are available in the Nexus.
 
-```text
-127.0.0.1 av-local
-```
+2) Edit the "/etc/hosts" file and add
+
+    ```text
+    127.0.0.1 av-local
+    ```
 
 ### Setup Instructions
-
-The following instructions include steps marked **(M-series)** which are
-required when setting up and running Avalon on M-series (Apple Silicon)
-MacBooks. These steps can be ignored when running on other platforms.
 
 1) Checkout the application and switch to the directory:
 
@@ -68,49 +68,22 @@ MacBooks. These steps can be ignored when running on other platforms.
 6) Retrieve the Docker images necessary to run Avalon:
 
     ```zsh
-    docker-compose pull
+    docker-compose pull --ignore-buildable
     ```
 
-7) **(M-series)** Build the "avalonmediasystem/fedora:4.7.5" for the "arm64"
-   architecture:
-
-    a) Switch to the directory containing the "avalon" clone as a subdirectory,
-       clone the  "avalonmediasystem/avalon-docker" GitHub repository and switch
-       into the directory:
-
-      ```zsh
-      cd ..
-      git clone https://github.com/avalonmediasystem/avalon-docker.git
-      cd avalon-docker/fedora
-      ```
-
-    b) Build the "avalonmediasystem/fedora:4.7.5" Docker image:
-
-      ```zsh
-      docker build -t avalonmediasystem/fedora:4.7.5 .
-      ```
-
-    c) Switch back to the "avalon" directory (with the remaining steps done
-       in the directory with the "umd-lib/avalon" checkout):
-
-      ```zsh
-      cd ../../avalon
-      ```
-
-8) Build the Docker images:
+7) Build the Docker images:
 
    ```zsh
    docker-compose build
    ```
 
-9) Start the server
+8) Start the server
 
     ```zsh
     docker-compose up avalon worker
     ```
 
-   **Note:** Avalon may take 5-10 minutes to become available -- look for the
-   following in the log output:
+   Avalon has started when the following is printed to the console:
 
    ```text
    avalon-avalon-1  | => Booting WEBrick
@@ -199,10 +172,10 @@ in the folder for a description of each dataset.
    The collection must have at least one published item before being displayed
    to anonymous users on the "Browse" or "Collections" pages.
 
-   **Note:** The first ingest after Avalon starts often seems. If nothing is
-   loaded for the collection, extract the dataset Zip file again (this restores
-   the manifest spreadsheet, which is deleted as part of the ingest process),
-   and the second try should be successful.
+   **Note:** The first ingest after Avalon starts often seems to fail. If
+   nothing is loaded for the collection, extract the dataset Zip file again
+   (this restores the manifest spreadsheet, which is deleted as part of
+   the ingest process), and the second try should be successful.
 
 7) To publish an item, select the item from the "Browse" page. On the item
    detail page, left-click the "Publish" button. A notification should be
