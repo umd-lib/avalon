@@ -15,9 +15,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 %>
       <% if @master_file.is_video? %>
         <%=t('auth.embedded_video').html_safe%>
-        <%= link_to t('auth.sign_in'), new_user_session_path(:login_popup=>"1"), :onclick=>"openPopup(this);return false;", :class=>"btn" %>
+        <%= link_to t('auth.sign_in'), user_saml_omniauth_authorize_path, :method => "post", :class=>"btn" %>
       <% else %>
-        <%=t('auth.embedded_audio').html_safe%> <%= link_to t('auth.sign_in'), new_user_session_path(:login_popup=>"1"), :onclick=>"openPopup(this);return false;", :class=>"btn" %>
+        <%=t('auth.embedded_audio').html_safe%> <%= link_to t('auth.sign_in'), user_saml_omniauth_authorize_path, :method => "post", :class=>"btn" %>
       <% end %>
 
 <% content_for :page_scripts do %>
