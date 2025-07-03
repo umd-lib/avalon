@@ -178,7 +178,10 @@ class User < ActiveRecord::Base
       Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
     end
 
-    find_or_create_by_username_or_email(auth_hash.uid, auth_hash.info.email, 'lti')
+    # Canvas does not provide an email in the LTI information, so we need to use a dummy one
+    # created based on the context_id and the streaming hostname
+    email = auth_hash.info.email || class_id + '@' ENV['STREAMING_HOST']
+    find_or_create_by_username_or_email(auth_hash.uid, email, 'lti')
   end
 
   def self.autocomplete(query)
