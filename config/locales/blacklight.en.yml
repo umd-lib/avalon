@@ -34,7 +34,9 @@ en:
 
     search:
       title: '%{constraints} - %{application_name} Search'
+      # UMD Customization
       search_results_header: "Browse"
+      # End UMD Customization
       bookmarks:
         present: "Selected"
         absent: "Select"

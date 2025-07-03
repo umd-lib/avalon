@@ -1,8 +1,15 @@
 name: 'Avalon Media System' # used in page titles
-domain: http://av-local:3000
+# UMD Customization
+domain:
+  host: av-local
+  port: 3000
+  protocol: http
+# End UMD Customization
 dropbox:
+  # UMD Customization
   path: /masterfiles/dropbox
   upload_uri: /masterfiles/dropbox
+  # End UMD Customization
   # google_drive:
   #   client_id: id
   #   client_secret: secret
@@ -42,11 +49,13 @@ solr:
     shards:
     snitch:
 zookeeper:
-  connection_str: 'localhost:9983/configs'
+  connection_str: "localhost:9983/configs"
 streaming:
   server: :generic
   stream_token_ttl: 20 #minutes
+  # UMD Customization
   content_path: '/streamfiles'
+  # End UMD Customization
   rtmp_base: 'rtmp://localhost/avalon'
   http_base: 'http://localhost:3000/streams'
   default_quality: 'auto'
@@ -57,8 +66,10 @@ redis:
 groups:
   system_groups: [administrator, group_manager, manager]
 master_file_management:
+  # UMD Customization
   strategy: 'move' #'delete', or 'move' (for move uncomment and configure next line)
   path: '/masterfiles/archive'
+  # End UMD Customization
 bib_retriever:
   default:
     protocol: sru
@@ -74,6 +85,7 @@ encode_throttling:
   update_jobs_throttle_threshold: 3
   update_jobs_spacing: 10
 auth:
+  # UMD Customization
   registerable: false
   configuration:
     - :name: CAS Login
@@ -97,7 +109,7 @@ auth:
           embed_sign: false
           metadata_signed: false # Enable or not signature on Metadata
         # request_attributes: {}
-
+  # End UMD Customization
 #   configuration:
 #     - :name: Avalon Lti OAuth
 #       :provider: :lti
@@ -120,3 +132,7 @@ controlled_digital_lending:
   # Choose whether every collection has CDL enabled or disabled by default
   collections_enabled: false
   default_lending_period: 'P14D' # ISO8601 duration format: P14D == 14.days, PT8H == 8.hours, etc.
+caption_default:
+  # Language should be 2 or 3 letter ISO 639 codes
+  language: 'en'
+  name: 'English'

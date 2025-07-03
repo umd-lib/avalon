@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -42,7 +42,9 @@ describe MediaObjectsController, type: :controller do
           expect(get :show, params: { id: media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "returns 401 for published private items when no token is present" do
+          # UMD Customization
           pending('UMD LIBAVALON-178')
+          # End UMD Customization
           expect(get :show, params: { id: private_media_object.id, format: 'json' }).to have_http_status(401)
         end
         it "permits published public items when no token is present" do
@@ -297,6 +299,13 @@ describe MediaObjectsController, type: :controller do
           expect(JSON.parse(response.body)["errors"].class).to eq Array
           expect(JSON.parse(response.body)["errors"].first.class).to eq String
         end
+        it "should respond with 422 if collection param not present" do
+          post 'create', params: { format: 'json' }
+          expect(response.status).to eq(422)
+          expect(JSON.parse(response.body)).to include('errors')
+          expect(JSON.parse(response.body)["errors"].class).to eq Array
+          expect(JSON.parse(response.body)["errors"].first.class).to eq String
+        end
         it "should create a new media_object" do
           # master_file_obj = FactoryBot.create(:master_file, master_file.slice(:files))
           media_object = FactoryBot.create(:media_object)#, master_files: [master_file_obj])
@@ -447,14 +456,15 @@ describe MediaObjectsController, type: :controller do
     end
     describe "#update" do
       context 'using api' do
-        let(:administrator) { FactoryBot.create(:administrator) }
+        let(:user) { FactoryBot.create(:administrator) }
+        let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
 
         before(:each) do
-          ApiToken.create token: 'secret_token', username: administrator.username, email: administrator.email
+          ApiToken.create token: 'secret_token', username: user.username, email: user.email
           request.headers['Avalon-Api-Key'] = 'secret_token'
           allow_any_instance_of(MasterFile).to receive(:get_ffmpeg_frame_data).and_return('some data')
         end
-        let!(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
+
         it "should route json format to #json_update" do
           assert_routing({ path: 'media_objects/1.json', method: :put },
              { controller: 'media_objects', action: 'json_update', id: '1', format: 'json' })
@@ -513,6 +523,39 @@ describe MediaObjectsController, type: :controller do
           expect(JSON.parse(response.body)).to include('errors')
           expect(JSON.parse(response.body)["errors"].class).to eq Array
           expect(JSON.parse(response.body)["errors"].first.class).to eq String
+        end
+
+        context "as an authorized non-admin user" do
+          let(:user) { FactoryBot.create(:manager) }
+          let(:collection) { FactoryBot.create(:collection, managers: [user.username]) }
+          let(:media_object) { FactoryBot.create(:media_object, collection: collection) }
+
+          it "updates metadata" do
+	    old_title = media_object.title
+	    put 'json_update', params: { format: 'json', id: media_object.id, fields: {title: old_title+'new'}, collection_id: media_object.collection_id }
+	    expect(JSON.parse(response.body)['id'].class).to eq String
+	    expect(JSON.parse(response.body)).not_to include('errors')
+	    media_object.reload
+	    expect(media_object.title).to eq old_title+'new'
+          end
+        end
+
+        context "collection_id parameter" do
+          it "updates metadata without collection_id" do
+	    old_title = media_object.title
+	    put 'json_update', params: { format: 'json', id: media_object.id, fields: {title: old_title+'new'} }
+	    expect(JSON.parse(response.body)['id'].class).to eq String
+	    expect(JSON.parse(response.body)).not_to include('errors')
+	    media_object.reload
+	    expect(media_object.title).to eq old_title+'new'
+          end
+	  it "should respond with 422 if collection not found" do
+	    put 'json_update', params: { format: 'json', id: media_object.id, collection_id: "doesnt_exist" }
+	    expect(response.status).to eq(422)
+	    expect(JSON.parse(response.body)).to include('errors')
+	    expect(JSON.parse(response.body)["errors"].class).to eq Array
+	    expect(JSON.parse(response.body)["errors"].first.class).to eq String
+	  end
         end
       end
     end
@@ -632,6 +675,7 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    # UMD Customization
     it "should display active Access Tokens" do
       media_object = FactoryBot.create(:media_object)
       user = login_user media_object.collection.managers.first
@@ -718,6 +762,7 @@ describe MediaObjectsController, type: :controller do
         end
       end
     end
+    # End UMD Customization
   end
 
   describe "#index" do
@@ -781,7 +826,12 @@ describe MediaObjectsController, type: :controller do
 
       it "should return list of media_objects that the user is authorized to view" do
         get 'index', format: 'json'
-        expect(json.count).to eq(1)
+        # UMD Customization
+        # Update test for UMD customizations to permissions.
+        # All published items are viewable, so number of items returned should
+        # be 2
+        expect(json.count).to eq(2)
+        # End UMD Customization
         expect(json.first['id']).to eq(media_object.id)
         expect(json.first['title']).to eq(media_object.title)
         expect(json.first['collection']).to eq(media_object.collection.name)
@@ -861,10 +911,10 @@ describe MediaObjectsController, type: :controller do
       it "should choose the correct default master_file" do
         mf1 = FactoryBot.create(:master_file, media_object: media_object)
         mf2 = FactoryBot.create(:master_file, media_object: media_object)
+        expect(media_object.ordered_master_files.to_a.first).to eq(mf1)
         media_object.ordered_master_files = media_object.ordered_master_files.to_a.reverse
         media_object.save!
         controller.instance_variable_set('@media_object', media_object)
-        expect(media_object.master_files.first).to eq(mf1)
         expect(media_object.ordered_master_files.to_a.first).to eq(mf2)
         expect(controller.send('set_active_file')).to eq(mf2)
       end
@@ -877,7 +927,9 @@ describe MediaObjectsController, type: :controller do
         login_user user.user_key
       end
       it "should not be available to a user on an inactive lease" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.governing_policies+=[Lease.create(begin_time: Date.today-2.day, end_time: Date.yesterday, inherited_read_users: [user.user_key])]
         media_object.save!
         get 'show', params: { id: media_object.id }
@@ -1160,6 +1212,7 @@ describe MediaObjectsController, type: :controller do
       end
     end
 
+    # UMD Customization
     context "master_file_download" do
       it "should not display when there is no master file" do
         login_as(:administrator)
@@ -1217,6 +1270,7 @@ describe MediaObjectsController, type: :controller do
         expect(controller.instance_variable_get('@playback_restricted')).to be true
       end
     end
+    # End UMD Customization
 
     context "correctly handle unfound streams/sections" do
       subject(:mo){FactoryBot.create(:media_object, :with_master_file)}
@@ -1267,7 +1321,9 @@ describe MediaObjectsController, type: :controller do
 
     context "Items should not be available to unauthorized users" do
       it "should redirect to restricted content page when not logged in and item is unpublished" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         get 'show', params: { id: media_object.id }
@@ -1275,7 +1331,9 @@ describe MediaObjectsController, type: :controller do
       end
 
       it "should redirect to restricted content page when logged in and item is unpublished" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         media_object.publish!(nil)
         expect(media_object).not_to be_published
         login_as :user
@@ -1366,7 +1424,7 @@ describe MediaObjectsController, type: :controller do
       delete :destroy, params: { id: media_object.id }
       expect(flash[:notice]).to include("media object deleted")
       expect(MediaObject.exists?(media_object.id)).to be_falsey
-      expect(MasterFile.exists?(media_object.master_files.first.id)).to be_falsey
+      expect(MasterFile.exists?(media_object.master_file_ids.first)).to be_falsey
     end
 
     it "should remove a MediaObject with multiple MasterFiles" do
@@ -1541,10 +1599,9 @@ describe MediaObjectsController, type: :controller do
     end
     it 'sets the MIME type' do
       media_object = FactoryBot.create(:media_object)
-      media_object.ordered_master_files += [FactoryBot.create(:master_file, :with_derivative)]
+      master_file = FactoryBot.create(:master_file, :with_derivative, media_object: media_object)
+      media_object.reload # Reload here to force reloading master file solr docs used in #set_media_types!
       media_object.set_media_types!
-      media_object.save
-      media_object.reload
       expect(media_object.format).to eq(["video/mp4"])
     end
 
@@ -1582,7 +1639,9 @@ describe MediaObjectsController, type: :controller do
       let!(:group) { Faker::Lorem.word }
       let!(:classname) { Faker::Lorem.word }
       let!(:ipaddr) { Faker::Internet.ip_v4_address }
+      # UMD Customization
       let!(:umd_ip_manager_group) { "#{UmdIpManager::GROUP_PREFIX}TestGroup" }
+      # End UMD Customization
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
@@ -1602,10 +1661,12 @@ describe MediaObjectsController, type: :controller do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_ipaddress: ipaddr, submit_add_ipaddress: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([ipaddr])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_ipaddress: ipaddr, submit_remove_ipaddress: 'Remove' } }.to change { media_object.reload.read_groups }.from([ipaddr]).to([])
         end
+        # UMD Customization
         it "grants and revokes special read access to UMD IP Manager groups" do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_umd_ip_manager_group: umd_ip_manager_group, submit_add_umd_ip_manager_group: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([umd_ip_manager_group])
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_umd_ip_manager_group: umd_ip_manager_group, submit_remove_umd_ip_manager_group: 'Remove' } }.to change { media_object.reload.read_groups }.from([umd_ip_manager_group]).to([])
         end
+        # End UMD Customization
       end
 
       context "grant and revoke time-based special read access" do
@@ -1729,16 +1790,16 @@ describe MediaObjectsController, type: :controller do
       login_as :user
     end
     it "should render add_to_playlist_form with correct masterfile_id" do
-      get :add_to_playlist_form, params: { id: media_object.id, scope: 'master_file', masterfile_id: media_object.master_file_ids[0] }
+      get :add_to_playlist_form, params: { id: media_object.id, scope: 'master_file', masterfile_id: media_object.ordered_master_file_ids[0] }
       expect(response).to render_template(:_add_to_playlist_form)
-      expect(response.body).to include(media_object.master_file_ids[0])
+      expect(response.body).to include(media_object.ordered_master_file_ids[0])
     end
     it "should render the correct label for scope=master_file" do
-      get :add_to_playlist_form, params: { id: media_object.id, scope: 'master_file', masterfile_id: media_object.master_file_ids[0] }
+      get :add_to_playlist_form, params: { id: media_object.id, scope: 'master_file', masterfile_id: media_object.ordered_master_file_ids[0] }
       expect(response.body).to include('Add Section to Playlist')
     end
     it "should render the correct label for scope=media_object" do
-      get :add_to_playlist_form, params: { id: media_object.id, scope: 'media_object', masterfile_id: media_object.master_file_ids[0] }
+      get :add_to_playlist_form, params: { id: media_object.id, scope: 'media_object', masterfile_id: media_object.ordered_master_file_ids[0] }
       expect(response.body).to include('Add Item to Playlist')
     end
   end
@@ -1756,13 +1817,13 @@ describe MediaObjectsController, type: :controller do
 
     it "should create a single playlist_item for a single master_file" do
       expect {
-        post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: playlist.id, masterfile_id: media_object.master_file_ids[0], playlistitem_scope: 'section' } }
+        post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: playlist.id, masterfile_id: media_object.ordered_master_file_ids[0], playlistitem_scope: 'section' } }
       }.to change { playlist.items.count }.from(0).to(1)
       expect(playlist.items[0].title).to eq("#{media_object.title} - #{media_object.ordered_master_files.to_a[0].title}")
     end
     it "should create playlist_items for each span in a single master_file's structure" do
       expect {
-        post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: playlist.id, masterfile_id: media_object.master_file_ids[1], playlistitem_scope: 'structure' } }
+        post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: playlist.id, masterfile_id: media_object.ordered_master_file_ids[1], playlistitem_scope: 'structure' } }
       }.to change { playlist.items.count }.from(0).to(13)
       expect(playlist.items[0].title).to eq("Test Item - CD 1 - Copland, Three Piano Excerpts from Our Town - Track 1. Story of Our Town")
       expect(playlist.items[12].title).to eq("Test Item - CD 1 - Track 13. Copland, Danzon Cubano")
@@ -1785,7 +1846,7 @@ describe MediaObjectsController, type: :controller do
     it 'redirects with flash message when playlist is owned by another user' do
       login_as :user
       other_playlist = FactoryBot.create(:playlist)
-      post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: other_playlist.id, masterfile_id: media_object.master_file_ids[0], playlistitem_scope: 'section' } }
+      post :add_to_playlist, params: { id: media_object.id, post: { playlist_id: other_playlist.id, masterfile_id: media_object.ordered_master_file_ids[0], playlistitem_scope: 'section' } }
       expect(response).to have_http_status(403)
       expect(JSON.parse(response.body).symbolize_keys).to eq({message: "<p>You are not authorized to update this playlist.</p>", status: 403})
     end

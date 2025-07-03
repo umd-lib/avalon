@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -29,7 +29,9 @@ module Samvera
     end
 
     before_action :load_user, only: [:edit, :update, :destroy]
+    # UMD Customization
     before_action :reject_saml_user, only: [:edit, :update, :destroy]
+    # End UMD Customization
     before_action :app_view_path
     # NOTE: User creation/invitations handled by devise_invitable
     def index
@@ -179,11 +181,13 @@ module Samvera
       end
     end
 
+    # UMD Customization
     def reject_saml_user
       return if @user.provider.to_s != "saml"
       flash[:error] = "Updating remote user is not permitted!"
       redirect_to main_app.persona_users_path
     end
+    # End UMD Customization
 
     def app_view_path
       my_engine_root = Samvera::Persona::Engine.root.to_s

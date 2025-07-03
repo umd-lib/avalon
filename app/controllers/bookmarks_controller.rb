@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -15,8 +15,10 @@
 class BookmarksController < CatalogController
 
   before_action :authenticate_user!
+  # UMD Customization
   before_action :check_limit, only: [:update]
   before_action :truncate_to_limit, only: [:create]
+  # End UMD Customization
 
   include Blacklight::Bookmarks
 
@@ -69,8 +71,10 @@ class BookmarksController < CatalogController
     @response, @documents = action_documents
     @valid_user_actions = [:delete, :unpublish, :publish, :merge, :move, :update_access_control, :add_to_playlist]
     @valid_user_actions += [:intercom_push] if Settings.intercom.present?
+    # UMD Customization
     # Commenting unused expensive calls to fedora (https://umd-dit.atlassian.net/browse/LIBAVALON-334)
     # mos = @documents.collect { |doc| MediaObject.find( doc.id ) }
+    # End UMD Customization
     @documents.each do |doc|
       mo = MediaObject.find(doc.id)
       @valid_user_actions.delete :delete if @valid_user_actions.include? :delete and cannot? :destroy, mo
@@ -83,6 +87,7 @@ class BookmarksController < CatalogController
     end
   end
 
+  # UMD Customizaton
   def check_limit
     if current_or_guest_user.bookmarks.count >= helpers.bookmarks_limit
       if request.xhr?
@@ -101,6 +106,7 @@ class BookmarksController < CatalogController
       params[:bookmarks] = params[:bookmarks].take(helpers.bookmarks_limit - current_or_guest_user.bookmarks.count)
     end
   end
+  # End UMD Customization
 
   # def index
   #   @bookmarks = token_or_current_or_guest_user.bookmarks

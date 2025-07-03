@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -20,8 +20,10 @@ Unless required by applicable law or agreed to in writing, software distributed
       <% all_selected = @response.documents.all? do |d|
            current_or_guest_user.bookmarks.where({ document_id: d.id }).exists?
          end %>
+      <%# UMD Customization %>
       <%= check_box_tag('bookmarks_selectall', '', all_selected, data: { "limit" => bookmarks_limit }) %>
       <%= label_tag 'bookmarks_selectall', t('blacklight.bookmarks.addall.button'), class: 'font-weight-bold' %>
+      <%# End UMD Customization %>
   </div>
 <% end %>
 

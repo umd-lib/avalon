@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -38,11 +38,12 @@ module MasterFileBuilder
         raise BuildError, 'The file you have uploaded has invalid characters in its name.'
       end
 
+      # UMD Customization
       # Start LIBAVALON-128, LIBAVALON-286
       collection_path = media_object.collection.dropbox_absolute_path
       original_filename = spec.content.respond_to?("original_filename") ? spec.content.original_filename : spec.original_filename;
       desination_path = File.join(collection_path, 'uploads', DateTime.now.strftime("%Y%m%d"), DateTime.now.strftime("%H%M%S%L"), original_filename)
-      if (File.exists?(desination_path))
+      if (File.exist?(desination_path))
         response[:flash][:error] << "Duplicate file. File already exists at path #{desination_path}!"
         next
       end
@@ -52,18 +53,19 @@ module MasterFileBuilder
       if content.is_a? ActionDispatch::Http::UploadedFile
         FileUtils.mv(content.path, desination_path)
         content = Addressable::URI.join('file:///', desination_path)
-      # else, if Google drive file, copy to the local dropbox upload dir before processing -- the authorization 
+      # else, if Google drive file, copy to the local dropbox upload dir before processing -- the authorization
       # header is not available to the post processing move task, and therefore, it is unable to move/copy the
       # file from the google drive to the archive directory to make it available for downloads.
       elsif content.to_s.starts_with?('https://www.googleapis.com')
         IO.copy_stream(URI.open(content, spec.auth_header), desination_path)
         content = Addressable::URI.join('file:///', desination_path)
       end
-      
+
       master_file = MasterFile.new()
       master_file.setContent(content, file_name: spec.original_filename, file_size: spec.file_size, auth_header: nil, dropbox_dir: media_object.collection.dropbox_absolute_path)
       master_file.set_workflow(spec.workflow)
       # End LIBAVALON-128, LIBAVALON-286
+      # End UMD Customization
 
       if 'Unknown' == master_file.file_format
         response[:flash][:error] << "The file was not recognized as audio or video - %s (%s)" % [spec.original_filename, spec.content_type]

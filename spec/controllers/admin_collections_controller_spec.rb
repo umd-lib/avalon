@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -259,6 +259,7 @@ describe Admin::CollectionsController, type: :controller do
       end
     end
 
+    # UMD Customization
     context "Assign Special Access - UMD IP Manager Groups" do
       it "should provide an error message if UMD IP Manager group retrieval fails" do
         login_user collection.managers.first
@@ -316,6 +317,7 @@ describe Admin::CollectionsController, type: :controller do
         end
       end
     end
+    # End UMD Customization
   end
 
   describe "#items" do
@@ -504,16 +506,20 @@ describe Admin::CollectionsController, type: :controller do
         expect{ put 'update', params: { id: collection.id, submit_add_ipaddress: "Add", add_ipaddress: "255.0.0.1" }}.to change{ collection.reload.default_read_groups.size }.by(1)
       end
 
+      # UMD Customization
       it "UMD IP Manager Group" do
         expect{ put 'update', params: { id: collection.id, submit_add_umd_ip_manager_group: "Add", add_umd_ip_manager_group: "#{UmdIpManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(1)
       end
+      # End UMD Customization
     end
 
 
     context "remove existing special access" do
       before do
         collection.default_read_users = ["test1@example.com"]
+        # UMD Customization
         collection.default_read_groups = ["test_group", "external_group", "255.0.1.1", "#{UmdIpManager::GROUP_PREFIX}TestGroup"]
+        # End UMD Customization
         collection.save!
       end
       it "user" do
@@ -532,9 +538,11 @@ describe Admin::CollectionsController, type: :controller do
         expect{ put 'update', params: { id: collection.id, remove_ipaddress: "255.0.1.1" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
       end
 
+      # UMD Customization
       it "UMD IP Manager Group" do
         expect{ put 'update', params: { id: collection.id, remove_umd_ip_manager_group: "#{UmdIpManager::GROUP_PREFIX}TestGroup" }}.to change{ collection.reload.default_read_groups.size }.by(-1)
       end
+      # End UMD Customization
     end
 
     context "change default access control for item" do

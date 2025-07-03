@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -31,7 +31,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 <span class="playlist_item_denied">
   You do not have permission to playback item <%= @current_masterfile.media_object_id %>.
   <% if !user_signed_in? %>
+  <%# UMD Customization %>
   <br>Have you tried <%= link_to 'logging in', user_saml_omniauth_authorize_path, :method => "post" %>?
+  <%# End UMD Customization %>
   <% end %>
 </span>
 <% end %>

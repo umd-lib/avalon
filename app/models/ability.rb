@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -28,11 +28,13 @@ class Ability
     can :read, :encode_dashboard if is_administrator?
   end
 
+  # UMD Customization
   def self.access_token_download_group_name(media_object_id)
     # Returns the group name to use if downloads are allowed for a media object
     # via an access token
     "allow_download_#{media_object_id}"
   end
+  # End UMD Customization
 
   def user_groups
     return @user_groups if @user_groups
@@ -41,6 +43,7 @@ class Ability
     @user_groups |= current_user.groups if current_user and current_user.respond_to? :groups
     @user_groups |= ['registered'] unless current_user.new_record?
     @user_groups |= @options[:virtual_groups] if @options.present? and @options.has_key? :virtual_groups
+    # UMD Customization
     if @options.present? and @options.has_key? :remote_ip
       remote_ip = @options[:remote_ip]
       @user_groups |= [remote_ip]
@@ -52,10 +55,11 @@ class Ability
       token = @options[:access_token]
       @user_groups |= access_token_user_groups(token)
     end
-
+    # End UMD Customization
     @user_groups
   end
 
+  # UMD Customization
   def access_token_user_groups(token)
     # Returns a list of the user groups based on the token, or an empty list.
     return [] if token.nil?
@@ -66,6 +70,7 @@ class Ability
     media_object_id = access_token.media_object_id
     [Ability.access_token_download_group_name(media_object_id)]
   end
+  # End UMD Customization
 
   def create_permissions(user=nil, session=nil)
     if full_login? || is_api_request?
@@ -92,6 +97,7 @@ class Ability
   def custom_permissions(user=nil, session=nil)
 
     unless (full_login? || is_api_request?) and is_administrator?
+      # UMD Customization
       # Begin customization for LIBAVALON-168
       can :read, MediaObject do |media_object|
         media_object.published? || test_edit(media_object.id)
@@ -133,6 +139,7 @@ class Ability
       can :list_all, AccessToken if is_administrator?
 
       can :manage, AccessToken if (is_member_of_any_collection? or @user_groups.include? 'manager')
+      # UMD Customization
 
       cannot :read, Admin::Collection unless (full_login? || is_api_request?)
 
@@ -146,7 +153,9 @@ class Ability
         end
 
         can :update_access_control, MediaObject do |media_object|
+          # UMD Customization
           @user.in?(media_object.collection.managers) || is_editor_of?(media_object.collection)
+          # End UMD Customization
         end
 
         can :unpublish, MediaObject do |media_object|
@@ -205,7 +214,9 @@ class Ability
 
       cannot :update, MediaObject do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
+          # UMD Customization
           ( media_object.published? && !(@user.in?(media_object.collection.managers) || @user.in?(media_object.collection.editors)) )
+          # End UMD Customization
       end
 
       cannot :destroy, MediaObject do |media_object|
@@ -221,6 +232,11 @@ class Ability
       can :intercom_push, MediaObject do |media_object|
         # anyone who can edit a media_object can also push it
         can? :edit, media_object
+      end
+
+      can :json_update, MediaObject do |media_object|
+        # anyone who can edit a media_object can also update it via the API
+        is_api_request? && can?(:edit, media_object)
       end
     end
   end
@@ -300,6 +316,7 @@ class Ability
        @user.in?(collection.managers, collection.editors, collection.depositors)
   end
 
+  # UMD Customization
   def is_master_file_download_allowed?(master_file)
     # Returns true if download of the master file is allowed, false otherwise
     media_object = master_file&.media_object
@@ -330,6 +347,7 @@ class Ability
 
     allowed
   end
+  # End UMD Customization
 
   def is_editor_of?(collection)
      is_administrator? ||

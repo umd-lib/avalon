@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -56,7 +56,9 @@ describe CollectionsController, type: :controller do
       end
 
       it "managers should see their collections and collections with public items" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         login_user(collection.managers.first)
         get 'index'
         expect(response).to be_ok

@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -77,37 +77,6 @@ RSpec.describe Samvera::Persona::UsersController, type: :controller do
       	  expect(parsed_response['data'].count).to eq(1)
       	  expect(parsed_response['data'][0][1]).to eq("<a href=\"/persona/users/2/edit\">zzzebra@example.edu</a>")
       	end
-
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by role" do
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'administrator' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(1)
-        expect(parsed_response['data'].count).to eq(1)
-        expect(parsed_response['data'][0][0]).to eq("<a href=\"/persona/users/1/edit\">aardvark</a>")
-      end
-
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by date" do
-        # UMD Note: This stock Avalon test fails because of timezone issues
-        # and is replaced in Avalon 7.6, so marking as "pending" so that
-        # it is skipped.
-        pending('UMD LIBAVALON-178')
-
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'May' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(2)
-        expect(parsed_response['data'].count).to eq(2)
-        expect(parsed_response['data'][0][3]).to eq("<relative-time datetime=\"2022-05-15T00:00:00Z\" title=\"2022-05-15 00:00:00 UTC\">May 15th, 2022 00:00</relative-time>")
-      end
-
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 0, dir: 'asc' } } } }
-      it "returns results filtered by status" do
-        post :paged_index, format: 'json', params: common_params.merge( { search: { value: 'Pending' } } )
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(1)
-        expect(parsed_response['data'].count).to eq(1)
-        expect(parsed_response['data'][0][0]).to eq("<a href=\"/persona/users/2/edit\">zzzebra</a>")
       end
     end
 

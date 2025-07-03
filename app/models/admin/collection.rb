@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -34,7 +34,7 @@ class Admin::Collection < ActiveFedora::Base
   property :name, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_sortable
   end
-  property :unit, predicate: ::RDF::Vocab::Bibframe.heldBy, multiple: false do |index|
+  property :unit, predicate: Avalon::RDFVocab::Bibframe.heldBy, multiple: false do |index|
     index.as :stored_sortable
   end
   property :description, predicate: ::RDF::Vocab::DC.description, multiple: false do |index|
@@ -242,9 +242,11 @@ class Admin::Collection < ActiveFedora::Base
     self.default_read_groups.select {|g| IPAddr.new(g) rescue false }
   end
 
+  # UMD Customization
   def default_umd_ip_manager_read_groups
     self.default_read_groups.select {|g| UmdIpManager::Group.valid_prefixed_key?(g) }
   end
+  # End UMD Customization
 
   def default_virtual_read_groups
     self.default_read_groups.to_a - represented_default_visibility - default_local_read_groups - default_ip_read_groups - default_umd_ip_manager_read_groups

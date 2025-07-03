@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -146,8 +146,10 @@ class SupplementalFilesController < ApplicationController
 
     def authorize_object
       action = action_name.to_sym == :show ? :show : :edit
+      # UMD Customization
       # Only display supplemental files if user has full_read permission
       action = :full_read if action == :show && @object.is_a?(MediaObject)
+      # End UMD Customization
       authorize! action, @object, message: "You do not have sufficient privileges to #{action_name} this supplemental file"
     end
 end

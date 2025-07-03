@@ -1,12 +1,17 @@
 version: '3.4'
 
 volumes:
+  # UMD Customization
   streaming:
+  # End UMD Customization
   database:
   fedora:
   solr:
   npms:
+  # UMD Customization
+  # data:
   work:
+  # End UMD Customization
 
 networks:
   internal:
@@ -29,7 +34,9 @@ services:
     volumes: []
 
   fedora: &fedora
-    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.5.1
+    # UMD Customization
+    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.6
+    # End UMD Customization
     depends_on:
       - db
     volumes:
@@ -43,7 +50,9 @@ services:
     volumes: []
 
   solr: &solr
-    image: docker.lib.umd.edu/solr:avalon-7.5.1
+    # UMD Customization
+    image: docker.lib.umd.edu/solr:avalon-7.6
+    # End UMD Customization
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
       - solr:/var/solr
@@ -59,11 +68,17 @@ services:
       - ./solr/conf:/opt/solr/avalon_conf
 
   hls:
-    image: docker.lib.umd.edu/nginx:avalon-7.5.1-umd-1
+    # UMD Customization
+    image: docker.lib.umd.edu/nginx:avalon-7.6-umd-0
+    platform: linux/amd64
+    # End UMD Customization
     environment:
       - AVALON_DOMAIN=http://avalon:3000
+      - AVALON_STREAMING_BASE_URL=http://localhost:8880
+    # UMD Customization
     volumes:
       - streaming:/data
+    # End UMD Customization
     ports:
       - '8880:80'
     networks:
@@ -77,7 +92,9 @@ services:
     <<: *redis
 
   avalon: &avalon
-    image: docker.lib.umd.edu/avalon:7.5.1-umd-1
+    # UMD Customization
+    image: docker.lib.umd.edu/avalon:7.6-umd-0
+    # End UMD Customization
     build:
       context: .
       target: dev
@@ -89,8 +106,11 @@ services:
       - redis
       - hls
     environment:
+      # UMD Customization
       - APP_NAME=avalon
-      - SETTINGS__DOMAIN=http://av-local:3000
+      - SETTINGS__DOMAIN__PROTOCOL=http
+      - SETTINGS__DOMAIN_HOST=av-local
+      - SETTINGS__DOMAIN_PORT=3000
       - BUNDLE_FLAGS=--with development postgres --without production test
       - ENCODE_WORK_DIR=/streamfiles
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
@@ -115,11 +135,14 @@ services:
       - SAML_ISSUER=av-local:3000
       - UMD_HANDLE_PREFIX=1903.1
       - UMD_HANDLE_REPO=avalon
+      # End UMD Customization
     volumes:
+      # UMD Customization
       - .:/home/app/avalon
       - ./masterfiles:/masterfiles
       - streaming:/streamfiles
       - npms:/home/app/avalon/node_modules
+      # End UMD Customization
     ports:
       - '3000:3000'
     networks:
@@ -139,7 +162,9 @@ services:
       - redis-test
     environment:
       - DATABASE_URL=postgresql://postgres:password@db-test/avalon
+      # UMD Customization
       - DIGITAL_COLLECTIONS_URL=https://digital-test.lib.umd.edu/
+      # End UMD Customization
       - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
       - SETTINGS__REDIS__HOST=redis-test
       - SETTINGS__REDIS__PORT=6379
@@ -154,7 +179,7 @@ services:
     <<: *avalon
     command: dumb-init -- bash -c "bundle install && bundle exec sidekiq -C config/sidekiq.yml"
     ports: []
-
+# UMD Customization
   # minio:
   #   image: minio/minio:RELEASE.2019-10-12T01-39-57Z
   #   command: minio server /data
@@ -188,6 +213,7 @@ services:
   #     "
   #   networks:
   #     internal:
+# End UMD Customization
 
   cypress:
     network_mode: host

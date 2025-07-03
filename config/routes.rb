@@ -151,7 +151,9 @@ Rails.application.routes.draw do
       post 'thumbnail', :to => 'master_files#set_frame', :defaults => { :type => 'thumbnail', :format => 'html' }
       post 'poster',    :to => 'master_files#set_frame', :defaults => { :type => 'poster', :format => 'html' }
       post 'still',     :to => 'master_files#set_frame', :defaults => { :format => 'html' }
+      # UMD Customization
       get :download
+      # End UMD Customization
       get :embed
       post 'attach_structure'
       post 'attach_captions'
@@ -159,6 +161,7 @@ Rails.application.routes.draw do
       get :captions
       get :waveform
       match ':quality.m3u8', to: 'master_files#hls_manifest', via: [:get], as: :hls_manifest
+      get 'caption_manifest'
       get 'structure', to: 'master_files#structure', constraints: { format: 'json' }
       post 'structure', to: 'master_files#set_structure', constraints: { format: 'json' }
       delete 'structure', to: 'master_files#delete_structure', constraints: { format: 'json' }
@@ -240,7 +243,9 @@ Rails.application.routes.draw do
   end
   get '/jobs(.:format)', to: redirect('/')
 
+  # UMD Customization
   resources :access_tokens
+  # End UMD Customization
 
   scope :persona, as: 'persona' do
     resources :users, only: [:paged_index], controller: 'samvera/persona/users' do

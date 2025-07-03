@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -46,6 +46,7 @@ module MasterFileManagementJobs
     	FileUtils.mv source.location, dest.location
     end
 
+    # UMD Customization
     def cleanup_empty_source_dir(source)
       sdir = Pathname(source).dirname
       sdir_name = sdir.basename.to_s
@@ -54,6 +55,7 @@ module MasterFileManagementJobs
       is_second_level_subdir = (sdir_path_items.find_index(sdir_name) - sdir_path_items.find_index('uploads')) > 1
       FileUtils.remove_dir(sdir) if Dir.empty?(sdir) && is_second_level_subdir
     end
+    # End UMD Customization
 
     def perform(id, newpath)
       Rails.logger.debug "Moving masterfile to #{newpath}"
@@ -70,7 +72,9 @@ module MasterFileManagementJobs
         send(copy_method, old_locator, new_locator)
         masterfile.file_location = newpath
       	masterfile.save
+        # UMD Customization
         cleanup_empty_source_dir(oldpath) if old_locator.uri.scheme == "file"
+        # End UMD Customization
         Rails.logger.info "#{oldpath} has been moved to #{newpath}"
       else
         Rails.logger.error "MasterFile #{oldpath} does not exist"

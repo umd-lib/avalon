@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -195,6 +195,7 @@ describe Lease do
       }.to change{Lease.ip.count}.by(1)
       expect(lease.lease_type).to eq "ip"
     end
+    # UMD Customization
     it 'identifies UMD IP Manager lease_type' do
       expect {
         lease.inherited_read_groups = [UmdIpManager::Group.as_prefixed_key('test')]
@@ -202,6 +203,7 @@ describe Lease do
       }.to change{Lease.umd_ip_manager.count}.by(1)
       expect(lease.lease_type).to eq "umd_ip_manager"
     end
+    # End UMD Customization
   end
   describe '#media_objects' do
     let(:media_object) { FactoryBot.create(:media_object) }

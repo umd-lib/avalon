@@ -22,6 +22,7 @@ en:
       blank: "field is required."
       taken: "is taken."
       dateformat: "(%{date}) is in wrong format."
+   # UMD Customization
     umd_ip_manager_error: Unable to access IP Manager server
   access_token:
     info_for_patron_snippet_html: |
@@ -33,15 +34,11 @@ en:
       streaming_and_download: streaming and download
       streaming_only: streaming
       download_only: download
+  # End UMD Customization
   media_object:
     empty_share_link: ""
     empty_share_link_notice: "After processing has started the embedded link will be available."
     empty_share_section_permalink_notice: "After processing has started the section link will be available."
-  master_file:
-    error_id_not_found: "Download failed: Cannot find master file with id: %{id}"
-    error_no_file: "Download failed: Original file not stored."
-    error_file_not_found: "Download failed: File not found at: %{location}"
-    download_not_permitted: "Download not permitted."
     cdl:
       checkout_message: "<p>Borrow this item to access media resources.</p>"
       not_available_message: "<p>This resource is currently checked out by another user. </br></br> This item is due to be returned on </br><span data-utc-time='%{time}' />.</p>"
@@ -50,6 +47,13 @@ en:
       expire:
         heading: "Check Out Expired!"
         message: "Your lending period has been expired. Please return the item, and check for availability later."
+  # UMD Customization
+  master_file:
+    error_id_not_found: "Download failed: Cannot find master file with id: %{id}"
+    error_no_file: "Download failed: Original file not stored."
+    error_file_not_found: "Download failed: File not found at: %{location}"
+    download_not_permitted: "Download not permitted."
+  # End UMD Customization
   metadata_tip:
     abstract: |
       Summary provides a space for describing the contents of the item. Examples
@@ -163,7 +167,9 @@ en:
     grouplabel: "Avalon Group"
     classlabel: "External Group"
     ipaddresslabel: "IP Address or Range"
+    # UMD Customization
     umd_ip_manager_grouplabel: "UMD IP Manager"
+    # End UMD Customization
     lending_periodlabel: "Lending Period"
     depositor: |
       Depositors add media to the collection and describe it with metadata.
@@ -193,8 +199,10 @@ en:
       or ffaa:aaff:bbcc:ddee:1122:3344:5566:7777
       or ffaa:aaff:bbcc:ddee:1122:3344:5566:7777/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff00
       Start and end dates are not required; if included, access for the specified IP Address(es) will start at the beginning of the start date and end at the beginning of the end date. Otherwise, access will be open ended for the specified IP Address(es).
+    # UMD Customization
     umd_ip_manager_group: |
       Select an UMD IP Manager group from the dropdown list below to grant it access to an item or collection.  Start and end dates are not required; if included, access for the specified group will start at the beginning of the start date and end at the beginning of the end date. Otherwise, access will be open ended for the specified group.
+    # End UMD Customization
     lending_period: |
       Lending Period is the length of time that an item may be checked out for.
       Day and Hour values must be positive integers.

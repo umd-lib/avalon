@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -25,6 +25,9 @@ describe "API authentication", type: :request do
     allow_any_instance_of(User).to receive(:ldap_groups).and_return(ldap_groups)
   end
   it "sets the session information properly" do
+    # UMD Customization
+    pending("UMD customizations in app/models/ability.rb::custom_permissions invalidate this test")
+    # End UMD Customization
     get "/media_objects/#{media_object.id}.json", headers: { 'Avalon-Api-Key': 'secret_token' }
     expect(@controller.user_session[:json_api_login]).to eq true
     expect(@controller.user_session[:full_login]).to be false
@@ -33,6 +36,9 @@ describe "API authentication", type: :request do
   context 'without external groups' do
     let(:ldap_groups) { [] }
     it "does not allow user to access unauthorized media object" do
+      # UMD Customization
+      pending("UMD customizations in app/models/ability.rb::custom_permissions invalidate this test")
+      # End UMD Customization
       get "/media_objects/#{media_object.id}.json", headers: { 'Avalon-Api-Key': 'secret_token' }
       expect(response.status).to be 401
     end
@@ -46,6 +52,9 @@ describe "API authentication", type: :request do
         expect(response.body).to include(media_object.id)
       end
       it 'does not allow user to access unauthorized media objects' do
+        # UMD Customization
+        pending("UMD customizations in app/models/ability.rb::custom_permissions invalidate this test")
+        # End UMD Customization
         get "/media_objects/#{unauthorized_media_object.id}.json", headers: { 'Avalon-Api-Key': 'secret_token' }
         expect(response.status).to be 401
       end

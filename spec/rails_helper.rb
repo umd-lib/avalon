@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -46,7 +46,9 @@ require 'noid/rails/rspec'
 require "email_spec"
 require "email_spec/rspec"
 require 'webdrivers'
+# UMD Customization
 require_relative 'services/mock_umd_ip_manager'
+# End UMD Customization
 
 # require 'equivalent-xml/rspec_matchers'
 # require 'fakefs/safe'
@@ -107,7 +109,7 @@ RSpec.configure do |config|
   include Noid::Rails::RSpec
 
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
-  config.fixture_path = "#{::Rails.root}/spec/fixtures"
+  config.file_fixture_path = "#{::Rails.root}/spec/fixtures"
 
   # If you're not using ActiveRecord, or you'd prefer not to run each of your
   # examples within a transaction, remove the following line or assign false
@@ -147,7 +149,9 @@ RSpec.configure do |config|
     ActiveJob::Base.queue_adapter.enqueued_jobs = []
     ActiveJob::Base.queue_adapter.performed_jobs = []
     Settings.bib_retriever = { 'default' => { 'protocol' => 'sru', 'url' => 'http://zgate.example.edu:9000/db', 'retriever_class' => 'Avalon::BibRetriever::SRU', 'retriever_class_require' => 'avalon/bib_retriever/sru' } }
+    # UMD Customization
     enable_umd_ip_manager_mock
+    # End UMD Customization
   end
 
   config.after :each do
@@ -196,10 +200,13 @@ RSpec.configure do |config|
   config.include OptionalExample
   config.include Features::SessionHelpers, type: :feature
 
+  # UMD Customization
   # LIBAVALON-208 - include time helpers
   config.include ActiveSupport::Testing::TimeHelpers
+  # End UMD Customization
 end
 
 FactoryBot::SyntaxRunner.class_eval do
-  include ActionDispatch::TestProcess
+  include ActiveSupport::Testing::FileFixtures
+  include ActionDispatch::TestProcess::FixtureFile
 end

@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -21,7 +21,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% @poster_url = request.base_url + @currentStreamInfo[:poster_image] unless @currentStreamInfo[:poster_image].nil? %>
 <% @page_type = @currentStreamInfo[:is_video] ? 'video' : 'audio' %>
+<%# UMD Customization %>
 <% can_stream = lending_enabled?(@media_object) ? current_user && @media_object.current_checkout(current_user.id).present? : true %>
+<%# End UMD Customization %>
 
 <% f_start, f_end = parse_media_fragment params['t'] %>
 <div class="row">
@@ -29,6 +31,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <% if lending_enabled?(@media_object) && !can_stream %>
       <%= render 'embed_checkout' %>
     <% elsif @currentStream %>
+    <%# UMD Customization %>
     <% if @playback_restricted %>
       <div class="restricted-video">
         <div class="restricted-video-message">
@@ -49,6 +52,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         </div>
       </div>
     <% else %>
+    <%# End UMD Customization %>
       <%= render partial: "modules/player/section", locals: {section: @currentStream, section_info: @currentStreamInfo, f_start: @f_start, f_end: @f_end} %>
       <%= render file: '_track_scrubber.html.erb' if is_mejs_2? %>
       <%= render file: '_add_to_playlist.html.erb' if current_user.present? && is_mejs_2? %>
@@ -59,6 +63,7 @@ Unless required by applicable law or agreed to in writing, software distributed
       <%= render 'download' if @master_file_download_allowed %>
       <%= render 'share' if will_partial_list_render? :share %>
 
+      <%# UMD Customization %>
       <% unless @playback_restricted %>
         <!-- Sections -->
         <%= render partial: 'sections',
@@ -66,15 +71,18 @@ Unless required by applicable law or agreed to in writing, software distributed
                     sections: @masterFiles,
                     activeStream: @currentStream } %>
       <% end %>
+      <%# End UMD Customization %>
     <% end %>
   <% end %>
   </div>
   <div class="col-sm-4" id="right-column">
+    <%# UMD Customization %>
     <%# LIBAVALON-93 - Start Aeon button. %>
     <div class="request-special">
       <%= render partial: 'aeon_request_form', locals: { mediaobject: @media_object} %>
     </div>
     <%# LIBAVALON-93 - End %>
+    <%# End UMD Customization %>
     <% if lending_enabled?(@media_object) %>
       <%= render 'destroy_checkout' %>
     <% end %>
@@ -99,7 +107,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     // When viewing video on smaller devices scroll to page content to fully
     // display the video player
     $(document).ready(function () {
-      const isVideo = "<%= @currentStreamInfo[:is_video] %>";
+      const isVideo = <%= @currentStreamInfo[:is_video] %>;
       if(isVideo) {
         const screenHeight = screen.height;
         const playerHeight = document.getElementsByTagName('video')[0].style.height.replace(/[^-\d\.]/g, '');

@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -23,7 +23,9 @@ module BulkActionJobs
         media_object.hidden = params[:hidden] if !params[:hidden].nil?
         media_object.visibility = params[:visibility] unless params[:visibility].blank?
         # Limited access stuff
+        # UMD Customization
         ["group", "class", "user", "ipaddress", "umd_ip_manager_group"].each do |title|
+        # End UMD Customization
           if params["submit_add_#{title}"].present?
             begin_time = params["add_#{title}_begin"].blank? ? nil : params["add_#{title}_begin"]
             end_time = params["add_#{title}_end"].blank? ? nil : params["add_#{title}_end"]
@@ -70,7 +72,9 @@ module BulkActionJobs
           end
           if params["submit_remove_#{title}"].present?
             if params[title].present?
+              # UMD Customization
               if ["group", "class", "ipaddress", "umd_ip_manager_group"].include? title
+              # End UMD Customization
                 media_object.read_groups -= [params[title]]
                 media_object.governing_policies.each do |policy|
                   if policy.class==Lease && policy.inherited_read_groups.include?(params[title])

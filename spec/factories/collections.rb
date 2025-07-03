@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -32,13 +32,16 @@ FactoryBot.define do
     end
 
     trait :with_poster do
+      # UMD Customization
       after(:build) do |collection|
+      # End UMD Customization
         collection.poster.mime_type = 'image/png'
         collection.poster.content = 'fake image content'
         collection.save
       end
     end
 
+    # UMD Customization
     trait :with_manager do
       transient do
         manager {nil}
@@ -71,5 +74,6 @@ FactoryBot.define do
         end
       end
     end
+    # End UMD Customization
   end
 end

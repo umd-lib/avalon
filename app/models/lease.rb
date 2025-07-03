@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -28,7 +28,9 @@ class Lease < ActiveFedora::Base
   scope :user,     -> { where(lease_type_ssi: "user")     }
   scope :external, -> { where(lease_type_ssi: "external") }
   scope :ip,       -> { where(lease_type_ssi: "ip")       }
+  # UMD Customization
   scope :umd_ip_manager, -> { where(lease_type_ssi: "umd_ip_manager") }
+  # End UMD Customization
 
   before_save :apply_default_begin_time, :ensure_end_time_present, :validate_dates#, :format_times
 
@@ -159,7 +161,9 @@ private
     return nil if group.nil?
     return "ip" if IPAddr.new(group) rescue false
     return "local" if Admin::Group.exists? group
+    # UMD Customization
     return "umd_ip_manager" if UmdIpManager::Group.valid_prefixed_key?(group)
+    # End UMD Customization
     return "external"
   end
 

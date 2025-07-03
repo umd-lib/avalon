@@ -1,11 +1,11 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -32,7 +32,9 @@ class AccessControlStep < Avalon::Workflow::BasicStep
 
     # Limited access stuff
     limited_access_submit = false
+    # UMD Customization
     ["group", "class", "user", "ipaddress", "umd_ip_manager_group"].each do |title|
+    # End UMD Customization
       if context["submit_add_#{title}"].present?
         limited_access_submit = true
         begin_time = context["add_#{title}_begin"].blank? ? nil : context["add_#{title}_begin"]
@@ -81,7 +83,9 @@ class AccessControlStep < Avalon::Workflow::BasicStep
       end
       if context["remove_#{title}"].present?
         limited_access_submit = true
+        # UMD Customization
         if ["group", "class", "ipaddress", "umd_ip_manager_group"].include? title
+        # End UMD Customization
           media_object.read_groups -= [context["remove_#{title}"]]
         else
           media_object.read_users -= [context["remove_#{title}"]]
@@ -116,14 +120,18 @@ class AccessControlStep < Avalon::Workflow::BasicStep
     context[:groups] = media_object.read_groups
     context[:virtual_groups] = media_object.virtual_read_groups
     context[:ip_groups] = media_object.ip_read_groups
+    # UMD Customization
     context[:umd_ip_manager_groups] = media_object.umd_ip_manager_read_groups
+    # End UMD Customization
     context[:group_leases] = media_object.leases('local')
     context[:user_leases] = media_object.leases('user')
     context[:virtual_leases] = media_object.leases('external')
     context[:ip_leases] = media_object.leases('ip')
     context[:addable_groups] = Admin::Group.non_system_groups.reject { |g| context[:groups].include? g.name }
     context[:addable_courses] = Course.all.reject { |c| context[:virtual_groups].include? c.context_id }
+    # UMD Customization
     context[:addable_umd_ip_manager_groups] = UmdIpManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
+    # End UMD Customization
     context[:lending_period] = media_object.lending_period
     context
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -30,12 +30,16 @@ describe VirtualGroups do
     let!(:local_groups) {[FactoryBot.create(:group).name, FactoryBot.create(:group).name]}
     let(:virtual_groups) {["vgroup1", "vgroup2"]}
     let(:ip_groups) {[Faker::Internet.ip_v4_address, Faker::Internet.ip_v6_address, Faker::Internet.ip_v4_address + "/24"]}
+    # UMD Customization
     let(:umd_ip_manager_groups) {
       ["#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup1", "#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup2"]
     }
+    # End UMD Customization
 
     before(:each) do
+      # UMD Customization
       subject.read_groups = local_groups + virtual_groups + ip_groups + umd_ip_manager_groups
+      # End UMD Customization
     end
 
     describe '#local_group_exceptions' do
@@ -56,10 +60,12 @@ describe VirtualGroups do
       end
     end
 
+    # UMD Customization
     describe '#umd_ip_group_exceptions' do
       it 'should have only UMD IP Manager groups' do
         expect(subject.umd_ip_manager_read_groups).to eq(umd_ip_manager_groups)
       end
     end
+    # End UMD Customization
   end
 end

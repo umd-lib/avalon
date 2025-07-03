@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -17,7 +17,9 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="container-md">
     <header class="header-wrapper">
       <div class="header-logo">
+        <%# UMD Customization %>
         <%= link_to ENV['DIGITAL_COLLECTIONS_URL'] do %><%= image_tag "umd-lib-digital-collections-logo.svg", class: "img-fluid lib-logo", alt: "UMD Digital Collections" %><% end %>
+        <%# End UMD Customization %>
       </div>
 
       <% unless current_page?(main_app.root_path) %>

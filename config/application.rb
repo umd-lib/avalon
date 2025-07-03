@@ -8,7 +8,9 @@ require 'resolv-replace'
 Bundler.require(*Rails.groups)
 
 module Avalon
-  VERSION = '7.5.1-umd-1'
+  # UMD Customization
+  VERSION = '7.6.0-umd-1'
+  # End UMD Customization
 
   class Application < Rails::Application
     require 'avalon/configuration'
@@ -26,11 +28,15 @@ module Avalon
 
     # Set Time.zone default to the specified zone and make Active Record auto-convert to this zone.
     # Run "rake -D time" for a list of tasks for finding time zone names. Default is UTC.
+    # UMD Customization
     config.time_zone = 'America/New_York'
+    # End UMD Customization
 
     # The default locale is :en and all translations from config/locales/*.rb,yml are auto loaded.
     # config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]
     # config.i18n.default_locale = :de
+
+    # config.eager_load_paths << Rails.root.join("extras")
 
     config.active_job.queue_adapter = :sidekiq
 
@@ -45,12 +51,16 @@ module Avalon
         resource '/master_files/*/structure.json', headers: :any, methods: [:get, :post, :delete]
         resource '/master_files/*/waveform.json', headers: :any, methods: [:get]
         resource '/master_files/*/*.m3u8', headers: :any, credentials: true, methods: [:get, :head]
+        resource '/master_files/*/caption_manifest', headers: :any, methods: [:get]
+        resource '/master_files/*/captions', headers: :any, methods: [:get]
         resource '/timelines/*/manifest.json', headers: :any, methods: [:get, :post]
       end
     end
 
     config.active_storage.service = (Settings&.active_storage&.service.presence || "local").to_sym
 
+    # UMD Customization
     config.bookmarks_limit = ENV['BOOKMARKS_LIMIT'] ? Integer(ENV['BOOKMARKS_LIMIT']) : 400
+    # End UMD Customization
   end
 end

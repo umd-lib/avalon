@@ -1,5 +1,5 @@
 /* 
- * Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2023, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  * 
@@ -37,7 +37,9 @@ const CollectionListStickyUtils = ({
               onChange={handleFilterChange}
               name="q"
               className="form-control form-control-lg"
+              // UMD Customization
               aria-label="Search collections"
+              // End UMD Customization
               placeholder="Search collections..."
               autoFocus="autofocus"
             />

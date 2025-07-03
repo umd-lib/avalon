@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -20,5 +20,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <h1 class="page-title">Collections</h1>
   </div>
 
+  <%# UMD Customization %>
   <%= react_component("CollectionList", { baseUrl: collections_url(format: :json), sort: 'az', filter: params['filter'] }) %>
+  <%# End UMD Customization %>
 </div>

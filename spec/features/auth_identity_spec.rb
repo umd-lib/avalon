@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -17,7 +17,6 @@ require 'rails_helper'
 describe 'Identity' do
   after { Warden.test_reset! }
   it 'returns error when a user is created twice' do
-    pending('UMD LIBAVALON-178') # Test fails because registerable: false in avalon/config/settings.yaml
     test_username = 'Identity User'
     test_email = 'identity_user_1@example.com'
     test_password = 'identity'

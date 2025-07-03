@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -25,12 +25,16 @@
         self.read_groups.select {|g| IPAddr.new(g) rescue false }
       end
 
+      # UMD Customization
       def umd_ip_manager_read_groups
         self.read_groups.select {|g| UmdIpManager::Group.valid_prefixed_key?(g) }
       end
+      # End UMD Customization
 
       def virtual_read_groups
+        # UMD Customization
         self.read_groups - represented_visibility - local_read_groups - ip_read_groups - umd_ip_manager_read_groups
+        # End UMD Customization
       end
     end
 #   end

@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -46,9 +46,11 @@ $('.marker_title').click(function(e) {
     currentPlayer.setCurrentTime(parseFloat(this.dataset['offset']) || 0);
   }
 });
+<%# UMD Customization %>
 $('.edit_avalon_marker').on('ajax:success', handle_edit_save).on('ajax:error', function(e) {
   alert('Request failed.');
 });
+<%# End UMD Customization %>
 $('button[name="delete_marker"]').popover({
   trigger: 'manual',
   html: true,

@@ -3,6 +3,11 @@
 #Avalon::Application.config.session_store :cookie_store, :key => '_avalon_session'
 Avalon::Application.config.session_store :active_record_store,
   secure: Rails.application.routes.default_url_options[:protocol] == "https" && Rails.env.production?,
+  # UMD Customization
+  # Use "Lax" SameSite for local development because UMD uses "av-local" instead
+  # of "localhost" for the hostname. Without this, cannot log in using Firefox.
+  same_site: (Rails.env.development? ? "Lax" : "None"),
+  # End UMD Customization
   httponly: true,
   expire_after: 2.weeks
 

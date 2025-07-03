@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -38,7 +38,9 @@ describe FfmpegEncode do
       let(:preset) { 'fullaudio' }
 
       it 'sets the outputs' do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         encode.create!
         encode_record = ActiveEncode::EncodeRecord.find_by(global_id: encode.to_global_id.to_s)
         create_outputs = JSON.parse(encode_record.create_options)["outputs"]
@@ -51,7 +53,9 @@ describe FfmpegEncode do
       let(:preset) { 'avalon' }
 
       it 'sets the outputs' do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         encode.create!
         encode_record = ActiveEncode::EncodeRecord.find_by(global_id: encode.to_global_id.to_s)
         create_outputs = JSON.parse(encode_record.create_options)["outputs"]
@@ -64,7 +68,9 @@ describe FfmpegEncode do
       let(:preset) { nil }
 
       it 'does not set the outputs' do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         encode.create!
         encode_record = ActiveEncode::EncodeRecord.find_by(global_id: encode.to_global_id.to_s)
         create_outputs = JSON.parse(encode_record.create_options)["outputs"]

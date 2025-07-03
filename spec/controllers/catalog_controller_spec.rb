@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -26,7 +26,9 @@ describe CatalogController do
         expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
       end
       it "should not show results for items that are not public" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         mo = FactoryBot.create(:published_media_object, visibility: 'restricted')
         get 'index', params: { :q => "" }
         expect(response).to be_successful
@@ -54,7 +56,9 @@ describe CatalogController do
         expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
       end
       it "should not show results for items that are not public or available to registered users" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         mo = FactoryBot.create(:published_media_object, visibility: 'private')
         get 'index', params: { :q => "" }
         expect(response).to be_successful
@@ -145,7 +149,9 @@ describe CatalogController do
         @mo = FactoryBot.create(:published_media_object, visibility: 'private', read_groups: [@ip_address1])
       end
       it "should show no results when no items are visible to the user's IP address" do
+        # UMD Customization
         pending('UMD LIBAVALON-178')
+        # End UMD Customization
         get 'index', params: { :q => "" }
         expect(assigns(:response).documents.count).to eq 0
       end
@@ -195,6 +201,8 @@ describe CatalogController do
         @master_file = FactoryBot.create(:master_file, :with_structure, media_object: @media_object, title: 'Test Label')
         @media_object.ordered_master_files += [@master_file]
         @media_object.save!
+        # Explicitly run indexing job to ensure fields are indexed for structure searching
+        MediaObjectIndexingJob.perform_now(@media_object.id)
       end
       it "should find results based upon structure" do
         get 'index', params: { q: 'CD 1' }

@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -29,23 +29,29 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= csrf_meta_tags %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%= favicon_link_tag %>
+  <%# UMD Customization %>
   <%= stylesheet_link_tag "//www.lib.umd.edu/unify-1.7/assets/css/app.css" %>
+  <%# End UMD Customization %>
   <%= stylesheet_link_tag "application", media: "all" %>
+  <%# UMD Customization %>
   <%= stylesheet_link_tag 'custom' %>
+  <%# End UMD Customization %>
   <%= stylesheet_pack_tag 'application' %>
   <%= javascript_pack_tag 'application' %>
   <%= yield :page_styles %>
   <%= yield :additional_head_content %>
   <%= render "modules/google_analytics" %>
 
-  <!-- UMD Customization -->
+  <%# UMD Customization %>
   <%= render "modules/matomo_analytics" %>
-  <!-- End UMD Customization -->
+  <%# End UMD Customization %>
 </head>
 
 <body data-mountpoint="<%=main_app.root_path%>" <%= request.fullpath.include?('login_popup') ? 'onunload=closePopup()' : nil %> >
   <div class="page-container">
+    <%# UMD Customization %>
     <div class="content-wrapper" style="padding-bottom: 60px;">
+    <%# End UMD Customization %>
       <a id="skip-to-content" class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
       <%= render partial: 'shared/modal' %>
       <% if defined?(Samvera::Persona) %>
@@ -53,9 +59,11 @@ Unless required by applicable law or agreed to in writing, software distributed
       <% end %>
       <%= render 'modules/header' %>
       <%= render :partial => 'modules/global_navigation' %>
+      <%# UMD Customization %>
       <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
       <% main_id = "content" if current_page?(main_app.root_path) %>
       <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= main_id %>">
+      <%# End UMD Customization %>
 
         <!-- Homepage -->
         <% if current_page?(main_app.root_path) %>
@@ -93,8 +101,10 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= javascript_include_tag "application" %>
   <%= yield :page_scripts %>
 
+  <%# UMD Customization %>
   <!-- UMD Wrapper -->
   <script src="https://umd-header.umd.edu/build/bundle.js?search=0&search_domain=&events=0&news=0&schools=0&admissions=0&support=1&support_url=https%253A%252F%252Fwww.lib.umd.edu%252Fabout%252Fgiving&wrapper=1160&sticky=0"></script>
+  <%# End UMD Customization %>
 </body>
 
 </html>

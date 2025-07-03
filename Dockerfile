@@ -1,5 +1,5 @@
 # Base stage for building gems
-FROM        ruby:2.7-bullseye as bundle
+FROM        ruby:3.2-bullseye as bundle
 LABEL       stage=build
 LABEL       project=avalon
 RUN        apt-get update && apt-get upgrade -y build-essential && apt-get autoremove \
@@ -19,6 +19,9 @@ COPY        Gemfile.lock ./Gemfile.lock
 RUN         gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)" \
          && bundle config build.nokogiri --use-system-libraries
 
+ENV         RUBY_THREAD_MACHINE_STACK_SIZE 8388608
+ENV         RUBY_THREAD_VM_STACK_SIZE 8388608
+
 
 # Build development gems
 FROM        bundle as bundle-dev
@@ -30,7 +33,7 @@ RUN         bundle config set --local without 'production' \
 
 
 # Download binaries in parallel
-FROM        ruby:2.7-bullseye as download
+FROM        ruby:3.2-bullseye as download
 LABEL       stage=build
 LABEL       project=avalon
 RUN         curl -L https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar xvz -C /usr/bin/
@@ -39,13 +42,11 @@ RUN         chrome_version=`dpkg-deb -f /chrome.deb Version | cut -d '.' -f 1-3`
 RUN         chromedriver_version=`curl https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${chrome_version}`
 RUN         curl https://chromedriver.storage.googleapis.com/index.html?path=${chromedriver_version} -o /usr/local/bin/chromedriver \
          && chmod +x /usr/local/bin/chromedriver
-RUN         mkdir -p /tmp/ffmpeg && cd /tmp/ffmpeg \
-         && curl https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz | tar xJ \
-         && cp `find . -type f -executable` /usr/bin/
+RUN      apt-get -y update && apt-get install -y ffmpeg
 
 
 # Base stage for building final images
-FROM        ruby:2.7-slim-bullseye as base
+FROM        ruby:3.2-slim-bullseye as base
 LABEL       stage=build
 LABEL       project=avalon
 RUN         echo "deb     http://ftp.us.debian.org/debian/    bullseye main contrib non-free"  >  /etc/apt/sources.list.d/bullseye.list \
@@ -74,7 +75,6 @@ RUN         apt-get update && \
             zip \
             dumb-init \
             libsqlite3-dev \
-            shared-mime-info \
          && apt-get -y install mediainfo \
          && ln -s /usr/bin/lsof /usr/sbin/
 

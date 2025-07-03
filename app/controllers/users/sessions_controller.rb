@@ -1,4 +1,4 @@
-# Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -14,7 +14,9 @@
 
 class Users::SessionsController < Devise::SessionsController
   def new
+    # UMD Customization
     params[:request_uri] = session[:previous_url]
+    # End UMD Customization
     if Avalon::Authentication::VisibleProviders.length == 1 && params[:admin].blank?
       omniauth_params = params.reject { |k,v| ['controller','action'].include?(k) }
       omniauth_params.permit!

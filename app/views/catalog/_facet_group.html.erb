@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2022, The Trustees of Indiana University and Northwestern
+Copyright 2011-2023, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -15,8 +15,10 @@ Unless required by applicable law or agreed to in writing, software distributed
 %>
 <% # main container for facets/limits menu -%>
 <% if has_facet_values? facet_field_names(groupname) %>
+<%# UMD Customization %>
 <% title = groupname.blank? ? t('blacklight.search.facets.title') : t("blacklight.search.facets-#{groupname}.title", default: groupname.titleize) %>
 <div id="facets<%= "-#{groupname}" unless groupname.nil? %>" class="facets sidenav" role="navigation" aria-label="Side navigation: <%= title %>">
+<%# End UMD Customization %>
 
   <div class="top-panel-heading card-header">
     <button type="button" class="navbar-toggler facets-toggle float-right desktop-hidden" data-toggle="collapse" href="#facet-panel<%= "-#{groupname}" unless groupname.nil? %>-collapse" aria-expanded="true" >
@@ -24,7 +26,9 @@ Unless required by applicable law or agreed to in writing, software distributed
     </button>
 
   <h2>
+    <%# UMD Customization %>
   	<%= title %>
+    <%# End UMD Customization %>
   </h2>
     </div>
 
