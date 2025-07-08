@@ -21,7 +21,7 @@ of Avalon using Docker.
 
     ```zsh
     brew install minio-mc
-    mc alias set minio http://minio:9000 minio minio123;
+    mc alias set minio http://localhost:9000 minio minio123;
     ```
 
 ### Setup Instructions
@@ -101,6 +101,13 @@ of Avalon using Docker.
    Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
    The MinIO browser should be accessible at <http://localhost:9090/browser>
+
+9) In a separate terminal, run the createbuckets container to create the
+   necessary buckets in MinIO
+
+   ```zsh
+   docker-compose up createbuckets
+   ```
 
 ### Loading Sample Data
 
