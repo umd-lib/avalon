@@ -6,10 +6,8 @@ domain:
   protocol: http
 # End UMD Customization
 dropbox:
-  # UMD Customization
-  path: /masterfiles/dropbox
-  upload_uri: /masterfiles/dropbox
-  # End UMD Customization
+  path: /srv/avalon/dropbox
+  upload_uri: sftp://avalon.example.edu
   # google_drive:
   #   client_id: id
   #   client_secret: secret
