@@ -17,6 +17,13 @@ of Avalon using Docker.
     127.0.0.1 av-local
     ```
 
+3) Install the Minio Client and configure it.
+
+    ```zsh
+    brew install minio-mc
+    mc alias set minio http://minio:9000 minio minio123;
+    ```
+
 ### Setup Instructions
 
 1) Checkout the application and switch to the directory:
@@ -93,6 +100,8 @@ of Avalon using Docker.
 
    Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
+   The MinIO browser should be accessible at <http://localhost:9090/browser>
+
 ### Loading Sample Data
 
 Sample data for Avalon is available in the
@@ -117,8 +126,7 @@ in the folder for a description of each dataset.
 
    then left-click the "Create Collection" button in the dialog. Once created,
    the "Manage Content" page with the collection will be displayed. Also, a
-   "masterfiles/dropbox/Test_Collection/" subdirectory will be created in the
-   Avalon project directory.
+   "dropbox/Test_Collection/" folder will be created in the masterfiles bucket.
 
 3) In a terminal, add a `sample-data@example.com` admin user (which is the
    email address of the submitter in the sample datasets) by executing a Bash
@@ -143,23 +151,23 @@ in the folder for a description of each dataset.
    ```
 
 4) Download the "Sample_Audio_and_Video" folder (as a Zip file) from
-   <https://umd.app.box.com/folder/156055839002> and place it in the
-   "masterfiles/dropbox/Test_Collection/" folder. In a terminal,
-   switch to the "masterfiles/dropbox/Test_Collection/" subdirectory:
+   <https://umd.app.box.com/folder/156055839002> and place it in a
+   temporary folder. In a terminal, switch to the directory containing
+   the download and extract the file.
 
    ```zsh
-   cd masterfiles/dropbox/Test_Collection/
-   ```
-
-   and extract the file:
-
-   ```zsh
+   cd <FOLDER_CONTAINING_THE_DOWNLOAD>
    unzip Sample_Audio_and_Video.zip
    ```
 
-   and extract the file.
+   Copy the files to the masterfiles bucket dropbox folder.
 
-5) The "avalon-worker" container scans the "masterfiles/dropbox" directory
+   ```sh
+   mc cp -r Sample_Audio_and_Video/assets minio/masterfiles/dropbox/Test_Collection/Sample_Audio_and_Video/ 
+   mc cp -r Sample_Audio_and_Video/batch_manifest.xlsx minio/masterfiles/dropbox/Test_Collection/Sample_Audio_and_Video/ 
+   ```
+
+5) The "avalon-worker" container scans the "masterfiles/dropbox" bucket
    once a minute, and ingests any new items found. Depending on the size
    of the dataset, and the need to transcode the content, the ingest may
    take several minutes.
