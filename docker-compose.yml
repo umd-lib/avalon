@@ -66,7 +66,7 @@ services:
 
   hls:
     # UMD Customization
-    image: docker.lib.umd.edu/nginx:avalon-7.6-umd-0
+    image: docker.lib.umd.edu/nginx:avalon-7.6-umd-LIBAVALON-373
     platform: linux/amd64
     # End UMD Customization
     environment:
@@ -142,7 +142,7 @@ services:
       - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
       - SETTINGS__STREAMING__CONTENT_PATH=/
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
-      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
+      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/s3-avalon
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - SYSTEM_GROUPS=administrator,group_manager,manager
