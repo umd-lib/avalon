@@ -55,7 +55,7 @@ services:
     # End UMD Customization
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
-      - solr:/var/solr
+      - solr:/opt/solr/server/solr
     command:
       - solr-precreate
       - avalon
