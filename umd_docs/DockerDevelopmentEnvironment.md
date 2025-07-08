@@ -21,7 +21,6 @@ of Avalon using Docker.
 
     ```zsh
     brew install minio-mc
-    mc alias set minio http://localhost:9000 minio minio123;
     ```
 
 ### Setup Instructions
@@ -170,6 +169,7 @@ in the folder for a description of each dataset.
    Copy the files to the masterfiles bucket dropbox folder.
 
    ```sh
+   mc alias set minio http://localhost:9000 minio minio123;
    mc cp -r Sample_Audio_and_Video/assets minio/masterfiles/dropbox/Test_Collection/Sample_Audio_and_Video/ 
    mc cp -r Sample_Audio_and_Video/batch_manifest.xlsx minio/masterfiles/dropbox/Test_Collection/Sample_Audio_and_Video/ 
    ```
