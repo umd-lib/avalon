@@ -128,6 +128,7 @@ class User < ActiveRecord::Base
   end
 
   def self.find_or_create_by_username_or_email(username, email, provider = 'local')
+    logger.debug "find_or_create_by_username_or_email: username=#{username}, email=#{email}, provider=#{provider}"
     find_and_verify_by_username(username) ||
       find_and_verify_by_email(email) ||
       create(username: username, email: email, password: Devise.friendly_token[0, 20], provider: provider)
@@ -168,17 +169,25 @@ class User < ActiveRecord::Base
   end
 
   def self.find_for_lti(auth_hash, signed_in_resource=nil)
+    logger.debug "find_for_lti: auth_hash=#{auth_hash.inspect}"
     if auth_hash.uid.blank?
       raise Avalon::MissingUserId
     end
 
     class_id = auth_hash.extra.context_id
     if Course.where(context_id: class_id).empty?
+      logger.debug "LTI class with context_id #{class_id} not found, creating new Course record."
       class_name = auth_hash.extra.context_name
       Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
     end
 
-    find_or_create_by_username_or_email(auth_hash.uid, auth_hash.info.email, 'lti')
+    
+    #find_or_create_by_username_or_email(auth_hash.uid, auth_hash.info.email, 'lti')
+
+    # Canvas does not provide an email in the LTI information, so we need to use a dummy one
+    # created based on the context_id and the streaming hostname
+    email = auth_hash.info.email || class_id + '@' + ENV['STREAMING_HOST']
+    find_or_create_by_username_or_email(class_id, email, 'lti')
   end
 
   def self.autocomplete(query)

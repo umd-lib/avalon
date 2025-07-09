@@ -93,6 +93,16 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  # Find LTI opmitmized redirect URL
+  def lti_redirect_url(auth_type, lti_group: nil)
+    redirect_url = find_redirect_url(auth_type, lti_group: lti_group)
+    if params['target_id'] && MasterFile.find_by(id: params['target_id']).present?
+      redirect_url + "/embed"
+    else
+      redirect_url
+    end
+  end
+
   def handle_api_request
     if request.headers['Avalon-Api-Key'].present?
       token = request.headers['Avalon-Api-Key']

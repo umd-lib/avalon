@@ -71,7 +71,10 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     find_method = :find_for_generic unless User.respond_to?(find_method)
     logger.debug "#{auth_type} :: #{current_user.inspect}"
     @user = User.send(find_method,request.env["omniauth.auth"], current_user)
+    logger.debug "#{auth_type} :: User found: #{@user.inspect}"
+    logger.debug "#{auth_type} :: User persisted? #{@user.persisted?}"
     if @user.persisted?
+      logger.debug "#{auth_type} :: Persisted user found"
       flash[:success] = I18n.t "devise.omniauth_callbacks.success", :kind => auth_type
       sign_in @user, :event => :authentication
       user_session[:virtual_groups] = @user.ldap_groups
@@ -84,11 +87,13 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       end
     end
 
+    logger.debug "#{auth_type} :: User session: #{user_session.inspect}"
+
     if login_popup?
       flash[:success] = nil
       render inline: '<html><head><script>window.close();</script></head><body></body><html>'.html_safe
     else
-      redirect_to find_redirect_url(auth_type, lti_group: user_session&.dig(:lti_group))
+      redirect_to lti_redirect_url(auth_type, lti_group: user_session&.dig(:lti_group))
     end
   end
 
