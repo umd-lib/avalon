@@ -95,14 +95,12 @@ class ApplicationController < ActionController::Base
 
   # Find LTI opmitmized redirect URL
   def lti_redirect_url(auth_type, lti_group: nil)
-    redirect_url = find_redirect_url(auth_type, lti_group: lti_group)
-    logger.debug "LTI Redirect URL: #{redirect_url}"
-    if params['target_id'] && MasterFile.find(params['target_id']).present?
-      updated_url = "/master_files/" + params['target_id'] + "/embed"
-      logger.debug "LTI Redirect URL is for a MasterFile is #{updated_url}"
-      updated_url
+    if params['target_id'] && ((fetch_object(params['target_id'])).is_a? MasterFile)
+      logger.debug "Getting embed URL for master fiile"
+      "/master_files/" + params['target_id'] + "/embed"
     else
-      redirect_url
+      logger.debug "Getting regular LTI Redirect URL"
+      find_redirect_url(auth_type, lti_group: lti_group)
     end
   end
 
