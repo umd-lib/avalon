@@ -1,0 +1,4 @@
+FROM docker.lib.umd.edu/avalon:<your_tag>
+
+COPY <path> avalon<path>
+...

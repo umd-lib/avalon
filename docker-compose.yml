@@ -144,6 +144,9 @@ services:
       - SAML_ISSUER=av-local:3000
       - UMD_HANDLE_PREFIX=1903.1
       - UMD_HANDLE_REPO=avalon
+      - ENVIRONMENT_BANNER=Local Environment
+      - ENVIRONMENT_BANNER_FOREGROUND=#fff
+      - ENVIRONMENT_BANNER_BACKGROUND=#008000
       # End UMD Customization
     volumes:
       # UMD Customization
