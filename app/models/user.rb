@@ -1,11 +1,11 @@
 # Copyright 2011-2023, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -178,7 +178,13 @@ class User < ActiveRecord::Base
       Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
     end
 
-    find_or_create_by_username_or_email(auth_hash.uid, auth_hash.info.email, 'lti')
+    # UMD Customization
+    # Creating a dummy email based on the context_id and the streaming hostname (Canvas doesn't provide an email)
+    email = auth_hash.info.email || class_id + '@' + ENV['STREAMING_HOST']
+    # Using the context_label (Course Name) as the username to be more readable
+    username = auth_hash.extra.context_label
+    find_or_create_by_username_or_email(username, email, 'lti')
+    # End UMD Customization
   end
 
   def self.autocomplete(query)

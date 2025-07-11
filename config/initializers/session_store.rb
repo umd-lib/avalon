@@ -7,8 +7,8 @@ Avalon::Application.config.session_store :active_record_store,
   # Use "Lax" SameSite for local development because UMD uses "av-local" instead
   # of "localhost" for the hostname. Without this, cannot log in using Firefox.
   same_site: (Rails.env.development? ? "Lax" : "None"),
+  httponly: false,
   # End UMD Customization
-  httponly: true,
   expire_after: 2.weeks
 
 # Use the database for sessions instead of the cookie-based default,
