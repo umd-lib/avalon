@@ -333,7 +333,7 @@ class MediaObjectsController < ApplicationController
     render json: mos.to_a.collect { |mo| mo.as_json(include_structure: params[:include_structure] == "true") }
   end
 
-  # Begin customization for LIBAVALON-196
+  # UMD Customization
   def master_file_download_allowed?
     return false if @masterFiles.nil? || @masterFiles.empty?
 
@@ -344,12 +344,14 @@ class MediaObjectsController < ApplicationController
     end
     download_allowed
   end
-  # End customization for LIBAVALON-196
+  # End UMD Customization
 
   def show
+    # UMD Customization
     @access_token = params[:access_token]
     @playback_restricted = cannot? :stream, @media_object
     @master_file_download_allowed = master_file_download_allowed?
+    # End UMD Customization
 
     respond_to do |format|
       format.html do
