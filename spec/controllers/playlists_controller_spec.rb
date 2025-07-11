@@ -610,6 +610,11 @@ RSpec.describe PlaylistsController, type: :controller do
         let(:media_object_2) { FactoryBot.create(:published_media_object, visibility: 'restricted') }
 
         it "returns populated canvas for public item and blank canvas for restricted item" do
+          # UMD Customization
+          pending(
+            'UMD customization of "app/models/ability.rb" invalidate this test'
+          )
+          # End UMD Customization
           get :manifest, format: 'json', params: { id: playlist.id }, session: valid_session
           parsed_response = JSON.parse(response.body)
           expect(parsed_response['items'].length).to eq 2
