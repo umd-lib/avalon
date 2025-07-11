@@ -73,8 +73,10 @@ master_file_management:
 bib_retriever:
   default:
     protocol: sru
+    # UMD Customization
     url: https://usmai-umcp.alma.exlibrisgroup.com/view/sru/01USMAI_UMCP
     query: rec.id=%{bib_id}
+    # End UMD Customization
     retriever_class: 'Avalon::BibRetriever::SRU'
     retriever_class_require: 'avalon/bib_retriever/sru'
 controlled_vocabulary:
