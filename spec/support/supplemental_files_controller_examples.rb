@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -37,11 +37,11 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
     {}
   }
 
-  let(:valid_update_attributes) { 
+  let(:valid_update_attributes) {
     { label: 'new label' }
   }
 
-  let(:invalid_update_attributes) { 
+  let(:invalid_update_attributes) {
     { file: uploaded_file }
   }
 
@@ -96,7 +96,7 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
       expect(response).to redirect_to Rails.application.routes.url_helpers.rails_blob_path(supplemental_file.file, disposition: "attachment")
     end
   end
-    
+
   describe "POST #create" do
     let(:media_object) { FactoryBot.create(:media_object) }
     let(:master_file) { FactoryBot.create(:master_file, media_object_id: media_object.id) }
@@ -133,6 +133,25 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
           expect(object.supplemental_files.first.label).to eq 'label'
           expect(object.supplemental_files.first.tags).to eq tags
           expect(object.supplemental_files.first.file).to be_attached
+        end
+
+        context 'with mime type that does not match extension' do
+          let(:tags) { ['caption'] }
+          let(:extension) { 'srt' }
+          let(:uploaded_file) { fixture_file_upload(Rails.root.join('spec', 'fixtures', 'captions.srt'), 'text/plain') }
+          it "creates a SupplementalFile with correct content_type" do
+            expect{
+              post :create, params: { class_id => object.id, supplemental_file: valid_create_attributes_with_tags, format: :json}, session: valid_session
+            }.to change { object.reload.supplemental_files.size }.by(1)
+            expect(response).to have_http_status(:created)
+            expect(response.location).to eq "/#{object_class.model_name.plural}/#{object.id}/supplemental_files/#{assigns(:supplemental_file).id}"
+
+            expect(object.supplemental_files.first.id).to eq 1
+            expect(object.supplemental_files.first.label).to eq 'label'
+            expect(object.supplemental_files.first.tags).to eq tags
+            expect(object.supplemental_files.first.file).to be_attached
+            expect(object.supplemental_files.first.file.content_type).to eq Mime::Type.lookup_by_extension(extension)
+          end
         end
       end
 
@@ -245,6 +264,34 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
         end
       end
 
+      context "machine generated transcript" do
+        let(:machine_param) { "machine_generated_#{supplemental_file.id}".to_sym }
+        context "missing machine_generated tag" do
+          let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag, label: 'label') }
+          it "adds machine generated note to tags" do
+            expect {
+              put :update, params: { class_id => object.id, id: supplemental_file.id, machine_param => 1, supplemental_file: valid_update_attributes, format: :html }, session: valid_session
+            }.to change { master_file.reload.supplemental_files.first.tags }.from(['transcript']).to(['transcript', 'machine_generated'])
+          end
+        end
+        context "with machine_generated tag" do
+          let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated'], label: 'label (machine generated)') }
+          it "does not add more instances of machine generated note" do
+            expect {
+              put :update, params: { class_id => object.id, id: supplemental_file.id, machine_param => 1, supplemental_file: valid_update_attributes, format: :html }, session: valid_session
+            }.to not_change { master_file.reload.supplemental_files.first.tags }.from(['transcript', 'machine_generated'])
+          end
+        end
+        context "removing machine_generated designation" do
+          let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated'], label: 'label (machine generated)') }
+          it "removes machine generated note from label and tags" do
+            expect {
+              put :update, params: { class_id => object.id, id: supplemental_file.id, supplemental_file: valid_update_attributes, format: :html }, session: valid_session
+            }.to change { master_file.reload.supplemental_files.first.tags }.from(['transcript', 'machine_generated']).to(['transcript'])
+          end
+        end
+      end
+
       context "with invalid params" do
         it "returns a 400" do
           put :update, params: { class_id => object.id, id: supplemental_file.id, supplemental_file: invalid_update_attributes, format: :html }, session: valid_session
@@ -287,7 +334,7 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
       end
     end
 
-    context 'html request' do  
+    context 'html request' do
       context "with valid params" do
         it "deletes the SupplementalFile" do
           expect {
@@ -298,7 +345,7 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
           # TODO: expect file contents to have been removed
         end
       end
-  
+
       context "with missing id" do
         it "returns a 404" do
           delete :destroy, params: { class_id => object.id, id: 'missing-id', format: :html }, session: valid_session

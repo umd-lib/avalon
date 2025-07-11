@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+Copyright 2011-2024, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -16,12 +16,12 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <div class="col-md-12 col-lg-4 row">
   <% if image_url = image_for(document) %>
-    <%= link_to(media_object_path(document[:id]), {class: 'result-thumbnail'}) do %>
+    <%= link_to(media_object_path(document[:id]), aria: { hidden: 'true'}, tabindex: -1, class: 'result-thumbnail') do %>
       <%# UMD Customization %>
       <%= image_tag( image_url, alt: alt_for_thumbnail(image_url) ) %>
       <%# End UMD Customization %>
     <% end %>
   <% else %>
-    <%= image_tag 'no_icon.png', class: 'result-thumbnail no-icon' %>
+    <%= image_tag 'no_icon.png', alt: "", class: 'result-thumbnail no-icon' %>
   <% end %>
 </div>

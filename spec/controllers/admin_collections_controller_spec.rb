@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -154,7 +154,8 @@ describe Admin::CollectionsController, type: :controller do
   end
 
   describe "#index" do
-    let!(:collection) { FactoryBot.create(:collection) }
+    let!(:collection) { FactoryBot.create(:collection, items: 1) }
+    let!(:collection2) { FactoryBot.create(:collection, items: 1) }
     subject(:json) { JSON.parse(response.body) }
 
     let(:administrator) { FactoryBot.create(:administrator) }
@@ -165,7 +166,7 @@ describe Admin::CollectionsController, type: :controller do
     end
     it "should return list of collections" do
       get 'index', params: { format:'json' }
-      expect(json.count).to eq(1)
+      expect(json.count).to eq(2)
       expect(json.first['id']).to eq(collection.id)
       expect(json.first['name']).to eq(collection.name)
       expect(json.first['unit']).to eq(collection.unit)
@@ -259,6 +260,18 @@ describe Admin::CollectionsController, type: :controller do
       end
     end
 
+    context 'misformed NOID' do
+      it 'should redirect to the requested collection' do
+        get 'show', params: { id: "#{collection.id}] " }
+        expect(response).to redirect_to(admin_collection_path(id: collection.id))
+      end
+      it 'should redirect to unknown_pid page if invalid' do
+        get 'show', params: { id: "nonvalid noid]" }
+        expect(response).to render_template("errors/unknown_pid")
+        expect(response.response_code).to eq(404)
+      end
+    end
+
     # UMD Customization
     context "Assign Special Access - UMD IP Manager Groups" do
       it "should provide an error message if UMD IP Manager group retrieval fails" do
@@ -337,7 +350,7 @@ describe Admin::CollectionsController, type: :controller do
     context "with structure" do
       let!(:mf_1) { FactoryBot.create(:master_file, :with_structure, media_object: collection.media_objects[0]) }
       let!(:mf_2) { FactoryBot.create(:master_file, :with_structure, media_object: collection.media_objects[1]) }
-      
+
       it "should not return structure by default" do
         get 'items', params: { id: collection.id, format: 'json' }
         expect(JSON.parse(response.body)[collection.media_objects[0].id]["files"][0]["structure"]).to be_blank
@@ -547,13 +560,13 @@ describe Admin::CollectionsController, type: :controller do
 
     context "change default access control for item" do
       it "discovery" do
-        put 'update', params: { id: collection.id, save_access: "Save Access Settings", hidden: "1" }
+        put 'update', params: { id: collection.id, save_field: "discovery", hidden: "1" }
         collection.reload
         expect(collection.default_hidden).to be_truthy
       end
 
       it "access" do
-        put 'update', params: { id: collection.id, save_access: "Save Access Settings", visibility: "public" }
+        put 'update', params: { id: collection.id, save_field: "visibility", visibility: "public" }
         collection.reload
         expect(collection.default_visibility).to eq("public")
       end
@@ -562,7 +575,7 @@ describe Admin::CollectionsController, type: :controller do
         context "cdl disabled for application" do
           before { allow(Settings.controlled_digital_lending).to receive(:enable).and_return(false) }
           it "enable cdl for collection" do
-            put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: "1" }
+            put 'update', params: { id: collection.id, save_field: "cdl", cdl: 1 }
             collection.reload
             expect(collection.cdl_enabled).to be true
             expect(flash[:error]).not_to be_present
@@ -571,7 +584,7 @@ describe Admin::CollectionsController, type: :controller do
         context "cdl enable for application" do
           before { allow(Settings.controlled_digital_lending).to receive(:enable).and_return(true) }
           it "disable cdl for collection" do
-            put 'update', params: { id: collection.id, save_access: "Save Access Settings" }
+            put 'update', params: { id: collection.id, save_field: "cdl" }
             collection.reload
             expect(collection.cdl_enabled).to be false
           end
@@ -580,38 +593,44 @@ describe Admin::CollectionsController, type: :controller do
     end
 
     context "changing lending period" do
+      before do
+        allow(Settings.controlled_digital_lending).to receive(:enable).and_return(true)
+        collection.cdl_enabled = true
+        collection.save!
+      end
+
       it "sets a custom lending period" do
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 7, add_lending_period_hours: 8 } }.to change { collection.reload.default_lending_period }.to(633600)
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 7, add_lending_period_hours: 8 } }.to change { collection.reload.default_lending_period }.to(633600)
       end
 
       it "returns error if invalid" do
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: -1, add_lending_period_hours: -1 } }.not_to change { collection.reload.default_lending_period }
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: -1, add_lending_period_hours: -1 } }.not_to change { collection.reload.default_lending_period }
         expect(response).to redirect_to(admin_collection_path(collection))
         expect(flash[:error]).to be_present
         expect(flash[:error]).to eq("Lending period must be greater than 0.")
-        put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: -1, add_lending_period_hours: 1 }
+        put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: -1, add_lending_period_hours: 1 }
         expect(response).to redirect_to(admin_collection_path(collection))
         expect(flash[:error]).to be_present
         expect(flash[:error]).to eq("Lending period days needs to be a positive integer.")
-        put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 1, add_lending_period_hours: -1 }
+        put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 1, add_lending_period_hours: -1 }
         expect(response).to redirect_to(admin_collection_path(collection))
         expect(flash[:error]).to be_present
         expect(flash[:error]).to eq("Lending period hours needs to be a positive integer.")
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 0, add_lending_period_hours: 0 } }.not_to change { collection.reload.default_lending_period }
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 0, add_lending_period_hours: 0 } }.not_to change { collection.reload.default_lending_period }
         expect(response).to redirect_to(admin_collection_path(collection))
         expect(flash[:error]).to be_present
         expect(flash[:error]).to eq("Lending period must be greater than 0.")
       end
 
       it "accepts 0 as a valid day or hour value" do
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 0, add_lending_period_hours: 1 } }.to change { collection.reload.default_lending_period }.to(3600)
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 0, add_lending_period_hours: 1 } }.to change { collection.reload.default_lending_period }.to(3600)
         expect(flash[:error]).not_to be_present
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 1, add_lending_period_hours: 0 } }.to change { collection.reload.default_lending_period }.to(86400)
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 1, add_lending_period_hours: 0 } }.to change { collection.reload.default_lending_period }.to(86400)
         expect(flash[:error]).not_to be_present
       end
 
       it "returns error if both day and hour are 0" do
-        expect { put 'update', params: { id: collection.id, save_access: "Save Access Settings", cdl: 1, add_lending_period_days: 0, add_lending_period_hours: 0 } }.not_to change { collection.reload.default_lending_period }
+        expect { put 'update', params: { id: collection.id, save_field: "lending_period", add_lending_period_days: 0, add_lending_period_hours: 0 } }.not_to change { collection.reload.default_lending_period }
         expect(response).to redirect_to(admin_collection_path(collection))
         expect(flash[:error]).to be_present
       end
@@ -628,14 +647,14 @@ describe Admin::CollectionsController, type: :controller do
     context "replacing existing Special Access" do
       let(:overwrite) { true }
       it "enqueues a BulkActionJobs::ApplyCollectionAccessControl job" do
-        expect { put 'update', params: { id: collection.id, apply_access: "Apply to All Existing Items", overwrite: overwrite } }.to have_enqueued_job(BulkActionJobs::ApplyCollectionAccessControl).with(collection.id, overwrite).once
+        expect { put 'update', params: { id: collection.id, apply_to_existing: "Apply to All Existing Items", overwrite: overwrite } }.to have_enqueued_job(BulkActionJobs::ApplyCollectionAccessControl).with(collection.id, overwrite, nil).once
       end
     end
 
     context "adding to existing Special Access" do
       let(:overwrite) { false }
       it "enqueues a BulkActionJobs::ApplyCollectionAccessControl job" do
-        expect { put 'update', params: { id: collection.id, apply_access: "Apply to All Existing Items", overwrite: overwrite } }.to have_enqueued_job(BulkActionJobs::ApplyCollectionAccessControl).with(collection.id, overwrite).once
+        expect { put 'update', params: { id: collection.id, apply_to_existing: "Apply to All Existing Items", overwrite: overwrite } }.to have_enqueued_job(BulkActionJobs::ApplyCollectionAccessControl).with(collection.id, overwrite, nil).once
       end
     end
   end
@@ -747,6 +766,14 @@ describe Admin::CollectionsController, type: :controller do
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to eq "image/png; charset=utf-8"
       expect(response.body).not_to be_blank
+    end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        WebMock.reset_executed_requests!
+        get :poster, params: { id: collection.id }
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
     end
   end
 end

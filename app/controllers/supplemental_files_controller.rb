@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -18,7 +18,7 @@ class SupplementalFilesController < ApplicationController
   before_action :authorize_object
 
   rescue_from Avalon::SaveError do |exception|
-    message = "An error occurred when saving the supplemental file: #{exception.full_message}"
+    message = "An error occurred when saving the supplemental file: #{exception.message}"
     handle_error(message: message, status: 500)
   end
 
@@ -44,7 +44,7 @@ class SupplementalFilesController < ApplicationController
     # Raise errror if file wasn't attached
     raise Avalon::SaveError, "File could not be attached." unless @supplemental_file.file.attached?
 
-    raise Avalon::SaveError, @supplemental_files.errors.full_messages unless @supplemental_file.save
+    raise Avalon::SaveError, @supplemental_file.errors.full_messages unless @supplemental_file.save
 
     @object.supplemental_files += [@supplemental_file]
     raise Avalon::SaveError, @object.errors[:supplemental_files_json].full_messages unless @object.save
@@ -58,12 +58,7 @@ class SupplementalFilesController < ApplicationController
   end
 
   def show
-    # TODO: Use a master file presenter which reads from solr instead of loading the masterfile from fedora
-    # FIXME: authorize supplemental file directly (needs supplemental file to have reference to masterfile)
-    raise Avalon::NotFound, "Supplemental file: #{params[:id]} not found" unless SupplementalFile.exists? params[:id].to_s
-
-    @supplemental_file = SupplementalFile.find(params[:id])
-    raise Avalon::NotFound, "Supplemental file: #{@supplemental_file.id} not found" unless @object.supplemental_files.any? { |f| f.id == @supplemental_file.id }
+    find_supplemental_file
 
     # Redirect or proxy the content
     if Settings.supplemental_files.proxy
@@ -73,14 +68,14 @@ class SupplementalFilesController < ApplicationController
     end
   end
 
-  # Update the label of the supplemental file
+  # Update the label and tags of the supplemental file
   def update
     raise Avalon::NotFound, "Cannot update the supplemental file: #{params[:id]} not found" unless SupplementalFile.exists? params[:id].to_s
     @supplemental_file = SupplementalFile.find(params[:id])
     raise Avalon::NotFound, "Cannot update the supplemental file: #{@supplemental_file.id} not found" unless @object.supplemental_files.any? { |f| f.id == @supplemental_file.id }
     raise Avalon::BadRequest, "Updating file contents not allowed" if supplemental_file_params[:file].present?
 
-    @supplemental_file.label = supplemental_file_params[:label]
+    edit_file_information
     raise Avalon::SaveError, @supplemental_file.errors.full_messages unless @supplemental_file.save
 
     flash[:success] = "Supplemental file successfully updated."
@@ -107,6 +102,15 @@ class SupplementalFilesController < ApplicationController
     end
   end
 
+  def captions
+    find_supplemental_file
+
+    file_content = @supplemental_file.file.download
+    content = @supplemental_file.file.content_type == 'text/srt' ? SupplementalFile.convert_from_srt(file_content) : file_content
+
+    send_data content, filename: @supplemental_file.file.filename.to_s, type: 'text/vtt', disposition: 'attachment'
+  end
+
   private
 
     def set_object
@@ -115,8 +119,18 @@ class SupplementalFilesController < ApplicationController
 
     def supplemental_file_params
       # TODO: Add parameters for minio and s3
-      params.fetch(:supplemental_file, {}).permit(:label, :file, tags: [])
+      params.fetch(:supplemental_file, {}).permit(:label, :language, :file, tags: [])
     end
+
+    def find_supplemental_file
+      # TODO: Use a master file presenter which reads from solr instead of loading the masterfile from fedora
+      # FIXME: authorize supplemental file directly (needs supplemental file to have reference to masterfile)
+      raise Avalon::NotFound, "Supplemental file: #{params[:id]} not found" unless SupplementalFile.exists? params[:id].to_s
+
+      @supplemental_file = SupplementalFile.find(params[:id])
+      raise Avalon::NotFound, "Supplemental file: #{@supplemental_file.id} not found" unless @object.supplemental_files.any? { |f| f.id == @supplemental_file.id }
+    end
+
 
     def handle_error(message:, status:)
       if request.format == :json
@@ -136,6 +150,19 @@ class SupplementalFilesController < ApplicationController
       edit_media_object_path(media_object_id, step: 'file-upload')
     end
 
+    def edit_file_information
+      ident = "machine_generated_#{params[:id]}".to_sym
+
+      if params[ident] && !@supplemental_file.machine_generated?
+        @supplemental_file.tags += ['machine_generated']
+      elsif !params[ident] && @supplemental_file.machine_generated?
+        @supplemental_file.tags -= ['machine_generated']
+      end
+      @supplemental_file.label = supplemental_file_params[:label]
+      return unless supplemental_file_params[:language].present?
+      @supplemental_file.language = LanguageTerm.find(supplemental_file_params[:language]).code
+    end
+
     def object_supplemental_file_path
       if @object.is_a? MasterFile
         master_file_supplemental_file_path(id: @supplemental_file.id, master_file_id: @object.id)
@@ -145,7 +172,7 @@ class SupplementalFilesController < ApplicationController
     end
 
     def authorize_object
-      action = action_name.to_sym == :show ? :show : :edit
+      action = [:show, :captions].include?(action_name.to_sym) ? :show : :edit
       # UMD Customization
       # Only display supplemental files if user has full_read permission
       action = :full_read if action == :show && @object.is_a?(MediaObject)

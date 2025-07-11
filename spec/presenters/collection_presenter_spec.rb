@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -23,7 +23,7 @@ describe CollectionPresenter do
   let(:website_label) { Faker::Lorem.words.join(' ') }
   let(:website_url) { Faker::Internet.url }
   let(:contact_email) { Faker::Internet.email }
-  let(:website_link) { "<a href='#{website_label}'>#{website_url}</a>" }
+  let(:website_link) { "<a href='#{website_url}'>#{website_label.presence || website_url}</a>" }
   let(:solr_doc) do
     SolrDocument.new(
       id: id,
@@ -41,6 +41,7 @@ describe CollectionPresenter do
 
   before do
     allow(view_context).to receive(:link_to).with(website_label, website_url).and_return(website_link)
+    allow(view_context).to receive(:link_to).with(website_url, website_url).and_return(website_link)
   end
 
   it 'provides getters for descriptive fields' do
@@ -84,6 +85,27 @@ describe CollectionPresenter do
 
       it 'returns null' do
         expect(presenter.website_link).to be_nil
+      end
+    end
+
+    context 'with a blank website url' do
+      let(:website_url) { '' }
+
+      it 'returns null' do
+        expect(presenter.website_link).to be_nil
+      end
+    end
+
+    context 'with a blank website label' do
+      let(:website_label) { '' }
+
+      it 'provides a link tag' do
+        expect(presenter.website_link).to eq website_link
+      end
+
+      it 'sets label to the website url' do
+        expect(view_context).to receive(:link_to).with(website_url, website_url)
+        presenter.website_link
       end
     end
   end
