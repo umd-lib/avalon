@@ -47,9 +47,10 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%# End UMD Customization %>
 </head>
 
-<body data-mountpoint="<%=main_app.root_path%>" <%= request.fullpath.include?('login_popup') ? 'onunload=closePopup()' : nil %> >
+<%# UMD Customization %>
+<body data-mountpoint="<%=main_app.root_path%>" <%= request.fullpath.include?('login_popup') ? 'onunload=closePopup()' : nil %>>
+  <%= render partial: 'shared/environment_banner' %>
   <div class="page-container">
-    <%# UMD Customization %>
     <div class="content-wrapper" style="padding-bottom: 60px;">
     <%# End UMD Customization %>
       <a id="skip-to-content" class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
