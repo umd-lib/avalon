@@ -114,18 +114,12 @@ end
 
 describe 'Search' do
   it 'is able to enter keyword and perform search' do
-    # UMD Customization
-    pending('UMD LIBAVALON-178')
-    # End UMD Customization
     visit '/'
     fill_in('Search', with: 'Video', match: :first)
     find('button.global-search-submit').click
     expect(page).to have_current_path('/catalog?utf8=%E2%9C%93&search_field=all_fields&q=Video')
   end
   it 'gives appropriate error when keyword returns no results' do
-    # UMD Customization
-    pending('UMD LIBAVALON-178')
-    # End UMD Customization
     visit '/'
     fill_in('Search', with: 'Video', match: :first)
     find('button.global-search-submit').click
