@@ -19,7 +19,9 @@ networks:
 
 services:
   db: &db-avalon
-    image: postgres:14-alpine
+    # UMD Customization
+    image: docker.lib.umd.edu/db:fedora4-avalon-7.7.2
+    # End UMD Customization
     volumes:
       - database:/data
     environment:
@@ -35,7 +37,7 @@ services:
 
   fedora: &fedora
     # UMD Customization
-    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.6
+    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.7.2
     # End UMD Customization
     depends_on:
       - db
@@ -45,17 +47,21 @@ services:
       - JAVA_OPTIONS=-Dfcrepo.modeshape.configuration=classpath:/config/file-simple/repository.json -Dfcrepo.home=/data
     networks:
       internal:
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
   fedora-test:
     <<: *fedora
     volumes: []
 
   solr: &solr
     # UMD Customization
-    image: docker.lib.umd.edu/solr:avalon-7.6
+    image: docker.lib.umd.edu/solr:avalon-7.7.2
     # End UMD Customization
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
-      - solr:/opt/solr/server/solr
+      - solr:/var/solr
     command:
       - solr-precreate
       - avalon
@@ -69,7 +75,7 @@ services:
 
   hls:
     # UMD Customization
-    image: docker.lib.umd.edu/nginx:avalon-7.6-umd-0
+    image: docker.lib.umd.edu/nginx:avalon-7.7.2-umd-0
     platform: linux/amd64
     # End UMD Customization
     environment:
@@ -79,13 +85,16 @@ services:
     volumes:
       - streaming:/data
     # End UMD Customization
+      - ./log/nginx:/var/log/nginx
     ports:
       - '8880:80'
     networks:
       external:
 
   redis: &redis
-    image: redis:alpine
+    # UMD Customization
+    image: docker.lib.umd.edu/redis:avalon-7.7.2
+    # End UMD Customization
     networks:
       internal:
   redis-test:
@@ -93,7 +102,7 @@ services:
 
   avalon: &avalon
     # UMD Customization
-    image: docker.lib.umd.edu/avalon:7.6-umd-0
+    image: docker.lib.umd.edu/avalon:7.7.2-umd-0
     # End UMD Customization
     build:
       context: .
@@ -184,8 +193,8 @@ services:
     ports: []
 # UMD Customization
   # minio:
-  #   image: minio/minio:RELEASE.2019-10-12T01-39-57Z
-  #   command: minio server /data
+  #   image: minio/minio:RELEASE.2024-01-29T03-56-32Z
+  #   command: minio server /data --console-address ":9090"
   #   environment:
   #     MINIO_ACCESS_KEY: minio
   #     MINIO_SECRET_KEY: minio123
@@ -193,11 +202,12 @@ services:
   #     - data:/data
   #   ports:
   #     - 9000:9000
+  #     - 9090:9090
   #   networks:
   #     internal:
   #     external:
   #   healthcheck:
-  #     test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
   #     interval: 30s
   #     timeout: 20s
   #     retries: 3
@@ -209,9 +219,9 @@ services:
   #   entrypoint: >
   #     /bin/sh -c "
   #     /usr/bin/mc config host add myminio http://minio:9000 minio minio123;
-  #     /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles;
-  #     /usr/bin/mc policy set download myminio/derivatives;
-  #     /usr/bin/mc policy set download myminio/supplementalfiles;
+  #     /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
+  #     /usr/bin/mc anonymous set download myminio/derivatives;
+  #     /usr/bin/mc anonymous set download myminio/supplementalfiles;
   #     exit 0;
   #     "
   #   networks:
