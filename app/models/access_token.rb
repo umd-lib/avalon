@@ -9,6 +9,9 @@ class AccessToken < ApplicationRecord
   validates :expiration, presence: true
   validate :expiration_must_be_future
   validate :user_must_be_collection_member
+  # UMD Customization
+  validate :media_object_not_in_streaming_reserves_unit
+  # End UMD Customization
 
   after_create :add_read_group
 
@@ -95,6 +98,17 @@ class AccessToken < ApplicationRecord
   def media_object_must_exist
     if media_object_id.present?
       errors.add(:media_object_id, 'not found') unless media_object_exists?
+    end
+  end
+
+  # Validation method to check whether the media object is in the
+  # streaming reserves unit. If it is, it adds an error to the media_object_id.
+  def media_object_not_in_streaming_reserves_unit
+    if media_object_id.present? && media_object_exists?
+      media_object = MediaObject.find(media_object_id)
+      if media_object&.collection&.unit == Settings.streaming_reserves.unit_name
+        errors.add(:media_object_id, 'is in the streaming reserves unit and cannot be accessed with a token.')
+      end
     end
   end
 
