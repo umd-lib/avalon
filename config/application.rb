@@ -1,4 +1,5 @@
 require_relative 'boot'
+require_relative '../lib/tempfile_factory'
 
 require 'rails/all'
 require 'resolv-replace'
@@ -9,7 +10,7 @@ Bundler.require(*Rails.groups)
 
 module Avalon
   # UMD Customization
-  VERSION = '7.7.2-umd-0-SNAPSHOT'
+  VERSION = '7.8.0-umd-0-SNAPSHOT'
   # End UMD Customization
 
   class Application < Rails::Application
@@ -56,8 +57,11 @@ module Avalon
         resource '/master_files/*/supplemental_files/*', headers: :any, methods: [:get]
         resource '/playlists/*/manifest.json', headers: :any, credentials: true, methods: [:get]
         resource '/timelines/*/manifest.json', headers: :any, methods: [:get, :post]
+        resource '/master_files/*/search', headers: :any, methods: [:get]
       end
     end
+
+    config.middleware.insert_before 0, TempfileFactory
 
     config.active_storage.service = (Settings&.active_storage&.service.presence || "local").to_sym
 
