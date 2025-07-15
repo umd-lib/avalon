@@ -14,7 +14,7 @@ Rails.application.config.assets.paths << Rails.root.join('node_modules')
 # Rails.application.config.assets.precompile += %w( admin.js admin.css )
 
 # UMD Customization
-Rails.application.config.assets.precompile += %w( embed.css custom.css )
+Rails.application.config.assets.precompile += %w( custom.css )
 # End UMD Customization
 
 # MediaElement 4 files
