@@ -11,6 +11,7 @@ class AccessToken < ApplicationRecord
   validate :user_must_be_collection_member
   # UMD Customization
   validate :media_object_not_in_streaming_reserves_unit
+  validate :media_object_is_published
   # End UMD Customization
 
   after_create :add_read_group
@@ -101,6 +102,7 @@ class AccessToken < ApplicationRecord
     end
   end
 
+  # UMD Customization
   # Validation method to check whether the media object is in the
   # streaming reserves unit. If it is, it adds an error to the media_object_id.
   def media_object_not_in_streaming_reserves_unit
@@ -111,6 +113,17 @@ class AccessToken < ApplicationRecord
       end
     end
   end
+
+  def media_object_is_published
+    if media_object_id.present? && media_object_exists?
+      media_object = MediaObject.find(media_object_id)
+      if media_object&.published? == false
+        errors.add(:media_object_id, 'is not published and cannot be accessed with a token.')
+      end
+    end
+  end
+
+  # End UMD Customization
 
   # Validation method to check whether the user creating this token is an admin
   # or "member" (manager, editor, or depositor) of the collection holding the
