@@ -136,7 +136,3 @@ caption_default:
   # Language should be 2 or 3 letter ISO 639 codes
   language: 'en'
   name: 'English'
-# UMD Customization
-streaming_reserves:
-  unit_name: 'Streaming Reserves'
-# End UMD Customization
