@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -24,7 +24,7 @@ class FileLocator
     def initialize(uri)
       uri = Addressable::URI.parse(uri)
       @bucket = Addressable::URI.unencode(uri.host)
-      @key = Addressable::URI.unencode(ActiveEncode.sanitize_uri(uri)).sub(%r(^/*(.+)/*$),'\1')
+      @key = Addressable::URI.unencode(ActiveEncode.sanitize_uri(uri)).sub(%r(^/*(.+)/*$), '\1')
     end
 
     def object
@@ -33,10 +33,16 @@ class FileLocator
 
     def local_file
       @local_file ||= Tempfile.new(File.basename(key))
-      object.download_file(@local_file.path) if File.zero?(@local_file)
+      object.download_file(@local_file.path, mode: 'single_request') if File.zero?(@local_file)
       @local_file
     ensure
       @local_file.close
+    end
+
+    def download_url
+      download_object = Avalon::Configuration.construct_s3_download_object.call(bucket, key, object)
+      # Presigned URL is set to expire in 1 hour.
+      download_object.presigned_url(:get, expires_in: 3600, response_content_disposition: "attachment; filename=#{File.basename(key)}")
     end
   end
 

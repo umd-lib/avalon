@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -55,6 +55,7 @@ module Avalon
       property :avalon_publisher,     "rdfs:isDefinedBy" => %(avr-media_object:).freeze, type: "rdfs:Class".freeze
       property :supplementalFiles,    "rdfs:isDefinedBy" => %(avr-media_object:).freeze, type: "rdfs:Class".freeze
       property :avalon_uploader,      "rdfs:isDefinedBy" => %(avr-media_object:).freeze, type: "rdfs:Class".freeze
+      property :section_list,         "rdfs:isDefinedBy" => %(avr-media_object:).freeze, type: "rdfs:Class".freeze
     end
 
     class Collection < RDF::StrictVocabulary("http://avalonmediasystem.org/rdf/vocab/collection#")
@@ -65,6 +66,7 @@ module Avalon
       property :default_visibility,       "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :default_hidden,           "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :cdl_enabled,              "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
+      property :collection_managers,       "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
     end
 
     class EBUCore < RDF::StrictVocabulary("http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#")

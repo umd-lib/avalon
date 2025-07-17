@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -36,6 +36,43 @@ describe StreamToken do
       token2 = StreamToken.find_or_create_session_token(session, target)
       expect(token).to eq token2
       expect(session[:hash_tokens].count(token)).to eq 1
+    end
+
+    context '#get_session_tokens_for' do
+      let(:targets) { ['D1452CB7-4DC2-4A26-AC2C-FBCE943C164C', target] }
+
+      it 'should create the tokens' do
+        expect(StreamToken.get_session_tokens_for(session: session, targets: targets)).to match_array([be_instance_of(StreamToken), be_instance_of(StreamToken)])
+      end
+
+      it 'stores the tokens in the session' do
+        tokens = StreamToken.get_session_tokens_for(session: session, targets: targets)
+        expect(session[:hash_tokens]).to include *tokens.pluck(:token)
+      end
+
+      it 'stores the tokens once in the session' do
+        tokens = StreamToken.get_session_tokens_for(session: session, targets: targets)
+        tokens2 = StreamToken.get_session_tokens_for(session: session, targets: targets)
+        expect(tokens).to eq tokens2
+        expect(session[:hash_tokens].count(tokens.first.token)).to eq 1
+        expect(session[:hash_tokens].count(tokens.second.token)).to eq 1
+      end
+
+      it 'updates expires' do
+        StreamToken.get_session_tokens_for(session: session, targets: targets)
+        expect { StreamToken.get_session_tokens_for(session: session, targets: targets) }.not_to change { StreamToken.count }
+        expect { StreamToken.get_session_tokens_for(session: session, targets: targets) }.to change { StreamToken.pluck(:expires) }
+      end
+
+      context 'with a mix of existing and new tokens' do
+        before { StreamToken.get_session_tokens_for(session: session, targets: [target]) }
+
+        it 'creates and stores the token' do
+          tokens = StreamToken.get_session_tokens_for(session: session, targets: targets)
+          expect(tokens).to match_array([be_instance_of(StreamToken), be_instance_of(StreamToken)])
+          expect(session[:hash_tokens]).to include *tokens.pluck(:token)
+        end
+      end
     end
   end
 
@@ -91,6 +128,21 @@ describe StreamToken do
     it 'removes purged tokens from session' do
       travel_to StreamToken.find_by(token: token).expires + 1.minute do
         StreamToken.purge_expired!(session)
+        expect(session[:hash_tokens]).not_to include(token)
+      end
+    end
+
+    context 'with custom max_tokens_per_user' do
+      before do
+        allow(StreamToken).to receive(:max_tokens_per_user).and_return(10)
+      end
+
+      it 'limits the number of tokens in the session' do
+        (1..10).each { |i| StreamToken.find_or_create_session_token(session, i.to_s) }
+        expect(session[:hash_tokens].size).to eq 11
+        expect(session[:hash_tokens]).to include(token)
+        StreamToken.purge_expired!(session)
+        expect(session[:hash_tokens].size).to eq 10
         expect(session[:hash_tokens]).not_to include(token)
       end
     end

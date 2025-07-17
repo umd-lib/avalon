@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -13,4 +13,18 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 class ApplicationJob < ActiveJob::Base
+  rescue_from RSolr::Error::ConnectionRefused, :with => :handle_connection_error
+  rescue_from RSolr::Error::Timeout, :with => :handle_connection_error
+  rescue_from Blacklight::Exceptions::ECONNREFUSED, :with => :handle_connection_error
+  rescue_from Faraday::ConnectionFailed, :with => :handle_connection_error
+
+  rescue_from Ldp::Gone do |exception|
+    Rails.logger.error(exception.message + '\n' + exception.backtrace.join('\n'))
+  end
+
+  private
+    def handle_connection_error(exception)
+      raise if Settings.app_job.solr_and_fedora.raise_on_connection_error
+      Rails.logger.error(exception.class.to_s + ': ' + exception.message + '\n' + exception.backtrace.join('\n'))
+    end
 end

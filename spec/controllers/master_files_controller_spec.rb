@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -36,6 +36,7 @@ end
 # End UMD Customization
 
 describe MasterFilesController do
+  include ActiveJob::TestHelper
 
   describe "#create" do
     let(:media_object) { FactoryBot.create(:media_object) }
@@ -76,6 +77,13 @@ describe MasterFilesController do
     end
 
     context "cannot upload a file over the defined limit" do
+      around do |example|
+        @old_maximum_upload_size = MasterFile::MAXIMUM_UPLOAD_SIZE
+        MasterFile::MAXIMUM_UPLOAD_SIZE = 2.gigabytes
+        example.run
+        MasterFile::MAXIMUM_UPLOAD_SIZE = @old_maximum_upload_size
+      end
+
       it "provides a warning about the file size" do
         request.env["HTTP_REFERER"] = "/"
 
@@ -119,7 +127,7 @@ describe MasterFilesController do
         file = fixture_file_upload('/videoshort.mp4', 'video/mp4')
         post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id }
 
-        master_file = media_object.reload.ordered_master_files.to_a.first
+        master_file = media_object.reload.sections.first
         expect(master_file.file_format).to eq "Moving image"
 
         expect(flash[:error]).to be_nil
@@ -129,7 +137,7 @@ describe MasterFilesController do
         file = fixture_file_upload('/jazz-performance.mp3', 'audio/mp3')
         post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id }
 
-        master_file = media_object.reload.ordered_master_files.to_a.first
+        master_file = media_object.reload.sections.first
         expect(master_file.file_format).to eq "Sound"
       end
 
@@ -166,7 +174,7 @@ describe MasterFilesController do
         post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id }
 
         master_file = MasterFile.all.last
-        expect(media_object.reload.ordered_master_files.to_a).to include master_file
+        expect(media_object.reload.sections).to include master_file
         expect(master_file.media_object.id).to eq(media_object.id)
 
         expect(flash[:error]).to be_nil
@@ -182,7 +190,7 @@ describe MasterFilesController do
 
           master_file = MasterFile.all.last
           media_object.reload
-          expect(media_object.ordered_master_files.to_a).to include master_file
+          expect(media_object.sections).to include master_file
           expect(master_file.media_object.id).to eq(media_object.id)
 
           expect(flash[:error]).to be_nil
@@ -201,7 +209,7 @@ describe MasterFilesController do
 
           master_file = MasterFile.all.last
           media_object.reload
-          expect(media_object.ordered_master_files.to_a).to include master_file
+          expect(media_object.sections).to include master_file
           expect(master_file.media_object.id).to eq(media_object.id)
 
           expect(flash[:error]).to be_nil
@@ -221,7 +229,7 @@ describe MasterFilesController do
         post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id }
 
         master_file = MasterFile.all.last
-        expect(media_object.reload.ordered_master_files.to_a).to include master_file
+        expect(media_object.reload.sections).to include master_file
         expect(master_file.media_object.id).to eq(media_object.id)
 
         expect(flash[:error]).to be_nil
@@ -238,14 +246,14 @@ describe MasterFilesController do
       login_as :administrator
       expect(controller.current_ability.can?(:destroy, master_file)).to be_truthy
       expect { post :destroy, params: { id: master_file.id } }.to change { MasterFile.count }.by(-1)
-      expect(master_file.media_object.reload.ordered_master_files.to_a).not_to include master_file
+      expect(master_file.media_object.reload.sections).not_to include master_file
     end
 
     it "deletes a master file as manager of owning collection" do
       login_user master_file.media_object.collection.managers.first
       expect(controller.current_ability.can?(:destroy, master_file)).to be_truthy
       expect { post(:destroy, params: { id: master_file.id }) }.to change { MasterFile.count }.by(-1)
-      expect(master_file.media_object.reload.ordered_master_files.to_a).not_to include master_file
+      expect(master_file.media_object.reload.sections).not_to include master_file
     end
 
     it "redirect to restricted content page for end users" do
@@ -342,6 +350,18 @@ describe MasterFilesController do
         expect(get(:show, params: { id: fedora3_pid })).to redirect_to(master_file_url(master_file.id))
       end
     end
+
+    context 'misformed NOID' do
+      it 'should redirect to the requested master file' do
+        get 'show', params: { id: "#{master_file.id}] " }
+        expect(response).to redirect_to(master_file_path(id: master_file.id))
+      end
+      it 'should redirect to unknown_pid page if invalid' do
+        get 'show', params: { id: "nonvalid noid]" }
+        expect(response).to render_template("errors/unknown_pid")
+        expect(response.response_code).to eq(404)
+      end
+    end
   end
 
   describe "#embed" do
@@ -384,6 +404,15 @@ describe MasterFilesController do
 
       it "redirects" do
         expect(get(:embed, params: { id: fedora3_pid })).to redirect_to(embed_master_file_url(master_file.id))
+      end
+    end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        get(:embed, params: { id: master_file.id })
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
       end
     end
   end
@@ -447,6 +476,16 @@ describe MasterFilesController do
         get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar', offset: '1' }
         expect(response.body).to eq('fake image content')
         expect(response.headers['Content-Type']).to eq('image/jpeg')
+      end
+    end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        mf
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar' }
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
       end
     end
   end
@@ -517,6 +556,16 @@ describe MasterFilesController do
       expect(JSON.parse(response.body)).to eq(JSON.parse(structure_json))
       expect(response.headers['Content-Type']).to eq('application/json; charset=utf-8')
     end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        master_file
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        get 'structure', params: { id: master_file.id }
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
+    end
   end
 
   describe "#set_structure" do
@@ -539,6 +588,13 @@ describe MasterFilesController do
       expect(master_file.structuralMetadata.content).not_to include('<b>')
       expect(master_file.structuralMetadata.content).not_to include('<i>')
     end
+
+    context "updating existing structure" do
+      it "persists updates" do
+        structure_json["label"] = "Different label"
+        expect { patch 'set_structure', params: { id: master_file.id, json: structure_json } }.to change { master_file.reload.structuralMetadata.content }
+      end
+    end
   end
 
   describe "#delete_structure" do
@@ -556,79 +612,23 @@ describe MasterFilesController do
     end
   end
 
-
-  describe "#attach_captions" do
-    let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
-
-    before do
-      disableCanCan!
-    end
-
-    it "populates captions datastream with text" do
-      # populate the captions datastream with an uploaded vtt file
-      file = fixture_file_upload('/captions.vtt', 'text/vtt')
-      post 'attach_captions', params: { master_file: { captions: file }, id: master_file.id }
-      master_file.reload
-      expect(master_file.captions.has_content?).to be_truthy
-      expect(master_file.captions.original_name).to eq('captions.vtt')
-      expect(master_file.captions.mime_type).to eq('text/vtt')
-      expect(flash[:error]).to be_nil
-      expect(flash[:notice]).to be_nil
-      expect(flash[:success]).not_to be_nil
-    end
-
-    it "works with bad mime types from the browser" do
-      # populate the captions datastream with an uploaded vtt file
-      file = fixture_file_upload('/captions.vtt', 'application/octet-stream')
-      post 'attach_captions', params: { master_file: { captions: file }, id: master_file.id }
-      master_file.reload
-      expect(master_file.captions.has_content?).to be_truthy
-      expect(master_file.captions.original_name).to eq('captions.vtt')
-      expect(master_file.captions.mime_type).to eq('text/vtt')
-      expect(flash[:error]).to be_nil
-      expect(flash[:notice]).to be_nil
-      expect(flash[:success]).not_to be_nil
-    end
-
-    context "with invalid file" do
-      let(:file) { fixture_file_upload('/videoshort.mp4', 'video/mp4') }
-
-      it "gracefully handles an invalid file" do
-        post 'attach_captions', params: { master_file: { captions: file }, id: master_file.id }
-        master_file.reload
-        expect(master_file.captions.has_content?).to be_falsey
-        expect(flash[:error]).not_to be_blank
-        expect(flash[:notice]).to be_nil
-        expect(flash[:success]).to be_nil
-      end
-    end
-  end
-  # rubocop:enable RSpec/ExampleLength
-
-  describe "#delete_captions" do
-    let(:master_file) { FactoryBot.create(:master_file, :with_media_object, :with_captions) }
-
-    before do
-      disableCanCan!
-    end
-
-    it "removes contents of captions datastream" do
-      # remove the contents of the datastream
-      post 'delete_captions', params: { id: master_file.id }
-      master_file.reload
-      expect(master_file.captions.empty?).to be true
-      expect(flash[:error]).to be_nil
-      expect(flash[:notice]).to be_nil
-      expect(flash[:success]).not_to be_nil
-    end
-  end
-
   describe "#captions" do
     let(:master_file) { FactoryBot.create(:master_file, :with_media_object, :with_captions) }
 
     it "returns contents of the captions attached file" do
       login_as :administrator
       expect(get('captions', params: { id: master_file.id })).to have_http_status(:ok)
+    end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        master_file
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        login_as :administrator
+        get('captions', params: { id: master_file.id })
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
     end
   end
 
@@ -662,6 +662,17 @@ describe MasterFilesController do
         expect(response).to have_http_status(:ok)
         expect(response.content_type).to eq('application/json')
         expect(response['Content-Disposition']).to eq("attachment; filename=\"empty_waveform.json\"; filename*=UTF-8''empty_waveform.json")
+      end
+    end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        master_file
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        login_as :administrator
+        get('waveform', params: { id: master_file.id })
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
       end
     end
   end
@@ -707,11 +718,11 @@ describe MasterFilesController do
 
     context 'master file has been deleted' do
       before do
-        allow(MasterFile).to receive(:find).and_raise(Ldp::Gone)
+        master_file.destroy
       end
 
       it 'returns gone (403)' do
-        expect(get('hls_manifest', params: { id: "deleted", quality: 'auto' })).to have_http_status(:gone)
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:unauthorized)
       end
     end
 
@@ -734,36 +745,16 @@ describe MasterFilesController do
     it 'returns a manifest if public' do
       expect(get('hls_manifest', params: { id: public_master_file.id, quality: 'auto' })).to have_http_status(:ok)
     end
-  end
 
-  describe '#caption_manifest' do
-    let(:media_object) { FactoryBot.create(:published_media_object) }
-    let(:master_file) { FactoryBot.create(:master_file, :with_captions, media_object: media_object) }
-    let(:public_media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
-    let(:public_master_file) { FactoryBot.create(:master_file, :with_captions, media_object: public_media_object) }
-
-    context 'master file has been deleted' do
-      before do
-        allow(MasterFile).to receive(:find).and_raise(Ldp::Gone)
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        master_file
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        login_as :administrator
+        get('hls_manifest', params: { id: master_file.id, quality: 'high' })
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
       end
-
-      it 'returns gone (403)' do
-        expect(get('caption_manifest', params: { id: master_file.id }, xhr: true)).to have_http_status(:gone)
-      end
-    end
-
-    it 'returns unauthorized (401) if cannot read the master file' do
-      expect(get('caption_manifest', params: { id: master_file.id }, xhr: true)).to have_http_status(:unauthorized)
-    end
-
-    it 'returns the caption manifest' do
-      login_as :administrator
-      expect(get('caption_manifest', params: { id: master_file.id }, xhr: true)).to have_http_status(:ok)
-      expect(response.content_type).to eq 'application/x-mpegURL; charset=utf-8'
-    end
-
-    it 'returns a manifest if public' do
-      expect(get('caption_manifest', params: { id: public_master_file.id }, xhr: true)).to have_http_status(:ok)
     end
   end
 
@@ -805,18 +796,16 @@ describe MasterFilesController do
         login_as :administrator
       end
       it 'moves the master file' do
-        expect(current_media_object.master_file_ids).to include master_file.id
-        expect(current_media_object.ordered_master_file_ids).to include master_file.id
-        expect(target_media_object.master_file_ids).not_to include master_file.id
-        expect(target_media_object.ordered_master_file_ids).not_to include master_file.id
+        expect(current_media_object.section_ids).to include master_file.id
+        expect(target_media_object.section_ids).not_to include master_file.id
         post('move', params: { id: master_file.id, target: target_media_object.id })
+        current_media_object.reload
+        target_media_object.reload
         expect(response).to redirect_to(edit_media_object_path(current_media_object))
         expect(flash[:success]).not_to be_blank
         expect(master_file.reload.media_object_id).to eq target_media_object.id
-        expect(current_media_object.reload.master_file_ids).not_to include master_file.id
-        expect(current_media_object.ordered_master_file_ids).not_to include master_file.id
-        expect(target_media_object.reload.master_file_ids).to include master_file.id
-        expect(target_media_object.ordered_master_file_ids).to include master_file.id
+        expect(current_media_object.section_ids).not_to include master_file.id
+        expect(target_media_object.section_ids).to include master_file.id
       end
     end
   end
@@ -857,6 +846,129 @@ describe MasterFilesController do
       expect(response).to have_http_status(:ok)
       expect(response.body.include? "Example captions").to be_truthy
     end
+
+    context 'read from solr' do
+      it 'should not read from fedora' do
+        master_file
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        WebMock.reset_executed_requests!
+        login_as :administrator
+        get('transcript', params: { use_route: 'master_files/:id/transcript', id: master_file.id, t_id: supplemental_file.id })
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
+    end
   end
 
+  describe "#download_derivative" do
+    let(:collection) { FactoryBot.create(:collection) }
+    let(:media_object) { FactoryBot.create(:media_object, collection: collection)}
+    let(:master_file) { FactoryBot.create(:master_file, media_object: media_object, derivatives: [high_derivative, med_derivative]) }
+    let(:high_derivative) { FactoryBot.create(:derivative, absolute_location: "/fixtures/meow.wav") }
+    let(:med_derivative) { FactoryBot.create(:derivative, quality: 'medium', absolute_location: "/fixtures/meow-medium.wav") }
+    before do
+      allow(Settings.derivative).to receive(:allow_download).and_return(true)
+      allow(Settings.streaming).to receive(:content_path).and_return('/')
+      login_user collection.managers.first
+    end
+
+    it 'should download the high quality derivative' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_return(Rails.root.join('spec').to_s)
+      get :download_derivative, params: { id: master_file.id }
+      expect(response.header['Content-Disposition']).to include 'attachment; filename="meow.wav"'
+      expect(response.header['Content-Disposition']).to_not include 'filename="meow-medium.wav"'
+    end
+
+    it 'should display a flash message if file is not found' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_return(Rails.root.join('spec').to_s)
+      allow(high_derivative).to receive(:hls_url).and_return('missing')
+      get :download_derivative, params: { id: master_file.id }
+      expect(response).to redirect_to(edit_media_object_path(media_object))
+      expect(flash[:error]).to be_present
+    end
+
+    it 'should display a flash message if an error is encountered' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_raise
+      expect(Rails.logger).to receive(:error)
+      get :download_derivative, params: { id: master_file.id }
+      expect(response).to redirect_to(edit_media_object_path(media_object))
+      expect(flash[:error]).to be_present
+    end
+
+    context 's3 file' do
+      # Settings.encoding does not have a `derivative_bucket` method in
+      # the default configuration so we have to use a full double rather
+      # than just stubbing the method in these tests. RSpec also throws
+      # an error when using a double within an `around` block so we 
+      # explicitly use a `before...after` pattern here.
+      before do
+        @encoding_backup = Settings.encoding
+        Settings.encoding = double("encoding", engine_adapter: 'test', derivative_bucket: 'mybucket')
+      end
+
+      it 'should redirect to a presigned url for AWS' do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
+        get :download_derivative, params: { id: master_file.id }
+        expect(response.status).to eq 302
+        expect(response.location).to include('s3.us-stubbed-1.amazonaws.com', 'X-Amz-Algorithm', 'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
+      end
+
+      after do
+        Settings.encoding = @encoding_backup
+      end
+    end
+
+    context 'unauthorized user' do
+      it 'should redirect to restricted page' do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_return(Rails.root.join('spec').to_s)
+        login_as :user
+        expect(get :download_derivative, params: { id: master_file.id }).to render_template 'errors/restricted_pid'
+      end
+    end
+  end
+  
+  describe "search" do
+    let(:transcript_1) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: parent_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt')) }
+    let(:transcript_2) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: parent_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.txt'), 'text/plain')) }
+    let(:other_transcript) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: other_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.txt'), 'text/plain')) }
+    let(:parent_master_file) { FactoryBot.create(:master_file, :with_media_object) }
+    let(:other_master_file) { FactoryBot.create(:master_file, :with_media_object)}
+
+    before :each do
+      parent_master_file.supplemental_files += [transcript_1, transcript_2]
+      other_master_file.supplemental_files += [other_transcript]
+      parent_master_file.save
+      other_master_file.save
+    end
+
+    it "returns a list of matches from all of a master file's transcripts" do
+      get('search', params: { id: parent_master_file.id, q: 'before' } )
+      result = JSON.parse(response.body)
+      items = result["items"]
+      expect(items.count).to eq 2
+      expect(items[0]["body"]["value"]).to eq "Just <em>before</em> lunch one day, a puppet show was put on at school."
+      expect(items[0]["target"]).to eq "#{Rails.application.routes.url_helpers.transcripts_master_file_supplemental_file_url(parent_master_file.id, transcript_1.id)}#t=00:00:22.200,00:00:26.600"
+      expect(items[1]["body"]["value"]).to eq "A LITTLE more than a hundred years ago, a poor man, by the name of Crockett, embarked on board an emigrant-ship, in Ireland, for the New World. He was in the humblest station in life. But very- little is known respecting his uneventful career, excepting its tragical close. His family consisted of a wife and three or four children. Just <em>before</em> he sailed, or on the Atlantic passage, a son was born, to"
+      expect(items[1]["target"]).to eq Rails.application.routes.url_helpers.transcripts_master_file_supplemental_file_url(parent_master_file.id, transcript_2.id)
+    end
+
+    it 'does not return matches from other master files' do
+      get('search', params: { id: parent_master_file.id, q: 'before' } )
+      result = JSON.parse(response.body)
+      expect(result['items'].any? { |item| item["id"].include?(other_master_file.id) }).to eq false
+    end
+
+    it 'does phrase searches' do
+      get('search', params: { id: parent_master_file.id, q: 'before lunch' } )
+      result = JSON.parse(response.body)
+      items = result["items"]
+      expect(items.count).to eq 1
+      expect(items[0]["body"]["value"]).to eq "Just <em>before</em> <em>lunch</em> one day, a puppet show was put on at school."
+      expect(items[0]["target"]).to eq "#{Rails.application.routes.url_helpers.transcripts_master_file_supplemental_file_url(parent_master_file.id, transcript_1.id)}#t=00:00:22.200,00:00:26.600"
+    end
+  end
 end

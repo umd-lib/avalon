@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -18,12 +18,12 @@ describe 'Login Redirects' do
   let(:user) { FactoryBot.create(:user, :with_identity) }
 
   describe '/media_objects/:id' do
-    let(:media_object) { FactoryBot.create(:fully_searchable_media_object, master_files: [master_file]) }
-    let(:master_file) { FactoryBot.create(:master_file, :with_derivative) }
+    let(:media_object) { FactoryBot.create(:fully_searchable_media_object) }
+    let!(:master_file) { FactoryBot.create(:master_file, :with_derivative, media_object: media_object) }
 
     it 'redirects to item page' do
       visit media_object_path(media_object)
-      visit hls_manifest_master_file_path(media_object.master_files.first, "high")
+      visit hls_manifest_master_file_path(media_object.sections.first, "high")
       sign_in user
       expect(page.current_path).to eq media_object_path(media_object)
     end

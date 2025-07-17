@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -23,6 +23,23 @@ class Ability
                          :encode_dashboard_permissions,
                          :timeline_permissions,
                          :checkout_permissions]
+
+  # Override to add handling of SpeedyAF proxy objects
+  def edit_permissions
+    super
+
+    can [:edit, :update, :destroy], SpeedyAF::Base do |obj|
+      test_edit(obj.id)
+    end
+  end
+
+  def read_permissions
+    super
+
+    can :read, SpeedyAF::Base do |obj|
+      test_read(obj.id)
+    end
+  end
 
   def encode_dashboard_permissions
     can :read, :encode_dashboard if is_administrator?
@@ -99,39 +116,40 @@ class Ability
     unless (full_login? || is_api_request?) and is_administrator?
       # UMD Customization
       # Begin customization for LIBAVALON-168
-      can :read, MediaObject do |media_object|
+      can :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         media_object.published? || test_edit(media_object.id)
       end
 
       # For media playback
-      can :full_read, MediaObject do |media_object|
+      can :full_read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
       end
 
-      can :stream, MediaObject do |media_object|
+      can :stream, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         is_streaming_allowed?(media_object)
       end
 
-      can :read, MasterFile do |master_file|
+      can :read, [MasterFile, SpeedyAF::Proxy::MasterFile] do |master_file|
         can? :full_read, master_file.media_object
       end
 
-      can :minimal_read, MasterFile do |master_file|
+      can :minimal_read, [MasterFile, SpeedyAF::Proxy::MasterFile] do |master_file|
         can? :read, master_file.media_object
       end
 
-      can :read, Derivative do |derivative|
+      can :read, [Derivative, SpeedyAF::Proxy::Derivative] do |derivative|
         can? :full_read, derivative.masterfile.media_object
       end
-      # End customization for LIBAVALON-168
+      # End UMD Customization for LIBAVALON-168
 
-      # Begin customization for LIBAVALON-196
-      can :master_file_download, MasterFile do |master_file|
+      # UMD Customization for LIBAVALON-196
+      can :master_file_download, [MasterFile, SpeedyAF::Proxy::MasterFile] do |master_file|
         is_master_file_download_allowed?(master_file)
       end
 
-      # End customization for LIBAVALON-196
+      # End UMD Customization for LIBAVALON-196
 
+      # UMD Customization
       can [:create, :update], AccessToken do |access_token|
         is_member_of?(access_token.media_object.collection)
       end
@@ -139,50 +157,50 @@ class Ability
       can :list_all, AccessToken if is_administrator?
 
       can :manage, AccessToken if (is_member_of_any_collection? or @user_groups.include? 'manager')
-      # UMD Customization
+      # End UMD Customization
 
-      cannot :read, Admin::Collection unless (full_login? || is_api_request?)
+      cannot :read, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] unless (full_login? || is_api_request?)
 
       if full_login? || is_api_request?
-        can [:read, :items], Admin::Collection do |collection|
+        can [:read, :items], [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           is_member_of?(collection)
         end
 
         unless (is_member_of_any_collection? or @user_groups.include? 'manager')
-          cannot :read, Admin::Collection
+          cannot :read, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection]
         end
 
-        can :update_access_control, MediaObject do |media_object|
+        can :update_access_control, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
           # UMD Customization
           @user.in?(media_object.collection.managers) || is_editor_of?(media_object.collection)
           # End UMD Customization
         end
 
-        can :unpublish, MediaObject do |media_object|
+        can :unpublish, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
           @user.in?(media_object.collection.managers)
         end
 
-        can :update, Admin::Collection do |collection|
+        can :update, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           is_editor_of?(collection)
         end
 
-        can :update_unit, Admin::Collection do |collection|
+        can :update_unit, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           @user.in?(collection.managers)
         end
 
-        can :update_access_control, Admin::Collection do |collection|
+        can :update_access_control, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           @user.in?(collection.managers)
         end
 
-        can :update_managers, Admin::Collection do |collection|
+        can :update_managers, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           @user.in?(collection.managers)
         end
 
-        can :update_editors, Admin::Collection do |collection|
+        can :update_editors, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           @user.in?(collection.managers)
         end
 
-        can :update_depositors, Admin::Collection do |collection|
+        can :update_depositors, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection|
           is_editor_of?(collection)
         end
 
@@ -190,20 +208,24 @@ class Ability
           @user.in?(collection.managers)
         end
 
-        can :inspect, MediaObject do |media_object|
+        can :inspect, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
           is_member_of?(media_object.collection)
         end
 
-        can :show_progress, MediaObject do |media_object|
+        can :show_progress, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
           is_member_of?(media_object.collection)
         end
 
-        can [:edit, :destroy, :update], MasterFile do |master_file|
+        can [:edit, :destroy, :update], [MasterFile, SpeedyAF::Proxy::MasterFile] do |master_file|
           can? :edit, master_file.media_object
         end
 
+        can :download, [MasterFile, SpeedyAF::Proxy::MasterFile] do |master_file|
+          @user.in?(master_file.media_object.collection.managers)
+        end
+
         # Users logged in through LTI cannot share
-        can :share, MediaObject
+        can :share, [MediaObject, SpeedyAF::Proxy::MediaObject]
       end
 
       # if is_api_request?
@@ -212,29 +234,29 @@ class Ability
       #   can :manage, Avalon::ControlledVocabulary
       # end
 
-      cannot :update, MediaObject do |media_object|
+      cannot :update, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
           # UMD Customization
           ( media_object.published? && !(@user.in?(media_object.collection.managers) || @user.in?(media_object.collection.editors)) )
           # End UMD Customization
       end
 
-      cannot :destroy, MediaObject do |media_object|
+      cannot :destroy, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         # non-managers can only destroy media_object if it's unpublished
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
           ( media_object.published? && !@user.in?(media_object.collection.managers) )
       end
 
-      cannot :destroy, Admin::Collection do |collection, other_user_collections=[]|
+      cannot :destroy, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] do |collection, other_user_collections=[]|
         (not (full_login? || is_api_request?)) || !@user.in?(collection.managers)
       end
 
-      can :intercom_push, MediaObject do |media_object|
+      can :intercom_push, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         # anyone who can edit a media_object can also push it
         can? :edit, media_object
       end
 
-      can :json_update, MediaObject do |media_object|
+      can :json_update, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         # anyone who can edit a media_object can also update it via the API
         is_api_request? && can?(:edit, media_object)
       end

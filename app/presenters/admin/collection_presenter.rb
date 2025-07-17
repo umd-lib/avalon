@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -15,8 +15,10 @@
 class Admin::CollectionPresenter
   attr_reader :document
 
-  def initialize(solr_doc)
+  def initialize(solr_doc, media_object_count: nil, unpublished_media_object_count: nil)
     @document = solr_doc
+    @media_object_count = media_object_count
+    @unpublished_media_object_count = unpublished_media_object_count
   end
 
   delegate :id, to: :document
@@ -33,7 +35,6 @@ class Admin::CollectionPresenter
     document["description_tesim"]&.first
   end
 
-  # TODO: do these counts in one large query for all collections on the index page to avoid having to do them here
   def media_object_count
     @media_object_count ||= MediaObject.where("collection_ssim" => name).count
   end
@@ -43,15 +44,24 @@ class Admin::CollectionPresenter
   end
 
   def managers
-    @managers ||= document["edit_access_person_ssim"] & (Avalon::RoleControls.users("manager") | (Avalon::RoleControls.users("administrator") || []))
+    # UMD Customization
+    # Backport of Avalon 8.0 change
+    @managers ||= Array(document["edit_access_person_ssim"]) & Array(document["collection_managers_ssim"])
+    # End UMD Customization
   end
 
   def editors
-    @editors ||= document["edit_access_person_ssim"] - managers
+    # UMD Customization
+    # Backport of Avalon 8.0 change
+    @editors ||= Array(document["edit_access_person_ssim"]) - managers
+    # End UMD Customization
   end
 
   def depositors
-    document["read_access_person_ssim"]
+    # UMD Customization
+    # Backport of Avalon 8.0 change
+    Array(document["read_access_person_ssim"])
+    # End UMD Customization
   end
 
   def manager_count

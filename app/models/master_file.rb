@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -170,15 +170,14 @@ class MasterFile < ActiveFedora::Base
   # Generate the waveform after proessing is complete but before master file management
   after_transcoding :generate_waveform
   after_transcoding :update_ingest_batch
+  # Generate and set the poster and thumbnail
+  after_transcoding :set_default_poster_offset
+  after_transcoding :update_stills_from_offset!
 
   after_processing :post_processing_file_management
 
-  # First and simplest test - make sure that the uploaded file does not exceed the
-  # limits of the system. For now this is hard coded but should probably eventually
-  # be set up in a configuration file somewhere
-  #
-  # 250 MB is the file limit for now
-  MAXIMUM_UPLOAD_SIZE = Settings.max_upload_size || 2.gigabytes
+  # Make sure that the uploaded file does not exceed the limits of the system
+  MAXIMUM_UPLOAD_SIZE = Settings.max_upload_size
 
   WORKFLOWS = ['fullaudio', 'avalon', 'pass_through', 'avalon-skip-transcoding', 'avalon-skip-transcoding-audio'].freeze
   AUDIO_TYPES = ["audio/vnd.wave", "audio/mpeg", "audio/mp3", "audio/mp4", "audio/wav", "audio/x-wav"]
@@ -236,17 +235,23 @@ class MasterFile < ActiveFedora::Base
 
   # This requires the MasterFile having an actual id
   def media_object=(mo)
+    self.save!(validate: false) unless self.persisted?
+
     # Removes existing association
     if self.media_object.present?
-      self.media_object.master_files = self.media_object.master_files.to_a.reject { |mf| mf.id == self.id }
-      self.media_object.ordered_master_files = self.media_object.ordered_master_files.to_a.reject { |mf| mf.id == self.id }
-      self.media_object.save
+      self.media_object.section_ids -= [self.id]
+      self.media_object.save(validate: false)
     end
 
     self._media_object=(mo)
+    self.save!(validate: false)
+
     unless self.media_object.nil?
-      self.media_object.ordered_master_files += [self]
-      self.media_object.save
+      self.media_object.section_ids += [self.id]
+      self.media_object.save(validate: false)
+      # Need to reload here because somehow a cached copy of media_object is saved in memory
+      # which lacks the updated section_ids and master_file_ids just set and persisted above
+      self.media_object.reload
     end
   end
 
@@ -263,7 +268,7 @@ class MasterFile < ActiveFedora::Base
     input = nil
     # Options hash: { outputs: [{ label: 'low',  url: 'file:///derivatives/low.mp4' }, { label: 'high', url: 'file:///derivatives/high.mp4' }]}
     if file.is_a? Hash
-      input = file.sort_by { |f| QUALITY_ORDER[f[0]] }.last[1].path
+      input = FileLocator.new(file.sort_by { |f| QUALITY_ORDER[f[0]] }.last[1].to_path).uri.to_s
       options[:outputs] = file.collect { |quality, f| { label: quality.remove("quality-"), url: FileLocator.new(f.to_path).uri.to_s } }
     else
       #Build hash for single file skip transcoding
@@ -290,6 +295,23 @@ class MasterFile < ActiveFedora::Base
     #Set date ingested to now if it wasn't preset (by batch, for example)
     #TODO pull this from the encode
     self.date_digitized ||= Time.now.utc.iso8601
+
+    # Update the duration detected by ActiveEncode
+    # because it has higher precision than mediainfo
+    # Set for the first time for files without duration
+    # e.g. WebM files missing technical metadata
+    # ActiveEncode returns duration in milliseconds which
+    # is stored as an integer string
+    self.duration = encode.input.duration.to_i.to_s if encode.input.duration.present?
+
+    # Input videos that are in portrait orientation can have metadata showing landscape orientation
+    # with a rotation value. This can cause the aspect ratio on the master file to be incorrect. 
+    # We can get the proper aspect ratio from the transcoded files, so we set the master file off the 
+    # encode output.
+    if is_video?
+      high_output = Array(encode.output).select { |out| out.label.include?("high") }.first
+      self.display_aspect_ratio = (high_output.width.to_f / high_output.height.to_f).to_s
+    end
 
     outputs = Array(encode.output).collect do |output|
       {
@@ -454,20 +476,6 @@ class MasterFile < ActiveFedora::Base
     structuralMetadata.xpath('//@label').collect{|a|a.value}
   end
 
-  # Supplies the route to the master_file as an rdf formatted URI
-  # @return [String] the route as a uri
-  # @example uri for a mf on avalon.iu.edu with a id of: avalon:1820
-  #   "my_master_file.rdf_uri" #=> "https://www.avalon.iu.edu/master_files/avalon:1820"
-  def rdf_uri
-    master_file_url(id)
-  end
-
-  # Returns the dctype of the master_file
-  # @return [String] either 'dctypes:MovingImage' or 'dctypes:Sound'
-  def rdf_type
-    is_video? ? 'dctypes:MovingImage' : 'dctypes:Sound'
-  end
-
   # UMD Customization
   def self.post_processing_move_relative_filepath(oldpath, options = {})
     # LIBAVALON-196 - Move files to path based on media object id
@@ -505,11 +513,11 @@ class MasterFile < ActiveFedora::Base
   end
 
   def has_captions?
-    !captions.empty?
+    !captions.empty? || !supplemental_file_captions.empty?
   end
 
-  def caption_type
-    has_captions? ? captions.mime_type : nil
+  def has_transcripts?
+    supplemental_file_transcripts.present?
   end
 
   def has_waveform?
@@ -528,13 +536,12 @@ class MasterFile < ActiveFedora::Base
     super.tap do |solr_doc|
       solr_doc['file_size_ltsi'] = file_size if file_size.present?
       solr_doc['has_captions?_bs'] = has_captions?
+      solr_doc['has_transcripts?_bs'] = has_transcripts?
       solr_doc['has_waveform?_bs'] = has_waveform?
       solr_doc['has_poster?_bs'] = has_poster?
       solr_doc['has_thumbnail?_bs'] = has_thumbnail?
       solr_doc['has_structuralMetadata?_bs'] = has_structuralMetadata?
-      solr_doc['caption_type_ss'] = caption_type
       solr_doc['identifier_ssim'] = identifier.map(&:downcase)
-
       solr_doc['percent_complete_ssi'] = percent_complete
       # solr_doc['percent_succeeded_ssi'] =  percent_succeeded
       # solr_doc['percent_failed_ssi'] = percent_failed
@@ -561,6 +568,11 @@ class MasterFile < ActiveFedora::Base
     else
       nil
     end
+  end
+
+  def stop_processing!
+    # Stops all processing
+    ActiveEncodeJobs::CancelEncodeJob.perform_later(workflow_id, id) if workflow_id.present? && !finished_processing?
   end
 
   protected
@@ -598,7 +610,7 @@ class MasterFile < ActiveFedora::Base
     # Fixes https://github.com/avalonmediasystem/avalon/issues/3474
     target_location = File.basename(details[:location]).split('?')[0]
     target = File.join(Dir.tmpdir, target_location)
-    File.open(target,'wb') { |f| open(details[:location]) { |io| f.write(io.read) } }
+    File.open(target,'wb') { |f| URI.open(details[:location], "Referer" => Rails.application.routes.url_helpers.root_url) { |io| f.write(io.read) } }
     return target, details[:offset]
   end
 
@@ -750,8 +762,14 @@ class MasterFile < ActiveFedora::Base
         self.display_aspect_ratio = display_aspect_ratio_s
       end
       self.original_frame_size = @mediainfo.video.streams.first.frame_size
-      self.poster_offset = [2000,self.duration.to_i].min
     end
+  end
+
+  # This should only be getting called by the :after_transcode hook. Ensure that
+  # poster_offset is only set if it has not already been manually set via
+  # BatchEntry or another method.
+  def set_default_poster_offset
+    self.poster_offset = [2000,self.duration.to_i].min if self._poster_offset.nil?
   end
 
   def post_processing_file_management
@@ -777,15 +795,9 @@ class MasterFile < ActiveFedora::Base
     klass if klass&.ancestors&.include?(ActiveEncode::Base)
   end
 
-  def stop_processing!
-    # Stops all processing
-    ActiveEncodeJobs::CancelEncodeJob.perform_later(workflow_id, id) if workflow_id.present? && finished_processing?
-  end
-
   def update_parent!
     return unless media_object.present?
-    media_object.master_files.delete(self)
-    media_object.ordered_master_files.delete(self)
+    media_object.section_ids -= [self.id]
     media_object.set_media_types!
     media_object.set_duration!
     if !media_object.save

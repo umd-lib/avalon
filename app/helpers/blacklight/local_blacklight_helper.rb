@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -26,7 +26,11 @@ module Blacklight::LocalBlacklightHelper
   end
 
   def url_for_document doc, options = {}
-    SpeedyAF::Base.find(doc[:id])
+    SpeedyAF::Base.for(doc.to_h.with_indifferent_access)
+  end
+
+  def rights_statement_facet_display arg
+    ModsDocument::RIGHTS_STATEMENTS[arg]
   end
 
   def contributor_index_display args

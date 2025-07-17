@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -15,12 +15,15 @@
 class Playlist < ActiveRecord::Base
   belongs_to :user
   scope :by_user, ->(user) { where(user_id: user.id) }
-  scope :title_like, ->(title_filter) { where("title LIKE ?", "%#{title_filter}%")}
+  scope :title_like, ->(title_filter) do
+    term_array = title_filter.split.map { |term| "%#{sanitize_sql_like(term).downcase}%" }
+    query = Array.new(term_array.size, "LOWER(title) LIKE ?").join(" AND ")
+    where(query, *term_array)
+  end
   scope :with_tag, ->(tag_filter) { where("tags LIKE ?", "%\n- #{tag_filter}\n%") }
 
   validates :user, presence: true
   validates :title, presence: true
-  validates :comment, length: { maximum: 255 }
   validates :visibility, presence: true
   validates :visibility, inclusion: { in: proc { [PUBLIC, PRIVATE, PRIVATE_WITH_TOKEN] } }
 

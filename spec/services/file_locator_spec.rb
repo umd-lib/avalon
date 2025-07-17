@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -30,6 +30,40 @@ describe FileLocator, type: :service do
       expect(s3_object).to be_an Aws::S3::Object
       expect(s3_object.bucket_name).to eq bucket
       expect(s3_object.key).to eq key
+    end
+
+    describe '#download_url' do
+      subject { URI.parse(s3file.download_url) }
+
+      context "with minio public host enabled" do
+        before do
+          Settings.minio = double("minio", endpoint: "http://minio:9000", public_host: "http://domain:9000", access: 'admin', secret: 'admin')
+        end
+
+        it "should return a presigned url using the minio public host address" do
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
+          expect(subject.host).to eq 'mybucket.domain'
+          expect(subject.path).to eq '/mykey.mp4'
+          expect(subject.query).to include('response-content-disposition=attachment%3B%20filename%3Dmykey.mp4', 'X-Amz-Algorithm', 
+                                           'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
+        end
+
+        after do
+          Settings.minio = nil
+        end
+      end
+
+      context "without minio public host enabled" do
+        it "should return a presigned url using the AWS host address" do
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
+          expect(subject.host).to eq 'mybucket.s3.us-stubbed-1.amazonaws.com'
+          expect(subject.path).to eq '/mykey.mp4'
+          expect(subject.query).to include('response-content-disposition=attachment%3B%20filename%3Dmykey.mp4', 'X-Amz-Algorithm', 
+                                           'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
+        end
+      end
     end
   end
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -13,18 +13,17 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 # require 'avalon/controller/controller_behavior'
+require 'avalon/transcript_search'
 
 include SecurityHelper
 
 class MasterFilesController < ApplicationController
   # include Avalon::Controller::ControllerBehavior
+  include NoidValidator
 
   before_action :authenticate_user!, :only => [:create]
-  before_action :set_masterfile, except: [:create, :oembed,
-    # UMD Customization
-    :download
-    # End UMD Customization
-  ]
+  before_action :set_masterfile_proxy, except: [:create, :oembed, :attach_structure, :delete_structure, :destroy, :update, :set_structure]
+  before_action :set_masterfile, only: [:attach_structure, :delete_structure, :destroy, :update, :set_structure]
   before_action :ensure_readable_filedata, :only => [:create]
   skip_before_action :verify_authenticity_token, only: [:set_structure, :delete_structure]
 
@@ -103,14 +102,6 @@ class MasterFilesController < ApplicationController
   # End UMD Customization
 
   def embed
-    if can? :read, @master_file
-      @stream_info = secure_streams(@master_file.stream_details, @master_file.media_object_id)
-      @stream_info['t'] = view_context.parse_media_fragment(params[:t]) # add MediaFragment from params
-      @stream_info['link_back_url'] = view_context.share_link_for(@master_file)
-    end
-
-    @player_width = "100%"
-    @player_height = "100%"
     respond_to do |format|
       format.html do
         response.headers.delete "X-Frame-Options"
@@ -182,53 +173,6 @@ class MasterFilesController < ApplicationController
     end
   end
 
-  def attach_captions
-    captions = nil
-    if flash.empty?
-      authorize! :edit, @master_file, message: "You do not have sufficient privileges to add files"
-      if params[:master_file].present? && params[:master_file][:captions].present?
-        captions_file = params[:master_file][:captions]
-        captions_ext = File.extname(captions_file.original_filename)
-        content_type = Mime::Type.lookup_by_extension(captions_ext.slice(1..-1)).to_s if captions_ext
-        if ["text/vtt", "text/srt"].include? content_type
-          captions = captions_file.open.read
-        else
-          flash[:error] = "Uploaded file is not a recognized captions file"
-        end
-      end
-      if captions.present?
-        @master_file.captions.content = captions.encode(Encoding.find('UTF-8'), invalid: :replace, undef: :replace, replace: '')
-        @master_file.captions.mime_type = content_type
-        @master_file.captions.original_name = params[:master_file][:captions].original_filename
-        flash[:success] = "Captions file succesfully added."
-      end
-      if flash[:error].blank?
-        unless @master_file.save
-          flash[:success] = nil
-          flash[:error] = "There was a problem storing the file"
-        end
-      end
-    end
-    respond_to do |format|
-      format.html { redirect_to edit_media_object_path(@master_file.media_object_id, step: 'file-upload') }
-      format.json { render json: {captions: captions, flash: flash} }
-    end
-  end
-
-  def delete_captions
-    authorize! :edit, @master_file, message: "You do not have sufficient privileges to remove files"
-
-    @master_file.captions.content = ''
-    @master_file.captions.original_name = ''
-
-    if @master_file.save
-      flash[:success] = "Captions file succesfully removed."
-    else
-      flash[:error] = "There was a problem removing captions file."
-    end
-    redirect_to edit_media_object_path(@master_file.media_object_id, step: 'file-upload')
-  end
-
   # Creates and Saves a File Asset to contain the the Uploaded file
   # If container_id is provided:
   # * the File Asset will use RELS-EXT to assert that it's a part of the specified container
@@ -289,13 +233,10 @@ class MasterFilesController < ApplicationController
     authorize! :destroy, @master_file, message: "You do not have sufficient privileges to delete files"
     filename = File.basename(@master_file.file_location) if @master_file.file_location.present?
     filename ||= @master_file.id
-    media_object = MediaObject.find(@master_file.media_object_id)
-    media_object.ordered_master_files.delete(@master_file)
-    media_object.master_files.delete(@master_file)
-    media_object.save
+    media_object_id = @master_file.media_object_id
     @master_file.destroy
     flash[:notice] = "#{filename} has been deleted from the system"
-    redirect_to edit_media_object_path(media_object, step: "file-upload")
+    redirect_to edit_media_object_path(media_object_id, step: "file-upload")
   end
 
   def set_frame
@@ -311,7 +252,7 @@ class MasterFilesController < ApplicationController
         unless @master_file.save
           flash[:notice] = @master_file.errors.to_a.join('<br/>')
         end
-        redirect_to edit_media_object_path(@master_file.media_object_id, step: "file-upload")
+        redirect_back(fallback_location: edit_media_object_path(@master_file.media_object_id, step: "file-upload"))
       end
     end
   end
@@ -359,10 +300,6 @@ class MasterFilesController < ApplicationController
                        hls_stream(@master_file, quality)
                      end
     end
-  end
-
-  def caption_manifest
-    return head :unauthorized if cannot?(:read, @master_file)
   end
 
   def structure
@@ -419,12 +356,52 @@ class MasterFilesController < ApplicationController
     send_data @supplemental_file.file.download, filename: @supplemental_file.file.filename.to_s, type: @supplemental_file.file.content_type, disposition: 'inline'
   end
 
+  def download_derivative
+    authorize! :download, @master_file
+
+    begin
+      high_deriv = @master_file.derivatives.find { |deriv| deriv.quality == 'high' }
+      path = high_deriv.download_path
+
+      unless FileLocator.new(path).exist?
+        flash[:error] = "Unable to find or access derivative file."
+        redirect_back(fallback_location: edit_media_object_path(@master_file.media_object))
+        return
+      end
+
+      case path
+      when /^s3:/
+        # Use an AWS presigned URL to facilitate direct download of the derivative to avoid
+        # having to download the file to the server as a tmp file and then sending that to
+        # the client. Doing this reduces latency and server load.
+        redirect_to FileLocator::S3File.new(path).download_url
+      else
+        send_file path, filename: File.basename(path), disposition: 'attachment'
+      end
+    rescue => error
+      Rails.logger.error(error.class.to_s + ': ' + error.message + '\n' + error.backtrace.join('\n'))
+      flash[:error] = "A problem was encountered while attempting to download derivative file. Please contact your support person if this issue persists."
+      redirect_back(fallback_location: edit_media_object_path(@master_file.media_object))
+    end
+  end
+
+  def search
+    render json: search_response_json
+  end
+
 protected
   def set_masterfile
     if params[:id].blank? || (not MasterFile.exists?(params[:id]))
       flash[:notice] = "MasterFile #{params[:id]} does not exist"
     end
     @master_file = MasterFile.find(params[:id])
+  end
+
+  def set_masterfile_proxy
+    if params[:id].blank? || SpeedyAF::Proxy::MasterFile.find(params[:id]).nil?
+      flash[:notice] = "MasterFile #{params[:id]} does not exist"
+    end
+    @master_file = SpeedyAF::Proxy::MasterFile.find(params[:id])
   end
 
   # return deflated waveform content. deflate only if necessary
@@ -477,5 +454,11 @@ protected
 
   def samples_per_frame
     Settings.waveform.sample_rate * Settings.waveform.finest_zoom / Settings.waveform.player_width
+  end
+
+private
+
+  def search_response_json
+    Avalon::TranscriptSearch.new(query: params[:q], master_file: @master_file, request_url: request.url).iiif_content_search.to_json
   end
 end

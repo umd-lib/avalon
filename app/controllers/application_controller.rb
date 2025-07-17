@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -29,10 +29,15 @@ class ApplicationController < ActionController::Base
 
   helper_method :render_bookmarks_control?
 
-  around_action :handle_api_request, if: proc{|c| request.format.json? || request.format.atom? }
+  around_action :handle_api_request, if: proc{|c| request.format.json? || request.format.atom? || request.headers['Avalon-Api-Key'].present? }
   before_action :rewrite_v4_ids, if: proc{|c| request.method_symbol == :get && [params[:id], params[:content]].flatten.compact.any? { |i| i =~ /^[a-z]+:[0-9]+$/}}
   before_action :set_no_cache_headers, if: proc{|c| request.xhr? }
   prepend_before_action :remove_zero_width_chars
+
+  rescue_from RSolr::Error::ConnectionRefused, :with => :handle_solr_connection_error
+  rescue_from RSolr::Error::Timeout, :with => :handle_solr_connection_error
+  rescue_from Blacklight::Exceptions::ECONNREFUSED, :with => :handle_solr_connection_error
+  rescue_from Faraday::ConnectionFailed, :with => :handle_fedora_connection_error
 
   def set_no_cache_headers
     response.headers["Cache-Control"] = "no-cache, no-store"
@@ -137,12 +142,12 @@ class ApplicationController < ActionController::Base
     # return all collections to admin, unless specific user is passed in
     if can?(:manage, Admin::Collection)
       if user.blank?
-        Admin::Collection.all
+        SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection").to_a
       else
-        Admin::Collection.where("inheritable_edit_access_person_ssim" => user).to_a
+        SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection AND inheritable_edit_access_person_ssim:#{user}").to_a
       end
     else
-      Admin::Collection.where("inheritable_edit_access_person_ssim" => user_key).to_a
+      SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection AND inheritable_edit_access_person_ssim:#{user_key}").to_a
     end
   end
   helper_method :get_user_collections
@@ -265,5 +270,27 @@ class ApplicationController < ActionController::Base
 
     def should_store_return_url?
       !(request.xhr? || request.format != "html" || request.path.start_with?("/users/") || request.path.end_with?("poster") || request.path.end_with?("thumbnail"))
+    end
+
+    def handle_solr_connection_error(exception)
+      raise if Settings.app_controller.solr_and_fedora.raise_on_connection_error
+      Rails.logger.error(exception.class.to_s + ': ' + exception.message + '\n' + exception.backtrace.join('\n'))
+
+      if request.format == :json
+        render json: {errors: [exception.message]}, status: 503
+      else
+        render '/errors/solr_connection', layout: false, status: 503
+      end
+    end
+
+    def handle_fedora_connection_error(exception)
+      raise if Settings.app_controller.solr_and_fedora.raise_on_connection_error
+      Rails.logger.error(exception.class.to_s + ': ' + exception.message + '\n' + exception.backtrace.join('\n'))
+
+      if request.format == :json
+        render json: {errors: [exception.message]}, status: 503
+      else
+        render '/errors/fedora_connection', status: 503
+      end
     end
 end

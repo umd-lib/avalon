@@ -1,5 +1,5 @@
 /* 
- * Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  * 
@@ -25,6 +25,11 @@
 
 // console.log('Hello World from Webpacker')
 // Support component names relative to this directory:
-var componentRequireContext = require.context("components", true)
+
+/* 
+ * For some reason including the `embeds` directory in this `require.context` breaks
+ * the player. Filtering out the directory allows everything to operate as intended.
+ */
+var componentRequireContext = require.context("components", true, /^(?!embed)/)
 var ReactRailsUJS = require("react_ujs")
 ReactRailsUJS.useContext(componentRequireContext)

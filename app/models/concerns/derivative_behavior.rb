@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -19,6 +19,10 @@ module DerivativeBehavior
 
   def streaming_url(is_mobile = false)
     is_mobile ? hls_url : location_url
+  end
+
+  def download_path
+    Avalon::Configuration.construct_download_path.call(self)
   end
 
   def format

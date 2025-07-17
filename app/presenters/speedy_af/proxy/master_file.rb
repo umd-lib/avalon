@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -13,6 +13,10 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 class SpeedyAF::Proxy::MasterFile < SpeedyAF::Base
+  def to_param
+    id
+  end
+
   def encoder_class
     find_encoder_class(encoder_classname) ||
       find_encoder_class("#{workflow_name}_encode".classify) ||
@@ -26,21 +30,45 @@ class SpeedyAF::Proxy::MasterFile < SpeedyAF::Base
     klass if klass&.ancestors&.include?(ActiveEncode::Base)
   end
 
+  # We know that title will be indexed if present so return presence to avoid reifying
+  def title
+    attrs[:title].presence
+  end
+
   def display_title
     mf_title = if has_structuralMetadata?
                  structuralMetadata.section_title
                elsif title.present?
                  title
-               # FIXME: The test for media_object.master_file_ids.size is expensive and takes ~0.25 seconds
-               elsif file_location.present? && (media_object.master_file_ids.size > 1)
+               elsif file_location.present? && (media_object.section_ids.size > 1)
                  file_location.split("/").last
                end
     mf_title.blank? ? nil : mf_title
   end
 
   # @return [SupplementalFile]
-  def supplemental_files
+  def supplemental_files(tag: '*')
     return [] if supplemental_files_json.blank?
-    JSON.parse(supplemental_files_json).collect { |file_gid| GlobalID::Locator.locate(file_gid) }
+    files = JSON.parse(supplemental_files_json).collect { |file_gid| GlobalID::Locator.locate(file_gid) }
+    case tag
+    when '*'
+      files
+    when nil
+      files.select { |file| file.tags.empty? }
+    else
+      files.select { |file| Array(tag).all? { |t| file.tags.include?(t) } }
+    end
+  end
+
+  def captions
+    load_subresource_content(:captions) rescue nil
+  end
+
+  def permalink_with_query(query_vars = {})
+    val = permalink
+    if val && query_vars.present?
+      val = "#{val}?#{query_vars.to_query}"
+    end
+    val ? val.to_s : nil
   end
 end

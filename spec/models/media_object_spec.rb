@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -21,6 +21,17 @@ describe MediaObject do
   it 'assigns a noid id' do
     media_object = MediaObject.new
     expect { media_object.assign_id! }.to change { media_object.id }.from(nil).to(String)
+  end
+
+  describe 'find' do
+    it 'returns an object' do
+      expect(MediaObject.find(media_object.id)).to eq media_object
+    end
+    context 'with trailing slash' do
+      it 'returns an object' do
+        expect(MediaObject.find(media_object.id + '/')).to eq media_object
+      end
+    end
   end
 
   describe 'validations' do
@@ -352,6 +363,7 @@ describe MediaObject do
         'contributor' => [''],
         'publisher' => [''],
         'subject' => [''],
+        'series' => [''],
         'related_item_url' => [{label:'',url:''}],
         'geographic_subject' => [''],
         'temporal_subject' => [''],
@@ -372,6 +384,7 @@ describe MediaObject do
       expect(media_object.contributor).to eq([])
       expect(media_object.publisher).to eq([])
       expect(media_object.subject).to eq([])
+      expect(media_object.series).to eq([])
       expect(media_object.related_item_url).to eq([])
       expect(media_object.geographic_subject).to eq([])
       expect(media_object.temporal_subject).to eq([])
@@ -452,13 +465,13 @@ describe MediaObject do
 
   describe '#finished_processing?' do
     it 'returns true if the statuses indicate processing is finished' do
-      media_object.ordered_master_files += [FactoryBot.create(:master_file, :cancelled_processing)]
-      media_object.ordered_master_files += [FactoryBot.create(:master_file, :completed_processing)]
+      media_object.sections += [FactoryBot.create(:master_file, :cancelled_processing)]
+      media_object.sections += [FactoryBot.create(:master_file, :completed_processing)]
       expect(media_object.finished_processing?).to be true
     end
     it 'returns true if the statuses indicate processing is not finished' do
-      media_object.ordered_master_files += [FactoryBot.create(:master_file, :cancelled_processing)]
-      media_object.ordered_master_files += [FactoryBot.create(:master_file)]
+      media_object.sections += [FactoryBot.create(:master_file, :cancelled_processing)]
+      media_object.sections += [FactoryBot.create(:master_file)]
       expect(media_object.finished_processing?).to be false
     end
   end
@@ -467,10 +480,11 @@ describe MediaObject do
     let(:master_file1) { FactoryBot.create(:master_file, media_object: media_object, duration: '40') }
     let(:master_file2) { FactoryBot.create(:master_file, media_object: media_object, duration: '40') }
     let(:master_file3) { FactoryBot.create(:master_file, media_object: media_object, duration: nil) }
-    let(:master_files) { [] }
+    let(:sections) { [] }
 
     before do
-      master_files
+      sections
+      media_object.reload
       # Explicitly run indexing job to ensure fields are indexed for structure searching
       MediaObjectIndexingJob.perform_now(media_object.id)
     end
@@ -481,19 +495,19 @@ describe MediaObject do
       end
     end
     context 'with two master files' do
-      let(:master_files) { [master_file1, master_file2] }
+      let(:sections) { [master_file1, master_file2] }
       it 'returns the correct duration' do
 	expect(media_object.send(:calculate_duration)).to eq(80)
       end
     end
     context 'with two master files one nil' do
-      let(:master_files) { [master_file1, master_file3] }
+      let(:sections) { [master_file1, master_file3] }
       it 'returns the correct duration' do
 	expect(media_object.send(:calculate_duration)).to eq(40)
       end
     end
     context 'with one master file that is nil' do
-      let(:master_files) { [master_file3] }
+      let(:sections) { [master_file3] }
       it 'returns the correct duration' do
 	expect(media_object.send(:calculate_duration)).to eq(0)
       end
@@ -502,21 +516,21 @@ describe MediaObject do
 
   describe '#destroy' do
     let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
-    let(:master_file) { media_object.master_files.first }
+    let(:master_file) { media_object.sections.first }
 
     before do
       allow(master_file).to receive(:stop_processing!)
     end
 
-    it 'destroys related master_files' do
+    it 'destroys related sections' do
       expect { media_object.destroy }.to change { MasterFile.exists?(master_file) }.from(true).to(false)
     end
 
     it 'destroys multiple sections' do
       FactoryBot.create(:master_file, media_object: media_object)
       media_object.reload
-      expect(media_object.master_files.size).to eq 2
-      media_object.master_files.each do |mf|
+      expect(media_object.sections.size).to eq 2
+      media_object.sections.each do |mf|
         allow(mf).to receive(:stop_processing!)
       end
       expect { media_object.destroy }.to change { MasterFile.count }.from(2).to(0)
@@ -566,6 +580,20 @@ describe MediaObject do
         media_object.publish!(nil)
         expect(media_object.to_solr["workflow_published_sim"]).to eq('Unpublished')
       end
+      context 'validate: false' do
+        it 'publishes' do
+          media_object.publish!('adam@adam.com', validate: false)
+          expect(media_object.to_solr["workflow_published_sim"]).to eq('Published')
+        end
+        it 'unpublishes' do
+          media_object.publish!(nil, validate: false)
+          expect(media_object.to_solr["workflow_published_sim"]).to eq('Unpublished')
+        end
+        it 'raises runtime error if save fails' do
+          allow_any_instance_of(MediaObject).to receive(:save).and_return(false)
+          expect { media_object.publish!(nil, validate: false) }.to raise_error(RuntimeError)
+        end
+      end
     end
   end
 
@@ -575,7 +603,7 @@ describe MediaObject do
     end
     it 'should not index any unknown resource types' do
       media_object.resource_type = 'notated music'
-      expect(media_object.to_solr['format_sim']).not_to include 'Notated Music'
+      expect(media_object.to_solr['resource_type_ssim']).not_to include 'Notated Music'
     end
     it 'should index separate identifiers as separate values' do
       media_object.descMetadata.add_other_identifier('12345678','lccn')
@@ -603,9 +631,9 @@ describe MediaObject do
       media_object.save!
       media_object.reload
       solr_doc = media_object.to_solr(include_child_fields: true)
-      expect(solr_doc['all_comments_sim']).to include('MO Comment')
-      expect(solr_doc['all_comments_sim']).to include('[Test Label] MF Comment 1')
-      expect(solr_doc['all_comments_sim']).to include('[Test Label] MF Comment 2')
+      expect(solr_doc['all_comments_ssim']).to include('MO Comment')
+      expect(solr_doc['all_comments_ssim']).to include('[Test Label] MF Comment 1')
+      expect(solr_doc['all_comments_ssim']).to include('[Test Label] MF Comment 2')
     end
     it 'includes virtual group leases in external group facet' do
       media_object.governing_policies += [FactoryBot.create(:lease, inherited_read_groups: ['TestGroup'])]
@@ -617,6 +645,9 @@ describe MediaObject do
       media_object.governing_policies += [FactoryBot.create(:lease, inherited_read_groups: [ip_addr])]
       media_object.save!
       expect(media_object.to_solr['read_access_ip_group_ssim']).to include(ip_addr)
+    end
+    it 'indexes modified time for descMetadata subresource' do
+      expect(DateTime.parse(media_object.to_solr['descMetadata_modified_dtsi'])).to eq DateTime.parse(media_object.descMetadata.record_change_date.first)
     end
   end
 
@@ -732,6 +763,17 @@ describe MediaObject do
       it 'should override the title' do
         expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.title }.to "245 A : B F G K N P S"
       end
+      it 'should override langauge' do
+        expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.language }.to [{:code=>"eng", :text=>"English"}, {:code=>"fre", :text=>"French"}, {:code=>"ger", :text=>"German"}]
+      end
+
+      context 'with lanugage text' do
+        let(:mods) { File.read(File.expand_path("../../fixtures/#{bib_id}.lang_text.mods",__FILE__)) }
+
+        it 'should override langauge' do
+          expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.language }.to [{:code=>"eng", :text=>"English"}, {:code=>"fre", :text=>"French"}, {:code=>"ger", :text=>"German"}]
+        end
+      end
     end
     describe 'should strip whitespace from bib_id parameter' do
       let(:sru_url) { "http://zgate.example.edu:9000/db?version=1.1&operation=searchRetrieve&maximumRecords=1&recordSchema=marcxml&query=rec.id=#{bib_id}" }
@@ -789,7 +831,7 @@ describe MediaObject do
       mf2 = FactoryBot.create(:master_file, title: 'Test Label2', physical_description: 'cave paintings', media_object: media_object)
       media_object.reload
 
-      #expect(media_object.ordered_master_files.size).to eq(2)
+      #expect(media_object.sections.size).to eq(2)
       expect(media_object.section_physical_descriptions).to match(['cave paintings'])
     end
   end
@@ -825,10 +867,10 @@ describe MediaObject do
 
   describe 'descMetadata' do
     it 'sets original_name to default value' do
-      expect(media_object.descMetadata.original_name).to eq 'descMetadata.xml'
+      # requires a reload now?
+      expect(media_object.reload.descMetadata.original_name).to eq 'descMetadata.xml'
     end
     it 'is a valid MODS document' do
-      media_object = FactoryBot.create(:media_object, :with_master_file)
       xsd_path = File.join(Rails.root, 'spec', 'fixtures', 'mods-3-6.xsd')
       # Note: we instantiate Schema with a file handle so that relative paths
       # to included schema definitions can be resolved
@@ -914,7 +956,7 @@ describe MediaObject do
 
     it 'is indexed' do
       media_object.terms_of_use = terms_of_use_value
-      expect(media_object.to_solr["terms_of_use_si"]).to eq terms_of_use_value
+      expect(media_object.to_solr["terms_of_use_ssi"]).to eq terms_of_use_value
     end
 
     it 'roundtrips' do
@@ -966,7 +1008,7 @@ describe MediaObject do
 
     context "no error" do
       it 'merges' do
-        expect { media_object.merge! media_objects }.to change { media_object.master_files.to_a.count }.by(2)
+        expect { media_object.merge! media_objects }.to change { media_object.sections.count }.by(2)
         expect(media_objects.any? { |mo| MediaObject.exists?(mo.id) }).to be_falsey
       end
     end
@@ -982,7 +1024,7 @@ describe MediaObject do
         expect(fails).to eq([media_objects.first])
         expect(media_objects.first.errors.count).to eq(1)
 
-        expect(media_object.master_files.to_a.count).to eq(2)
+        expect(media_object.sections.count).to eq(2)
         expect(MediaObject.exists?(media_objects.first.id)).to be_truthy
         expect(MediaObject.exists?(media_objects.second.id)).to be_falsey
       end
@@ -1117,6 +1159,168 @@ describe MediaObject do
         media_object.save
         expect(media_object.reload.read_groups).to eq ["ExternalGroup"]
         expect(solr_doc["read_access_group_ssim"]).to eq ["ExternalGroup"]
+      end
+    end
+  end
+
+  describe ".autocomplete" do
+    before :each do
+      allow(Admin::Collection).to receive(:units).and_return(['Default', 'Test'])
+    end
+    let!(:mo1) { FactoryBot.create(:media_object, collection: collection1, series: ['Test 1', 'Alpha']) }
+    let!(:mo2) { FactoryBot.create(:media_object, collection: collection1, series: ['Test 1', 'Test 2']) }
+    let!(:mo3) { FactoryBot.create(:media_object, collection: collection2, series: ['Test 3']) }
+    let(:collection1) { FactoryBot.create(:collection, unit: 'Default') }
+    let(:collection2) { FactoryBot.create(:collection, unit: 'Test') }
+
+
+    it "should return all series within the parent collection's unit that include the query string" do
+      expect(MediaObject.autocomplete('Test', mo1.id)).to include({ id: 'Test 1', display: 'Test 1' })
+      expect(MediaObject.autocomplete('Test', mo1.id)).to include({ id: 'Test 2', display: 'Test 2' })
+      expect(MediaObject.autocomplete('Test', mo1.id)).not_to include({ id: 'Alpha', display: 'Alpha'})
+      expect(MediaObject.autocomplete('Test', mo1.id)).not_to include({ id: 'Test 3', display: 'Test 3' })
+    end
+
+    it 'should return results without duplicates' do
+      expect(MediaObject.autocomplete('Test', mo1.id).count({ id: 'Test 1', display: 'Test 1' })).to eq 1
+    end
+
+    it "should wildcard match" do
+      expect(MediaObject.autocomplete('ph', mo1.id)).to include({ id: 'Alpha', display: 'Alpha' })
+    end
+
+    it "should be case insensitive" do
+      expect(MediaObject.autocomplete('tes', mo1.id)).to include({ id: 'Test 1', display: 'Test 1' })
+      expect(MediaObject.autocomplete('te', mo1.id)).to include({ id: 'Test 2', display: 'Test 2' })
+    end
+  end
+
+  describe "#has_captions" do
+    let(:captionless_media_object) { FactoryBot.create(:media_object, :with_master_file) }
+    let(:captioned_media_object) { FactoryBot.create(:media_object, sections: [master_file1, master_file2]) }
+    let(:master_file1) { FactoryBot.create(:master_file) }
+    let(:master_file2) { FactoryBot.create(:master_file, :with_captions) }
+    it "returns false when child master files contain no captions" do
+      expect(captionless_media_object.has_captions).to be false
+    end
+
+    it "returns true when any child master file contains a caption" do
+      expect(captioned_media_object.has_captions).to be true
+    end
+  end
+
+  describe "#has_transcripts" do
+    let(:transcriptless_media_object) { FactoryBot.create(:media_object, :with_master_file) }
+    let(:transcript_media_object) { FactoryBot.create(:media_object, sections: [master_file1, master_file2]) }
+    let(:master_file1) { FactoryBot.create(:master_file) }
+    let(:master_file2) { FactoryBot.create(:master_file, supplemental_files: [transcript]) }
+    let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_tag, :with_transcript_file) }
+    it "returns false when child master files contain no transcript" do
+      expect(transcriptless_media_object.has_transcripts).to be false
+    end
+
+    it "returns true when any child master file contains a transcript" do
+      expect(transcript_media_object.has_transcripts).to be true
+    end
+  end
+
+  describe 'section_list' do
+    let(:section) { FactoryBot.create(:master_file) }
+    let(:section2) { FactoryBot.create(:master_file) }
+    let!(:media_object) { FactoryBot.create(:media_object, master_files: [section2, section], sections: [section, section2]) }
+
+    describe 'section_ids' do
+      it 'returns an ordered list of master file ids' do
+        expect(media_object.section_ids).to eq [section.id, section2.id]
+      end
+    end
+
+    describe 'section_ids=' do
+      it 'sets ordered list of master file ids without modifying master_file_ids' do
+        expect(media_object.master_file_ids).to contain_exactly(section.id, section2.id)
+        expect(media_object.section_ids).to eq [section.id, section2.id]
+        media_object.section_ids = [section2.id]
+        expect(media_object.master_file_ids).to contain_exactly(section.id, section2.id)
+        expect(media_object.section_ids).to eq [section2.id]
+      end
+    end
+
+    describe 'sections' do
+      it 'returns an ordered list of master file objects' do
+        expect(media_object.sections).to eq [section, section2]
+      end
+    end
+
+    describe 'sections=' do
+      it 'sets ordered list of master file objects without modifying master_file_ids' do
+        expect(media_object.master_files).to contain_exactly(section, section2)
+        expect(media_object.sections).to eq [section, section2]
+        media_object.sections = [section2]
+        expect(media_object.master_files).to contain_exactly(section, section2)
+        expect(media_object.sections).to eq [section2]
+      end
+    end
+
+    it '#sections and #section_ids stay sync' do
+      expect(media_object.section_ids).to eq [section.id, section2.id]
+      expect(media_object.sections).to eq [section, section2]
+      media_object.sections = [section2]
+      expect(media_object.section_ids).to eq [section2.id]
+      expect(media_object.sections).to eq [section2]
+      media_object.section_ids = [section.id]
+      expect(media_object.section_ids).to eq [section.id]
+      expect(media_object.sections).to eq [section]
+    end
+
+    context 'migrating ordered_aggregation' do
+      let!(:media_object) do
+        mo = FactoryBot.build(:media_object)
+        mo.ordered_master_files = [section, section2]
+        # Trick the callback to avoid persisting section_list
+        mo.instance_variable_set(:@section_ids, mo.master_file_ids)
+        mo.save
+        mo.reload
+      end
+
+      it 'reads from ordered_aggregation' do
+        expect(media_object.ordered_master_files.to_a).to eq [section, section2]
+        expect(media_object.section_list).to eq nil
+        mo = MediaObject.find(media_object.id)
+        expect(mo.section_list).not_to eq nil
+        expect(mo.ordered_master_files.to_a).to eq [section, section2]
+        expect(mo.sections).to eq mo.ordered_master_files.to_a
+        expect(mo.section_ids).to eq mo.ordered_master_file_ids
+      end
+
+      it 'prefers reading from section_list when set' do
+        expect(media_object.section_list).to eq nil
+        mo = MediaObject.find(media_object.id)
+        new_section = FactoryBot.create(:master_file)
+        mo.sections += [new_section]
+        mo.save
+        mo = MediaObject.find(media_object.id)
+        expect(mo.section_list).not_to eq nil
+        expect(mo.sections).not_to eq mo.ordered_master_files.to_a
+        expect(mo.section_ids).to eq [section.id, section2.id, new_section.id]
+        expect(mo.master_file_ids).to eq mo.section_ids
+        expect(mo.master_files).to eq mo.sections
+      end
+    end
+  end
+
+  describe '#reload' do
+    let(:section) { FactoryBot.create(:master_file) }
+
+    context 'resets cached values' do
+      it 'resets sections' do
+        expect(media_object.sections).to eq []
+        expect(media_object.section_ids).to eq []
+        media_object.sections += [section]
+        expect(media_object.sections).to eq [section]
+        expect(media_object.section_ids).to eq [section.id]
+        media_object.reload
+        expect(media_object.sections).to eq []
+        expect(media_object.section_ids).to eq []
       end
     end
   end
