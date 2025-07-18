@@ -1,11 +1,11 @@
 # Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -47,8 +47,8 @@ class Admin::CollectionsController < ApplicationController
     unpublished_counts_array = unpublished_count_response["facet_counts"]["facet_fields"]["isMemberOfCollection_ssim"] rescue []
     unpublished_counts = unpublished_counts_array.each_slice(2).to_h
 
-    @collections = response.documents.collect do |doc| 
-                     ::Admin::CollectionPresenter.new(doc, 
+    @collections = response.documents.collect do |doc|
+                     ::Admin::CollectionPresenter.new(doc,
                                                       media_object_count: (counts[doc.id] || 0),
                                                       unpublished_media_object_count: (unpublished_counts[doc.id] || 0))
                    end.sort_by { |c| c.name.downcase }
@@ -297,6 +297,35 @@ class Admin::CollectionsController < ApplicationController
       render plain: file.content, content_type: file.mime_type
     end
   end
+
+
+  # UMD Customization
+  # GET /collections/1/external_groups
+  def external_groups
+    @collection = Admin::Collection.find(params[:id])
+
+    logger.info "Fetching external groups for collection: #{@collection.name}"
+    query = "collection_ssim:\"#{@collection.name}\""
+    response = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
+    logger.info response
+
+    items = response.select { |item| item["read_access_virtual_group_ssim"] !=  nil }
+
+    require 'csv'
+
+    csv_data = CSV.generate(headers: true) do |csv|
+      csv << ["Item", "External Groups"]
+
+      items.each do |item|
+        csv << [item["title_tesi"], item["read_access_virtual_group_ssim"].join("|")]
+      end
+    end
+
+    respond_to do |format|
+      format.csv { send_data csv_data, filename: "digitized_items#{Time.now.strftime('%Y%m%d_%H%M%S')}.csv" }
+    end
+  end
+  # End UMD Customization
 
   rescue_from Avalon::VocabularyNotFound do |exception|
     support_email = Settings.email.support
