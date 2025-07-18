@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+Copyright 2011-2024, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -22,5 +22,9 @@ Unless required by applicable law or agreed to in writing, software distributed
       <dt class="blacklight-<%= field_presenter.key %> col-sm-3"><%= field_presenter.label %>:</dt>
       <dd class="blacklight-<%= field_presenter.key %> col-sm-9"><%= field_presenter.values.join(', ') %></dd>
     <% end %>
+  <% end %>
+  <% if params[:q].present? && (found_in_hits = display_found_in(doc_presenter.document)).present? %>
+    <dt class="blacklight-found_in col-sm-3">Found in:</dt>
+    <dd class="blacklight-found_in col-sm-9"><%= found_in_hits %></dd>
   <% end %>
 </dl>

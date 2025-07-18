@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -15,7 +15,7 @@
 module MediaObjectIntercom
   def to_ingest_api_hash(include_structure = true, remove_identifiers: false, publish: false)
     {
-      files: ordered_master_files.to_a.collect { |mf| mf.to_ingest_api_hash(include_structure, remove_identifiers: remove_identifiers) },
+      files: sections.collect { |mf| mf.to_ingest_api_hash(include_structure, remove_identifiers: remove_identifiers) },
       fields:
         {
           duration: duration,
@@ -45,6 +45,7 @@ module MediaObjectIntercom
           terms_of_use: terms_of_use,
           table_of_contents: table_of_contents,
           physical_description: physical_description,
+          series: series,
           record_identifier: record_identifier,
           comment: comment.to_a,
           bibliographic_id: (bibliographic_id.present? ? bibliographic_id[:id] : nil),

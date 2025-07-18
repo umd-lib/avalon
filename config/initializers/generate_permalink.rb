@@ -1,6 +1,13 @@
 Rails.application.config.to_prepare do
   Permalink.on_generate do |object,target|
     if object.is_a? MediaObject
+      if object.is_streaming_reserve?
+        # objects in the Streaming Reserves unit should not receive handles
+        Rails.logger.debug("Skipping handle creation for #{object.id} in the '#{object.collection.unit}' unit because it is a streaming reserve item.")
+        return nil
+      end
+
+      Rails.logger.debug("Getting handle for #{object.id} in the '#{object.collection.unit}' unit.")
       handle = nil
       if object.other_identifier.present?
         hdl_id = object.other_identifier.find { |id| id[:source] == "handle" }

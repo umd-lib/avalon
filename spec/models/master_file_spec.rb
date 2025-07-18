@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -84,7 +84,7 @@ describe MasterFile do
     end
   end
 
-  describe "master_files=" do
+  describe "derivatives=" do
     let(:derivative) {Derivative.create}
     let(:master_file) {FactoryBot.create(:master_file)}
     it "should set hasDerivation relationships on self" do
@@ -129,6 +129,45 @@ describe MasterFile do
       it 'should not start an ActiveEncode workflow' do
         expect(master_file.encoder_class).not_to receive(:create)
         expect{ master_file.process }.to raise_error(RuntimeError)
+      end
+    end
+
+    context 'pass through' do
+      let(:master_file) { FactoryBot.create(:master_file, :not_processing, workflow_name: 'pass_through') }
+
+      context 'with multiple files' do
+	let(:low_file) { "spec/fixtures/videoshort.low.mp4" }
+	let(:medium_file) { "spec/fixtures/videoshort.medium.mp4" }
+	let(:high_file) { "spec/fixtures/videoshort.high.mp4" }
+        let(:outputs_hash) do
+          [
+            { label: 'low', url: FileLocator.new(low_file).uri.to_s },
+            { label: 'medium', url: FileLocator.new(medium_file).uri.to_s },
+            { label: 'high', url: FileLocator.new(high_file).uri.to_s }
+          ]
+        end
+        let(:files) do
+          {
+            "quality-low" => FileLocator.new(low_file).attachment,
+            "quality-medium" => FileLocator.new(medium_file).attachment,
+            "quality-high" => FileLocator.new(high_file).attachment
+          }
+        end
+
+        it 'creates an encode' do
+	  expect(master_file.encoder_class).to receive(:create).with("file://" + Rails.root.join(high_file).to_path, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name })
+	  master_file.process(files)
+        end
+      end
+
+      context 'with single file' do
+        let(:input_url) { FileLocator.new(master_file.file_location).uri.to_s }
+        let(:outputs_hash) { [{ label: 'high', url: input_url }] }
+
+        it 'creates an encode' do
+          expect(master_file.encoder_class).to receive(:create).with(input_url, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name })
+	  master_file.process
+        end
       end
     end
   end
@@ -290,14 +329,9 @@ describe MasterFile do
       let(:media_path) { File.expand_path("../../master_files-#{SecureRandom.uuid}",__FILE__)}
       let(:dropbox_path) { File.expand_path("../../collection-#{SecureRandom.uuid}",__FILE__)}
       let(:upload)     { ActionDispatch::Http::UploadedFile.new :tempfile => tempfile, :filename => original, :type => 'video/mp4' }
-      let(:media_object) { MediaObject.new }
+      let!(:media_object) { FactoryBot.create(:media_object, sections: [subject]) }
       let(:collection) { Admin::Collection.new }
-      subject {
-        mf = MasterFile.new
-        mf.media_object = media_object
-        mf.setContent(upload, dropbox_dir: collection.dropbox_absolute_path)
-        mf
-      }
+      subject { FactoryBot.create(:master_file) }
 
       before(:each) do
         @old_media_path = Settings.encoding.working_file_path
@@ -317,11 +351,13 @@ describe MasterFile do
 
       it "should move an uploaded file into the root of the collection's dropbox" do
         Settings.encoding.working_file_path = nil
+        subject.setContent(upload, dropbox_dir: collection.dropbox_absolute_path)
         expect(subject.file_location).to eq(File.realpath(File.join(collection.dropbox_absolute_path,original)))
       end
 
       it "should copy an uploaded file to the media path" do
         Settings.encoding.working_file_path = media_path
+        subject.setContent(upload, dropbox_dir: collection.dropbox_absolute_path)
         expect(File.fnmatch("#{media_path}/*/#{original}", subject.working_file_path.first)).to be true
       end
 
@@ -334,6 +370,7 @@ describe MasterFile do
 
         it "appends a numerical suffix" do
           Settings.encoding.working_file_path = nil
+          subject.setContent(upload, dropbox_dir: collection.dropbox_absolute_path)
           expect(subject.file_location).to eq(File.realpath(File.join(collection.dropbox_absolute_path,duplicate)))
         end
       end
@@ -345,14 +382,9 @@ describe MasterFile do
       let(:dropbox_file_path) { File.join(dropbox_path, 'nested-dir', original)}
       let(:media_path) { File.expand_path("../../master_files-#{SecureRandom.uuid}",__FILE__)}
       let(:dropbox_path) { File.expand_path("../../collection-#{SecureRandom.uuid}",__FILE__)}
-      let(:media_object) { MediaObject.new }
+      let!(:media_object) { FactoryBot.create(:media_object, sections: [subject]) }
       let(:collection) { Admin::Collection.new }
-      subject {
-        mf = MasterFile.new
-        mf.media_object = media_object
-        mf.setContent(File.new(dropbox_file_path), dropbox_dir: collection.dropbox_absolute_path)
-        mf
-      }
+      subject { FactoryBot.create(:master_file) }
 
       before(:each) do
         @old_media_path = Settings.encoding.working_file_path
@@ -373,6 +405,7 @@ describe MasterFile do
 
       it "should not move a file in a subdirectory of the collection's dropbox" do
         Settings.encoding.working_file_path = nil
+        subject.setContent(File.new(dropbox_file_path), dropbox_dir: collection.dropbox_absolute_path)
         expect(subject.file_location).to eq dropbox_file_path
         expect(File.exist?(dropbox_file_path)).to eq true
         expect(File.exist?(File.join(collection.dropbox_absolute_path,original))).to eq false
@@ -380,6 +413,7 @@ describe MasterFile do
 
       it "should copy an uploaded file to the media path" do
         Settings.encoding.working_file_path = media_path
+        subject.setContent(File.new(dropbox_file_path), dropbox_dir: collection.dropbox_absolute_path)
         expect(File.fnmatch("#{media_path}/*/#{original}", subject.working_file_path.first)).to be true
       end
     end
@@ -390,7 +424,7 @@ describe MasterFile do
       let(:file_size) { 12345 }
       let(:auth_header) { {"Authorization"=>"Bearer ya29.a0AfH6SMC6vSj4D6po1aDxAr6JmY92azh3lxevSuPKxf9QPPSKmMzqbZvI7B3oIACqqMVono1P0XD2F1Jl_rkayoI6JGz-P2cpg44-55oJFcWychAvUliWeRKf1cifMo9JF10YmXxhIfrG5mu7Ahy9FZpudN92p2JhvTI"} }
 
-      subject { MasterFile.new }
+      subject { FactoryBot.create(:master_file) }
 
       it "should set the right properties" do
         allow(subject).to receive(:reloadTechnicalMetadata!).and_return(nil)
@@ -478,8 +512,8 @@ describe MasterFile do
       end
 
       it 'should have an appropriate title for the embed code with no label (more than 1 section)' do
-        allow(subject.media_object).to receive(:ordered_master_files).and_return([subject,subject])
-        allow(subject.media_object).to receive(:master_file_ids).and_return([subject.id,subject.id])
+        allow(subject.media_object).to receive(:sections).and_return([subject,subject])
+        allow(subject.media_object).to receive(:section_ids).and_return([subject.id,subject.id])
         expect( subject.embed_title ).to eq( 'test - video.mp4' )
       end
 
@@ -498,21 +532,6 @@ describe MasterFile do
       master_file.send(:update_ingest_batch)
       expect(ingest_batch.reload.email_sent?).to be true
     end
-  end
-
-  describe '#update_progress_on_success!' do
-    subject(:master_file) { FactoryBot.create(:master_file) }
-    let(:encode) { double("encode", :output => []) }
-    before do
-      allow(master_file).to receive(:update_ingest_batch).and_return(true)
-    end
-
-    it 'should set the digitized date' do
-      master_file.update_progress_on_success!(encode)
-      master_file.reload
-      expect(master_file.date_digitized).to_not be_empty
-    end
-
   end
 
   describe "#structural_metadata_labels" do
@@ -646,13 +665,24 @@ describe MasterFile do
 
       context 'when derivatives are not accessible' do
         let(:high_derivative_locator) { FileLocator.new(video_master_file.derivatives.where(quality_ssi: 'high').first.absolute_location) }
-        let(:hls_temp_file) { "/tmp/temp_segment.ts" }
+        let(:hls_file) { "temp_segment.ts" }
+        let(:hls_url) { "http://streaming.server.com/path/#{hls_file}" }
+        let(:reader) { double(Avalon::M3U8Reader) }
+        let(:m3u8) { "HLSDATA" }
+
+        before do
+          stub_request(:get, hls_url).to_return(body: m3u8)
+          allow(Avalon::M3U8Reader).to receive(:read).and_return(reader)
+          allow(reader).to receive(:at).and_return({ location: hls_url, filename: hls_file, offset: 0 })
+        end
 
         it 'falls back to HLS' do
-          expect(video_master_file).to receive(:create_frame_source_hls_temp_file).and_return(hls_temp_file)
-          expect(File).to receive(:exist?).with(high_derivative_locator.location).and_return(false)
+          #expect(video_master_file).to receive(:create_frame_source_hls_temp_file).and_return(hls_temp_file)
+          allow(File).to receive(:exist?).and_call_original
+          allow(File).to receive(:exist?).with(high_derivative_locator.location).and_return(false)
           expect(source[:source]).to eq '/tmp/temp_segment.ts'
           expect(source[:non_temp_file]).to eq false
+          expect(File.read(source[:source])).to eq m3u8
         end
       end
     end
@@ -696,6 +726,30 @@ describe MasterFile do
     end
   end
 
+  describe 'supplemental_file_captions' do
+    let(:caption_file) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
+    let(:transcript_file) { FactoryBot.create(:supplemental_file, :with_transcript_tag, :with_transcript_file) }
+    let(:master_file) { FactoryBot.create(:master_file, supplemental_files: [caption_file, transcript_file]) }
+    it 'returns only caption files' do
+      expect(master_file.supplemental_file_captions).to_not be_empty
+      expect(master_file.supplemental_file_captions).to all(be_kind_of(SupplementalFile))
+      expect(master_file.supplemental_file_captions).to_not include(transcript_file)
+      expect(master_file.supplemental_file_captions).to include(caption_file)
+    end
+  end
+
+  describe 'supplemental_file_transcripts' do
+    let(:caption_file) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
+    let(:transcript_file) { FactoryBot.create(:supplemental_file, :with_transcript_tag, :with_transcript_file) }
+    let(:master_file) { FactoryBot.create(:master_file, supplemental_files: [caption_file, transcript_file]) }
+    it 'returns only transcript files' do
+      expect(master_file.supplemental_file_transcripts).to_not be_empty
+      expect(master_file.supplemental_file_transcripts).to all(be_kind_of(SupplementalFile))
+      expect(master_file.supplemental_file_transcripts).to include(transcript_file)
+      expect(master_file.supplemental_file_transcripts).to_not include(caption_file)
+    end
+  end
+
   describe 'waveforms' do
     let(:master_file) { FactoryBot.create(:master_file) }
     it 'sets original_name to default value' do
@@ -714,9 +768,13 @@ describe MasterFile do
     let(:master_file) { FactoryBot.build(:master_file) }
     before do
       allow(ActiveEncode::Base).to receive(:find).and_return(nil)
+      allow(master_file).to receive(:finished_processing?).and_return(false)
     end
     it 'does not error if the master file has no encode' do
-      expect { master_file.send(:stop_processing!) }.not_to raise_error
+      expect { master_file.stop_processing! }.not_to raise_error
+    end
+    it 'enqueues cancel job if currently processing' do
+      expect { master_file.stop_processing! }.to have_enqueued_job(ActiveEncodeJobs::CancelEncodeJob)
     end
   end
 
@@ -757,10 +815,12 @@ describe MasterFile do
 
     it 'sets a new media object as its parent' do
       master_file.media_object = media_object2
-      expect(media_object1.reload.master_file_ids).not_to include master_file.id
-      expect(media_object1.reload.ordered_master_file_ids).not_to include master_file.id
-      expect(media_object2.reload.master_file_ids).to include master_file.id
-      expect(media_object2.reload.ordered_master_file_ids).to include master_file.id
+      media_object1.reload
+      media_object2.reload
+      expect(media_object1.master_file_ids).not_to include master_file.id
+      expect(media_object1.section_ids).not_to include master_file.id
+      expect(media_object2.master_file_ids).to include master_file.id
+      expect(media_object2.section_ids).to include master_file.id
     end
   end
 
@@ -768,10 +828,24 @@ describe MasterFile do
     let(:master_file) { FactoryBot.build(:master_file) }
     let(:encode_succeeded) { FactoryBot.build(:encode, :succeeded) }
 
+    before do
+      allow(master_file).to receive(:update_derivatives)
+      allow(master_file).to receive(:run_hook)
+    end
+
     it 'calls update_derivatives' do
       expect(master_file).to receive(:update_derivatives).with(array_including(hash_including(label: 'quality-high')))
       expect(master_file).to receive(:run_hook).with(:after_transcoding)
       master_file.update_progress_on_success!(encode_succeeded)
+    end
+
+    it 'updates duration' do
+      expect { master_file.update_progress_on_success!(encode_succeeded) }.to change { master_file.duration }.from("200000").to("21575")
+    end
+
+    it 'should set the digitized date' do
+      master_file.update_progress_on_success!(encode_succeeded)
+      expect(master_file.date_digitized).to_not be_empty
     end
   end
 
@@ -858,6 +932,7 @@ describe MasterFile do
       # Force creation of master_file and then clear queue of byproduct jobs
       master_file
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      ActiveJob::Uniqueness.unlock!
     end
 
     it 'enqueues indexing of parent media object' do

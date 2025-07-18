@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -111,6 +111,66 @@ describe Derivative do
 
       it "HTTP audio" do
         expect(audio_derivative.streaming_url(true)).to eq("#{http_base}/mp4:c5e0f8b8-3f69-40de-9524-604f03b5f867/8c871d4b-a9a6-4841-8e2a-dd98cf2ee625/content.mp4/playlist.m3u8")
+      end
+    end
+  end
+
+  describe "#download_path" do
+    subject { described_class.new }
+    before :each do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_return("file://")
+      allow(subject).to receive(:hls_url).and_return(hls_url)
+    end
+
+    describe "generic" do
+      let(:hls_url) { "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4.m3u8" }
+      it "provides a file path" do
+        allow(Settings.streaming).to receive(:server).and_return(:generic)
+        expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+    end
+
+    describe "adobe" do
+      let(:hls_url) { "http://localhost:3000/streams/audio-only/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4.m3u8" }
+      it "provides a file path" do
+        allow(Settings.streaming).to receive(:server).and_return(:adobe)
+        expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+    end
+
+    describe "wowza" do
+      let(:hls_url) { "http://localhost:3000/streams/mp4:6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4/playlist.m3u8" }
+      it "provides a file path" do
+        allow(Settings.streaming).to receive(:server).and_return(:wowza)
+        expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+    end
+
+    describe "nginx" do
+      let(:hls_url) { "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4/index.m3u8" }
+      it "provides a file path" do
+        allow(Settings.streaming).to receive(:server).and_return(:nginx)
+        expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+    end
+
+    describe "s3" do
+      let(:hls_url) { "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4.m3u8" }
+      before do
+        @encoding_backup = Settings.encoding
+        Settings.encoding = double("encoding", engine_adapter: 'test', derivative_bucket: 'mybucket')
+
+        # We are using the generic format for hls url in this test, so we should explicitly define the generic streaming server
+        allow(Settings.streaming).to receive(:server).and_return(:generic)
+      end
+
+      it "provides a s3 path" do
+        expect(subject.download_path).to eq "s3://mybucket/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+
+      after do
+        Settings.encoding = @encoding_backup
       end
     end
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -62,17 +62,17 @@ describe MediaObjectsHelper do
 
   describe '#gather_all_comments' do
     let(:media_object) { instance_double("MediaObject", comment: ['MO Comment']) }
-    let(:master_files) { [instance_double("MasterFile", comment: [])] }
+    let(:sections) { [instance_double("MasterFile", comment: [])] }
 
     it 'returns a list of unique comment strings' do
-      expect(helper.gather_all_comments(media_object, master_files)).to eq ["MO Comment"]
+      expect(helper.gather_all_comments(media_object, sections)).to eq ["MO Comment"]
     end
 
     context 'with a master file comment' do
-      let(:master_files) { [instance_double("MasterFile", comment: ["MF Comment"], display_title: "MF1")] }
+      let(:sections) { [instance_double("MasterFile", comment: ["MF Comment"], display_title: "MF1")] }
 
       it 'returns a list of unique comment strings' do
-        expect(helper.gather_all_comments(media_object, master_files)).to eq ["MO Comment", "[MF1] MF Comment"]
+        expect(helper.gather_all_comments(media_object, sections)).to eq ["MO Comment", "[MF1] MF Comment"]
       end
     end
   end

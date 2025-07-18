@@ -123,7 +123,6 @@ Rails.application.routes.draw do
       get 'section/:content/embed', :to => redirect('/master_files/%{content}/embed')
       get 'tree', :action => :tree, :as => :tree
       get :confirm_remove
-      get :add_to_playlist_form
       post :add_to_playlist
       patch :intercom_push
       get :manifest
@@ -140,7 +139,9 @@ Rails.application.routes.draw do
     end
 
     # Supplemental Files
-    resources :supplemental_files, except: [:new, :index, :edit]
+    resources :supplemental_files, except: [:new, :index, :edit] do
+      get :index, constraints: { format: 'json' }, on: :collection
+    end
   end
 
   resources :master_files, except: [:new, :index] do
@@ -156,21 +157,29 @@ Rails.application.routes.draw do
       # End UMD Customization
       get :embed
       post 'attach_structure'
-      post 'attach_captions'
-      delete 'captions', action: :delete_captions, as: 'delete_captions'
       get :captions
       get :waveform
       match ':quality.m3u8', to: 'master_files#hls_manifest', via: [:get], as: :hls_manifest
-      get 'caption_manifest'
       get 'structure', to: 'master_files#structure', constraints: { format: 'json' }
       post 'structure', to: 'master_files#set_structure', constraints: { format: 'json' }
       delete 'structure', to: 'master_files#delete_structure', constraints: { format: 'json' }
       post 'move'
       get 'transcript/:t_id', to: 'master_files#transcript'
+      get :search
+      
+      if Settings.derivative.allow_download
+        get :download_derivative
+      end
     end
 
     # Supplemental Files
-    resources :supplemental_files, except: [:new, :index, :edit]
+    resources :supplemental_files, except: [:new, :index, :edit] do
+      member do
+        get 'captions'
+        get 'transcripts', :to => redirect('/master_files/%{master_file_id}/supplemental_files/%{id}')
+      end
+      get :index, constraints: { format: 'json' }, on: :collection
+    end
   end
 
   match "iiif_auth_token/:id", to: 'master_files#iiif_auth_token', via: [:get], as: :iiif_auth_token
@@ -182,8 +191,6 @@ Rails.application.routes.draw do
 
   resources :playlists do
     resources :playlist_items, path: 'items', only: [:create, :update, :show] do
-      get 'markers'
-      get 'source_details'
       get 'related_items'
     end
     member do
@@ -191,6 +198,7 @@ Rails.application.routes.draw do
       delete 'update_multiple'
       patch 'regenerate_access_token'
       get 'refresh_info'
+      get 'manifest'
     end
     collection do
       post 'duplicate'

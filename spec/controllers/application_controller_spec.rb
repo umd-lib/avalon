@@ -1,4 +1,4 @@
-# Copyright 2011-2023, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 # 
@@ -47,18 +47,18 @@ describe ApplicationController do
   end
 
   describe '#get_user_collections' do
-    let(:collection1) { FactoryBot.create(:collection) }
-    let(:collection2) { FactoryBot.create(:collection) }
+    let!(:collection1) { FactoryBot.create(:collection) }
+    let!(:collection2) { FactoryBot.create(:collection) }
 
     it 'returns all collections for an administrator' do
       login_as :administrator
-      expect(controller.get_user_collections).to include(collection1)
-      expect(controller.get_user_collections).to include(collection2)
+      expect(controller.get_user_collections).to include(have_attributes(id: collection1.id))
+      expect(controller.get_user_collections).to include(have_attributes(id: collection2.id))
     end
     it 'returns only relevant collections for a manager' do
       login_user collection1.managers.first
-      expect(controller.get_user_collections).to include(collection1)
-      expect(controller.get_user_collections).not_to include(collection2)
+      expect(controller.get_user_collections).to include(have_attributes(id: collection1.id))
+      expect(controller.get_user_collections).not_to include(have_attributes(id: collection2.id))
     end
     it 'returns no collections for an end-user' do
       login_as :user
@@ -70,8 +70,8 @@ describe ApplicationController do
     end
     it 'returns requested user\'s collections for an administrator' do
       login_as :administrator
-      expect(controller.get_user_collections collection1.managers.first).to include(collection1)
-      expect(controller.get_user_collections collection1.managers.first).not_to include(collection2)
+      expect(controller.get_user_collections collection1.managers.first).to include(have_attributes(id: collection1.id))
+      expect(controller.get_user_collections collection1.managers.first).not_to include(have_attributes(id: collection2.id))
     end
   end
 
@@ -79,6 +79,50 @@ describe ApplicationController do
     it "renders deleted_pid template" do
       get :show, params: { id: 'deleted-id' }
       expect(response).to render_template("errors/deleted_pid")
+    end
+
+    context 'raise_on_connection_error disabled' do
+      let(:request_context) { { body: "request_context" } }
+      let(:e) { { body: "error_response" } }
+
+      before :each do
+        allow(Settings.app_controller.solr_and_fedora).to receive(:raise_on_connection_error).and_return(false)
+      end
+
+      [RSolr::Error::ConnectionRefused, RSolr::Error::Timeout, Blacklight::Exceptions::ECONNREFUSED, Faraday::ConnectionFailed].each do |error_code|
+        it "rescues #{error_code} errors" do
+          raised_error = error_code == RSolr::Error::Timeout ? error_code.new(request_context, e) : error_code      
+          allow(controller).to receive(:show).and_raise(raised_error)
+          allow_any_instance_of(Exception).to receive(:backtrace).and_return(["Test trace"])
+          allow_any_instance_of(Exception).to receive(:message).and_return('Connection reset by peer')
+          expect(Rails.logger).to receive(:error).with(error_code.to_s + ': Connection reset by peer\nTest trace')
+          expect { get :show, params: { id: 'abc1234' } }.to_not raise_error
+        end
+
+        it "renders error template for #{error_code} errors" do
+          error_template = error_code == Faraday::ConnectionFailed ? 'errors/fedora_connection' : 'errors/solr_connection'
+          raised_error = error_code == RSolr::Error::Timeout ? error_code.new(request_context, e) : error_code
+          allow(controller).to receive(:show).and_raise(raised_error)
+          get :show, params: { id: 'abc1234' }
+          expect(response).to render_template(error_template)
+        end
+      end
+    end
+
+    context 'raise_on_connection_error enabled' do
+      let(:request_context) { { body: "request_context" } }
+      let(:e) { { body: "error_response" } }
+
+      [RSolr::Error::ConnectionRefused, RSolr::Error::Timeout, Blacklight::Exceptions::ECONNREFUSED, Faraday::ConnectionFailed].each do |error_code|
+        it "raises #{error_code} errors" do
+          raised_error = error_code == RSolr::Error::Timeout ? error_code.new(request_context, e) : error_code 
+          allow(Settings.app_controller.solr_and_fedora).to receive(:raise_on_connection_error).and_return(true)
+          allow(controller).to receive(:show).and_raise(raised_error)
+          allow_any_instance_of(Exception).to receive(:backtrace).and_return(["Test trace"])
+          allow_any_instance_of(Exception).to receive(:message).and_return('Connection reset by peer')
+          expect { get :show, params: { id: 'abc1234' } }.to raise_error(error_code, 'Connection reset by peer')
+        end
+      end
     end
   end
 
