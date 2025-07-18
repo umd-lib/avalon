@@ -220,12 +220,26 @@ namespace :avalon do
     descendants = ActiveFedora::Base.descendant_uris(ActiveFedora.fedora.base_uri)
     descendants.shift # remove the root
     Parallel.map(descendants, in_threads: args[:threads].to_i || 1) do |uri|
+      # UMD Customization
+      # Customization suggested by Chris Colvard in the "avalon" Slack channel
+      # to prevent "Not unique MediaObjectIndexingJob" errors when running
+      # the Solr reindex, which prevent the Solr entry from being fully
+      # populated.
       begin
-        ActiveFedora::Base.find(ActiveFedora::Base.uri_to_id(uri)).update_index
+        obj = ActiveFedora::Base.find(ActiveFedora::Base.uri_to_id(uri))
+        if obj.is_a? MediaObject
+          ActiveFedora::SolrService.add(obj.to_solr(include_child_fields: true), softCommit: true)
+        else
+          ActiveFedora::SolrService.add(obj.to_solr, softCommit: true)
+        end
+        # End UMD Customization
         puts "#{uri} reindexed"
       rescue
         puts "Error reindexing #{uri}"
       end
+      ActiveFedora::SolrService.commit
+      ActiveFedora::SolrService.instance.conn.optimize
+      # End UMD Customization
     end
   end
 
