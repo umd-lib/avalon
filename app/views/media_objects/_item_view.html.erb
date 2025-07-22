@@ -52,6 +52,14 @@ Unless required by applicable law or agreed to in writing, software distributed
         has_files: @media_object.supplemental_files.present? || @media_object.sections_with_files.present?,
         has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
         # UMD Customization
+        aeon_request: { 
+          itemTitle: (@media_object.title || ""),
+          itemDate: (@media_object.date_issued || ""),
+          location: (@media_object.collection&.name || ""),
+          callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
+          referenceNumber: (@media_object.permalink || ""),
+          aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23'
+        },
         umd_metadata: { handleUrl: @media_object.permalink }
         # End UMD Customization
       }
