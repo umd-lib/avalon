@@ -23,6 +23,10 @@ import {
   MetadataDisplay,
   SupplementalFiles
 } from "@samvera/ramp";
+// UMD Customization
+import UmdMetadataDisplay from './UmdMetadataDisplay';
+import UmdCopyHandleUrlButton from './UmdCopyHandleUrlButton';
+// End UMD Customization
 import 'video.js/dist/video-js.css';
 import "@samvera/ramp/dist/ramp.css";
 import { Col, Row, Tab, Tabs } from 'react-bootstrap';
@@ -48,7 +52,10 @@ const Ramp = ({
   playlist,
   cdl,
   has_files,
-  has_transcripts
+  has_transcripts,
+  // UMD Customization
+  umd_metadata
+  // End UMD Customization
 }) => {
   const [manifestUrl, setManifestUrl] = React.useState('');
   const [startCanvasId, setStartCanvasId] = React.useState();
@@ -207,6 +214,11 @@ const Ramp = ({
                           Add to Playlist
                         </button>
                       }
+                      {/* UMD Customization */}
+                      {umd_metadata.handleUrl &&
+                        <UmdCopyHandleUrlButton handleUrl={umd_metadata.handleUrl} />
+                      }
+                      {/* End UMD Customization  */}
                     </Col>
                     {has_structure &&
                       <Col className="ramp-button-group-2">
@@ -249,6 +261,9 @@ const Ramp = ({
           <Tabs>
             <Tab eventKey="details" title="Details">
               <MetadataDisplay showHeading={false} displayTitle={false} />
+              {/* UMD Customization */}
+              <UmdMetadataDisplay handleUrl={umd_metadata.handleUrl} />
+              {/* End UMD Customization */}
             </Tab>
             {(cdl.can_stream && sections_count != 0 && has_transcripts) &&
               <Tab eventKey="transcripts" title="Transcripts" className="ramp--transcripts_tab">
