@@ -24,6 +24,7 @@ import {
   SupplementalFiles
 } from "@samvera/ramp";
 // UMD Customization
+import AeonRequestForm from './AeonRequestForm';
 import UmdMetadataDisplay from './UmdMetadataDisplay';
 import UmdCopyHandleUrlButton from './UmdCopyHandleUrlButton';
 // End UMD Customization
@@ -54,6 +55,7 @@ const Ramp = ({
   has_files,
   has_transcripts,
   // UMD Customization
+  aeon_request,
   umd_metadata
   // End UMD Customization
 }) => {
@@ -258,6 +260,12 @@ const Ramp = ({
         </Col>
         <Col sm={(sections_count == 0) ? 12 : 4} className="ramp--tabs-panel">
           {cdl.enabled && <div dangerouslySetInnerHTML={{ __html: cdl.destroy }} />}
+            {/* UMD Customization */}
+            {/* Request from Special collections button. */}
+            <div class="request-special">
+              <AeonRequestForm aeonRequest={aeon_request} />
+            </div>
+            {/* End UMD Customization */}
           <Tabs>
             <Tab eventKey="details" title="Details">
               <MetadataDisplay showHeading={false} displayTitle={false} />
