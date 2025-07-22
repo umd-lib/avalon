@@ -20,7 +20,7 @@ networks:
 services:
   db: &db-avalon
     # UMD Customization
-    image: docker.lib.umd.edu/db:fedora4-avalon-7.8.0
+    image: docker.lib.umd.edu/db:fedora4-avalon-7.8.0-umd-0
     # End UMD Customization
     volumes:
       - database:/data
@@ -37,7 +37,7 @@ services:
 
   fedora: &fedora
     # UMD Customization
-    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.8.0
+    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.8.0-umd-0
     # End UMD Customization
     depends_on:
       - db
@@ -57,7 +57,7 @@ services:
 
   solr: &solr
     # UMD Customization
-    image: docker.lib.umd.edu/solr:avalon-7.8.0
+    image: docker.lib.umd.edu/solr:avalon-7.8.0-umd-0
     # End UMD Customization
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
@@ -93,7 +93,7 @@ services:
 
   redis: &redis
     # UMD Customization
-    image: docker.lib.umd.edu/redis:avalon-7.8.0
+    image: docker.lib.umd.edu/redis:avalon-7.8.0-umd-0
     # End UMD Customization
     networks:
       internal:
