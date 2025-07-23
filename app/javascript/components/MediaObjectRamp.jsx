@@ -262,7 +262,7 @@ const Ramp = ({
           {cdl.enabled && <div dangerouslySetInnerHTML={{ __html: cdl.destroy }} />}
             {/* UMD Customization */}
             {/* Request from Special collections button. */}
-            <div class="request-special">
+            <div className="request-special">
               <AeonRequestForm aeonRequest={aeon_request} />
             </div>
             {/* End UMD Customization */}
