@@ -84,7 +84,9 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       </main>
     </div>
-    <%= render 'modules/footer' %>
+    <% if controller.action_name != "course_reserves" %>
+      <%= render 'modules/footer' %>
+    <% end %>
   </div>
 
   <% if request.fullpath.include?('login_popup') %>
