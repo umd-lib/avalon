@@ -290,19 +290,18 @@ const Ramp = ({
                 />
               </Tab>
             }
-            {(has_files) &&
+            {(has_files || master_file_downloads.canDownload) &&
               <Tab eventKey="files" title="Files">
-                <SupplementalFiles showHeading={false} />
+                {/* UMD Customization */}
+                {master_file_downloads.canDownload &&
+                  <UmdMasterFileDownloadsTab masterFiles={master_file_downloads} />
+                }
+                {has_files &&
+                  <SupplementalFiles showHeading={false} />
+                }
+                {/* End UMD Customization */}
               </Tab>
             }
-            {/* UMD Customization */}
-            {/* "Downloads" tab */}
-            {(master_file_downloads.canDownload) &&
-              <Tab eventKey="downloads" title="Downloads">
-                <UmdMasterFileDownloadsTab masterFiles={master_file_downloads} />
-              </Tab>
-            }
-            {/* End UMD Customization */}
           </Tabs>
         </Col>
       </Row>

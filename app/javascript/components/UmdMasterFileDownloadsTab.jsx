@@ -5,16 +5,23 @@ import React from 'react';
 const UmdMasterFileDownloadsTab = ({ masterFiles }) => {
   const renderMasterFileDownload = (masterFile) => {
     return (
-      <li key={masterFile.id}>
+      <dd key={masterFile.id}>
         <a href={masterFile.url}>{masterFile.fileName}</a>
-      </li>
+      </dd>
     );
   };
 
   return (
-    <ul>
-      {masterFiles.downloads.map((download) => renderMasterFileDownload(download))}
-    </ul>
+    // Using "ramp--supplemental-files" CSS styles to maintain consistency
+    // with the Avalon "Supplemental File" styling in the same tab.
+    <div className='ramp--supplemental-files'>
+      <div className='ramp--supplemental-files-display-content'>
+        <h4>Media Files</h4>
+        <dl>
+          {masterFiles.downloads.map((download) => renderMasterFileDownload(download))}
+        </dl>
+      </div>
+    </div>
   );
 };
 
