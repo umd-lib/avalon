@@ -59,7 +59,9 @@ Unless required by applicable law or agreed to in writing, software distributed
       <%= render partial: 'modules/become_message' %>
       <% end %>
       <%= render 'modules/header' %>
-      <%= render :partial => 'modules/global_navigation' %>
+      <% if controller.action_name != "course_reserves" %>
+        <%= render :partial => 'modules/global_navigation' %>
+      <% end %>
       <%# UMD Customization %>
       <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
       <% main_id = "content" if current_page?(main_app.root_path) %>

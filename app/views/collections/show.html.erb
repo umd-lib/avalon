@@ -41,7 +41,10 @@ Unless required by applicable law or agreed to in writing, software distributed
       <div>
         <h3 class="sub-headline"><strong>Unit:</strong> <%= @doc_presenter.unit %></h3>
         <p class="lead document-description"></p>
-        <%= react_component("CollectionDetails", 
+        <% if @doc_presenter.is_content_reserves? %>
+          <%= link_to 'Show Course Reserves', course_reserves_collection_path(@doc_presenter.id), class: 'btn btn-primary' %>
+        <% end %>
+        <%= react_component("CollectionDetails",
           { content: @doc_presenter.description,
             email: @doc_presenter.contact_email,
             website: @doc_presenter.website_link

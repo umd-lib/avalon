@@ -1,0 +1,21 @@
+
+
+<div class="card">
+  <div class="card-header">
+    <h1 class="page-title">Course Reserves for <%= @collection.name %></h1>
+  </div>
+  <div class="card-body">
+    <% for media_object, solr_doc in @media_objects %>
+      <div class="list-group-item list-group-item-action">
+        <h2><%= link_to media_object.title, "/master_files/" + media_object.master_files.first.id + "/embed" %></h2>
+        <%= link_to image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail", class: 'result-thumbnail block'),
+                        "/master_files/" + media_object.master_files.first.id + "/embed" %>
+        <p>
+          <strong>Rights Statment:</strong>
+          <%= solr_doc[:rights_statement_ssi]%>
+        </p>
+      </div
+    <% end %>
+  </div>
+</div>
+
