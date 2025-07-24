@@ -1,11 +1,11 @@
 # Copyright 2011-2024, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -59,5 +59,33 @@ class CollectionsController < CatalogController
     else
       render plain: file.content, content_type: file.mime_type
     end
+  end
+
+  def course_reserves
+    @collection = Admin::Collection.find(params['id'])
+    media_objects = @collection.media_objects
+
+    logger.info "Fetching media objects for collection: #{@collection.name}"
+    query = "collection_ssim:\"#{@collection.name}\""
+    docs = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
+
+    @media_and_metadata = media_objects.map do |media_object|
+      [media_object, docs.find { |doc| doc['id'] == media_object.id }]
+    end
+
+    if params[:course_id].present?
+      docs = docs.select { |doc| contains_course_id?(doc, params[:course_id]) }
+      @media_and_metadata = docs.map do |doc|
+        [media_objects.find(doc['id']), doc]
+      end
+    end
+  end
+
+  private
+
+  def contains_course_id?(document, id)
+    return false unless document.include?('read_access_group_ssim')
+
+    return document['read_access_group_ssim'].include?(id)
   end
 end

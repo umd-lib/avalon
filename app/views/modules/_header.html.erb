@@ -22,10 +22,10 @@ Unless required by applicable law or agreed to in writing, software distributed
         <%# End UMD Customization %>
       </div>
 
-      <% unless current_page?(main_app.root_path) %>
-      <div class="header-search">
-        <%= render :partial=>'modules/avalon_search_form' %>
-      </div>
+      <% if !current_page?(main_app.root_path) && controller.action_name != "course_reserves" %>
+        <div class="header-search">
+          <%= render :partial=>'modules/avalon_search_form' %>
+        </div>
       <% end %>
 
       <%# By default shift log in / log out to the header %>

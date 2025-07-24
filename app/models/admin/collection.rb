@@ -234,7 +234,7 @@ class Admin::Collection < ActiveFedora::Base
 
    # UMD Customization
   def is_content_reserves?
-    self.name == 'Digitized Items'
+    self.unit == Settings.streaming_reserves.unit_name
   end
 
   def default_umd_ip_manager_read_groups

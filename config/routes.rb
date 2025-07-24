@@ -107,6 +107,7 @@ Rails.application.routes.draw do
   resources :collections, only: [:index, :show] do
     member do
       get :poster
+      get :course_reserves
     end
   end
 
@@ -167,7 +168,7 @@ Rails.application.routes.draw do
       post 'move'
       get 'transcript/:t_id', to: 'master_files#transcript'
       get :search
-      
+
       if Settings.derivative.allow_download
         get :download_derivative
       end
