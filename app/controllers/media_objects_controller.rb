@@ -343,6 +343,19 @@ class MediaObjectsController < ApplicationController
     end
     download_allowed
   end
+
+  # Returns array of hashes containing download information for each master file
+  def master_files_downloads(masterFiles)
+    return {} if @masterFiles.nil? || @masterFiles.empty?
+
+    masterFiles.map do |master_file|
+      {
+        id: master_file.id,
+        fileName: File.basename(master_file.file_location),
+        url: download_master_file_url(id: master_file.id, access_token: @access_token)
+      }
+    end
+  end
   # End UMD Customization
 
   def show
@@ -350,6 +363,7 @@ class MediaObjectsController < ApplicationController
     @access_token = params[:access_token]
     @playback_restricted = cannot? :stream, @media_object
     @master_file_download_allowed = master_file_download_allowed?
+    @master_file_downloads = master_files_downloads(@masterFiles)
     # End UMD Customization
 
     respond_to do |format|
