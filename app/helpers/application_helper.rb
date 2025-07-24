@@ -254,6 +254,11 @@ module ApplicationHelper
       value
     end
   end
+
+  def in_jim_henson_collection?(media_object)
+    match_string = Settings&.jim_henson_collection&.match_string || "jim henson"
+    media_object.collection&.name&.downcase&.include?(match_string)
+  end
   # End UMD Customization
 
   def truncate_center label, output_label_length, end_length = 0
