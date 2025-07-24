@@ -27,6 +27,7 @@ import {
 import AeonRequestForm from './AeonRequestForm';
 import UmdMetadataDisplay from './UmdMetadataDisplay';
 import UmdCopyHandleUrlButton from './UmdCopyHandleUrlButton';
+import UmdMasterFileDownloadsButton from './UmdMasterFileDownloadsButton';
 import UmdMasterFileDownloadsTab from './UmdMasterFileDownloadsTab';
 // End UMD Customization
 import 'video.js/dist/video-js.css';
@@ -186,6 +187,12 @@ const Ramp = ({
                           Create Timeline
                         </button>
                       }
+                      {/* UMD Customization */}
+                      {/* "Download" button */}
+                      {(master_file_downloads.canDownload) &&
+                       <UmdMasterFileDownloadsButton masterFiles={master_file_downloads} />
+                      }
+                      {/* End UMD Customization */}
                       {share.canShare &&
                         <button
                           className="btn btn-outline mr-1 text-nowrap"
