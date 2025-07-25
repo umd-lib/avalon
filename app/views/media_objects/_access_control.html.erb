@@ -89,6 +89,49 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% end %>
 
+<%# UMD Customization %>
+<div class="card access-token">
+  <div class="card-header">
+    <h3 class="card-title">Access Token</h3>
+  </div>
+  <div class="card-body">
+    <% if !@active_access_tokens.nil? && @active_access_tokens.any? %>
+      <div class="panel panel-default">
+        <h4>Active tokens</h4>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Token</th>
+              <th>Streaming?</th>
+              <th>Download?</th>
+              <th>Expires</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @active_access_tokens.each do |token| %>
+              <tr class="<%= css_classes(token) %>">
+                <td><%= link_to token.id, token %></td>
+                <td><%= link_to token.token, token %></td>
+                <td><% if token.allow_streaming %>Yes<% end %></td>
+                <td><% if token.allow_download %>Yes<% end %></td>
+                <td><%= token.expiration %><br>(<%= approximate_time_distance(token) %>)</td>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% unless @media_object.nil? || @media_object.id.nil? %>
+      <%= link_to new_access_token_path( {media_object_id: @media_object.id} ), class: 'btn btn-success' do %>
+        <i class="fa fa-plus"></i> Create a new token
+      <% end %>
+    <% end %>
+  </div>
+</div>
+<%# End UMD Customization %>
+
 <%= render 'modules/special_access', { object: @media_object } %>
 
 <%= render 'workflow_buttons', form: 'access_control_form' %>
