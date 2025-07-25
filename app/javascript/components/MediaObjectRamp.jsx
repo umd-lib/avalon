@@ -27,6 +27,7 @@ import {
 import AeonRequestForm from './AeonRequestForm';
 import UmdMetadataDisplay from './UmdMetadataDisplay';
 import UmdCopyHandleUrlButton from './UmdCopyHandleUrlButton';
+import UmdRestrictedPlayback from './UmdRestrictedPlayback';
 // End UMD Customization
 import 'video.js/dist/video-js.css';
 import "@samvera/ramp/dist/ramp.css";
@@ -56,7 +57,8 @@ const Ramp = ({
   has_transcripts,
   // UMD Customization
   aeon_request,
-  umd_metadata
+  umd_metadata,
+  umd_access_control
   // End UMD Customization
 }) => {
   const [manifestUrl, setManifestUrl] = React.useState('');
@@ -164,7 +166,12 @@ const Ramp = ({
             : (<React.Fragment>
               {sections_count > 0 &&
                 <React.Fragment>
-                  <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} />
+                  {/* UMD Customization */}
+                  {umd_access_control.playback_restricted ?
+                    <UmdRestrictedPlayback jim_hension_collection={umd_access_control.jim_hension_collection} />
+                    : <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} />
+                  }
+                  {/* End UMD Customization */}
                   <div className="ramp--rails-title">
                     {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
                   </div>
