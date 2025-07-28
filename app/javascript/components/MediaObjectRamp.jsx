@@ -71,8 +71,20 @@ const Ramp = ({
 
   React.useEffect(() => {
     const { base_url, fullpath_url } = urls;
+    // UMD Customization
+    // Access tokens are included in the URL passed to this method,
+    // so need to modify the stock Avalon code to extract the "t"
+    // parameter (if present) using a more sophisticated method than the
+    // stock Avalon string regex.
+
     // Split the current path from the time fragment in the format .../:id?t=time
-    let [fullpath, start_time] = fullpath_url.split('?t=');
+    let url_to_parse = new URL(base_url+fullpath_url)
+    let url_params = url_to_parse.searchParams
+
+    let fullpath = url_to_parse.pathname;
+    let start_time = url_params.get("t") || undefined;
+    // End UMD Customization
+
     // Split the current path in the format /media_objects/:mo_id/section/:mf_id
     let [_, __, mo_id, ___, start_canvas] = fullpath.split('/');
     // Build the manifest URL
