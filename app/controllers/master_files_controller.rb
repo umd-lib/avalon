@@ -293,7 +293,19 @@ class MasterFilesController < ApplicationController
         return head :unauthorized
       end
     else
-      return head :unauthorized if cannot?(:read, @master_file)
+      # UMD Customization
+      # Extract access token from referer (if present) and use to determine
+      # if streaming is allowed.
+      cannot_stream = true
+
+      access_token = Rack::Utils.parse_nested_query(URI(request.referer).query)["access_token"]
+      if access_token.present?
+        media_object_id = @master_file.media_object.id
+        cannot_stream = !AccessToken.allow_streaming_of?(access_token, media_object_id)
+      end
+
+      return head :unauthorized if cannot?(:read, @master_file) && cannot_stream
+      # End UMD Customization
       @hls_streams = if quality == "auto"
                        gather_hls_streams(@master_file)
                      else
