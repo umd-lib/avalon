@@ -9,9 +9,7 @@
       <div class="list-group-item list-group-item-action">
         <h2> <%= link_to media_object.title, "/master_files/" + media_object.master_files.first.id + "/embed" %> </h2>
 
-        <%= link_to
-              image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail",
-                        class: 'result-thumbnail block'),
+        <%= link_to image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail", class: 'result-thumbnail block'),
               "/master_files/" + media_object.master_files.first.id + "/embed" %>
 
         <ul style="list-style: none; padding: 0; margin: 0;">
