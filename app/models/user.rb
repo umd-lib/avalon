@@ -177,8 +177,8 @@ class User < ActiveRecord::Base
     class_id = auth_hash.extra.context_id
     if Course.where(context_id: class_id).empty?
     # UMD Customization
-    # Use Term name + Course Name as the Avalon course name
-    class_name = "#{auth_hash.extra.raw_info.custom_course_term_name} #{auth_hash.extra.raw_info.context_title}".strip
+    # Use Term name + initial part of Course Name as the Avalon course name
+    class_name = "#{auth_hash.extra.raw_info.custom_course_term_name} #{auth_hash.extra.raw_info.context_title.split(":")[0]}".strip
     # End UMD Customization
     Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
     end
