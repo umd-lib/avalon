@@ -4,10 +4,10 @@ import React from 'react';
 
 const AeonRequestForm = ({ aeonRequest }) => {
   return (
-    <form 
-      action={aeonRequest.aeonURL} 
-      id="aeon_request_sub" 
-      target="aeon_request" 
+    <form
+      action={aeonRequest.aeonURL}
+      id="aeon_request_sub"
+      target="aeon_request"
       method="post"
     >
       <input type="hidden" name="ItemTitle" value={aeonRequest.itemTitle} />
@@ -16,7 +16,7 @@ const AeonRequestForm = ({ aeonRequest }) => {
       <input type="hidden" name="CallNumber" value={aeonRequest.callNumber} />
       <input type="hidden" name="ReferenceNumber" value={aeonRequest.referenceNumber} />
 
-      <button type="submit" className="btn btn-outline" title="Request from Special Collections">
+      <button type="submit" className="request-and-handle-button" title="Request from Special Collections">
         Request from Special Collections
       </button>
     </form>

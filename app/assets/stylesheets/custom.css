@@ -361,3 +361,34 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
   position: relative;
   top: -0.75em
 }
+
+.request-and-handle-button {
+  background-color: #0000;
+  border-color: #e21833;
+  color: #e21833;
+
+  display: block;
+  margin: 0 0 1em 0;
+
+  text-align: center;
+  user-select: none;
+
+  border: 2px solid #e21833;
+  border-radius: 0;
+  padding: .889rem 3.1rem;
+
+  font-size: .889rem;
+  font-weight: 700;
+  line-height: 1.25;
+  transition: background-color .3s ease-in-out, border-color .3s ease-in-out, box-shadow .3s ease-in-out, color .3s ease-in-out;
+}
+
+.request-and-handle-button:hover {
+  background-color: #e21833;
+  border-color: #e21833;
+  color: #fff
+}
+
+.request-and-handle-button:not(:disabled):not(.disabled) {
+  cursor: pointer;
+}

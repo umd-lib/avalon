@@ -15,7 +15,7 @@ const UmdCopyHandleUrlButton = ({ handleUrl = '' }) => {
   };
 
   return (
-    <button className="btn btn-outline mr-1 text-nowrap" type="button" onClick={copyToClipboard}>
+    <button className="request-and-handle-button" type="button" onClick={copyToClipboard}>
     Copy Handle Url
     </button>
   );
