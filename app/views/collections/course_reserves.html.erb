@@ -1,0 +1,33 @@
+
+
+<div class="card">
+  <div class="card-header">
+    <h1 class="page-title">Avalon Streaming Reserves </h1>
+  </div>
+  <div class="card-body">
+    <% for media_object, solr_doc in @media_and_metadata %>
+      <div class="list-group-item list-group-item-action">
+        <h2> <%= link_to media_object.title, "/master_files/" + media_object.master_files.first.id + "/embed" %> </h2>
+
+        <%= link_to image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail", class: 'result-thumbnail block'),
+              "/master_files/" + media_object.master_files.first.id + "/embed" %>
+
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <% (solr_doc['creator_ssim'] || []).each do |creator| %>
+            <li><%= creator %></li>
+          <% end %>
+
+          <% (solr_doc['contributor_ssim'] || []).each do |contributor| %>
+            <li><%= contributor %></li>
+          <% end %>
+
+          <li><%= solr_doc['terms_of_use_ssi'] %></li>
+
+          <% rights_url = solr_doc['rights_statement_ssi'] || '' %>
+          <li> <%= Avalon::ControlledVocabulary.find_by_name(:rights_statements)[rights_url] %> </li>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>
+
