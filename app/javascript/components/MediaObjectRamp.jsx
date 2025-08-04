@@ -237,11 +237,6 @@ const Ramp = ({
                           Add to Playlist
                         </button>
                       }
-                      {/* UMD Customization */}
-                      {umd_metadata.handleUrl &&
-                        <UmdCopyHandleUrlButton handleUrl={umd_metadata.handleUrl} />
-                      }
-                      {/* End UMD Customization  */}
                     </Col>
                     {has_structure &&
                       <Col className="ramp-button-group-2">
@@ -282,12 +277,16 @@ const Ramp = ({
         <Col sm={(sections_count == 0) ? 12 : 4} className="ramp--tabs-panel">
           {cdl.enabled && <div dangerouslySetInnerHTML={{ __html: cdl.destroy }} />}
             {/* UMD Customization */}
-            {/* Request from Special collections button. */}
-            { aeon_request.permitted &&
+            {/* Request from Special collections button and Copy Handle Button */}
             <div className="request-special">
-              <AeonRequestForm aeonRequest={aeon_request} />
+              { umd_metadata.handleUrl &&
+                <UmdCopyHandleUrlButton handleUrl={umd_metadata.handleUrl} />
+              }
+
+              { aeon_request.permitted &&
+                <AeonRequestForm aeonRequest={aeon_request} />
+              }
             </div>
-            }
             {/* End UMD Customization */}
           <Tabs>
             <Tab eventKey="details" title="Details">
