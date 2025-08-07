@@ -21,6 +21,8 @@
             <li><%= contributor %></li>
           <% end %>
 
+          <li><%= solr_doc['date_issued_ssi'] %></li>
+
           <li><%= solr_doc['terms_of_use_ssi'] %></li>
 
           <% rights_url = solr_doc['rights_statement_ssi'] || '' %>
