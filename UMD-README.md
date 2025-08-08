@@ -14,6 +14,19 @@ UMD-generated documentation for Avalon should be placed in the
 Instructions for building and running Avalon locally can be found in
 [umd_docs/DockerDevelopmentEnvironment.md](umd_docs/DockerDevelopmentEnvironment.md)
 
+## Jenkinsfile.disabled
+
+The "Jenkinsfile" for this project is currently disabled because the tests
+take an extremely long time to run (6+ hours), and consume enough resources
+to hamper the operation of the CI servers.
+
+Once these issues are corrected, renaming the file back to "Jenkinsfile" will
+restore the continuous integration builds.
+
+The "Webhooks" in the <https://github.com/umd-lib/avalon> that notify Jenkins of
+pull requests and branch updates have also been disabled. These should be
+re-enabled when restoring the continuous integration builds.
+
 ## SAML Environment Specific Configuration
 
 The following variables were added to facilitate configuring environment
