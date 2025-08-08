@@ -5,6 +5,13 @@
     <h1 class="page-title">Avalon Streaming Reserves </h1>
   </div>
   <div class="card-body">
+    <div class="alert alert-primary">
+      <strong>NOTICE:</strong> The materials provided in this streaming reserve may be protected by copyright law
+      (Title 17 US Code). You may view a copy of streaming reserve materials for your personal study, research, or
+      education. Reproducing, distributing, modifying and/or making derivative works based on this material for any
+      other purposes may be an infringement of the owner's copyright and subject you to civil and criminal liability
+      as well as potential action by the University.
+    </div>
     <% for media_object, solr_doc in @media_and_metadata %>
       <div class="list-group-item list-group-item-action">
         <h2> <%= link_to media_object.title, "/master_files/" + media_object.master_files.first.id + "/embed" %> </h2>
