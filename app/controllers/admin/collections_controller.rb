@@ -317,7 +317,8 @@ class Admin::CollectionsController < ApplicationController
       csv << ["Item", "External Groups"]
 
       items.each do |item|
-        csv << [item["title_tesi"], item["read_access_virtual_group_ssim"].join("|")]
+        vgroup_display = item["read_access_virtual_group_ssim"].map { |id| Course.find_by_context_id(id).title }
+        csv << [item["title_tesi"], vgroup_display.join("|")]
       end
     end
 
