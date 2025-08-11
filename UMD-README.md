@@ -8,6 +8,7 @@ UMD-generated documentation for Avalon should be placed in the
 * [UMD Customizations](umd_docs/UmdCustomizations.md)
   * [Avalon Permissions](umd_docs/AvalonPermissions.md)
   * [umd-handle Integration](umd_docs/UmdHandleIntegration.md)
+* [Avalon Test Plan](umd_docs/AvalonTestPlan.md)
 
 ## Development Setup
 
