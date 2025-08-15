@@ -678,7 +678,7 @@ describe MediaObjectsController, type: :controller do
 
     # UMD Customization
     it "should display active Access Tokens" do
-      media_object = FactoryBot.create(:media_object)
+      media_object = FactoryBot.create(:published_media_object)
       user = login_user media_object.collection.managers.first
 
       # When no access tokens, count should be zero

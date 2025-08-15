@@ -26,7 +26,7 @@ RSpec.describe AccessToken, type: :model do
     end
   end
 
-  context 'is valid when given an existing media object, an expiration in the future, and' do
+  context 'is valid when given an existing published media object, an expiration in the future, and' do
     it 'an admin user' do
       admin_user = FactoryBot.create(:admin)
       access_token = FactoryBot.create(:access_token, user: admin_user)
@@ -37,7 +37,7 @@ RSpec.describe AccessToken, type: :model do
     it 'a manager of the collection' do
       manager = FactoryBot.create(:manager)
       collection = FactoryBot.create(:collection, :with_manager, manager: manager)
-      media_object = FactoryBot.create(:media_object, collection: collection)
+      media_object = FactoryBot.create(:published_media_object, collection: collection)
       access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: manager)
 
       expect(access_token.valid?).to be true
@@ -46,7 +46,7 @@ RSpec.describe AccessToken, type: :model do
     it 'an editor of the collection' do
       editor = FactoryBot.create(:user) # Any user can be an editor
       collection = FactoryBot.create(:collection, :with_editor, editor: editor)
-      media_object = FactoryBot.create(:media_object, collection: collection)
+      media_object = FactoryBot.create(:published_media_object, collection: collection)
       access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: editor)
 
       expect(access_token.valid?).to be true
@@ -55,7 +55,7 @@ RSpec.describe AccessToken, type: :model do
     it 'a depositor of the collection' do
       depositor = FactoryBot.create(:user) # Any user can be a depositor
       collection = FactoryBot.create(:collection, :with_depositor, depositor: depositor)
-      media_object = FactoryBot.create(:media_object, collection: collection)
+      media_object = FactoryBot.create(:published_media_object, collection: collection)
       access_token = FactoryBot.create(:access_token, media_object_id: media_object.id, user: depositor)
 
       expect(access_token.valid?).to be true
