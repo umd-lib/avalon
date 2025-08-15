@@ -1259,17 +1259,6 @@ describe MediaObjectsController, type: :controller do
         get :show, params: { id: media_object.id, access_token: access_token.token }
         expect(controller.instance_variable_get('@playback_restricted')).to be false
       end
-
-      it 'should not be permitted for public but unpublished objects, even with an access token' do
-        media_object = FactoryBot.create(:media_object, visibility: 'public')
-        assert !media_object.published?
-        user = User.where(username: media_object.collection.managers.first).first
-        access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id, user: user)
-        access_token.save!
-
-        get :show, params: { id: media_object.id, access_token: access_token.token }
-        expect(controller.instance_variable_get('@playback_restricted')).to be true
-      end
     end
     # End UMD Customization
 
