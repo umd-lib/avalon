@@ -2,7 +2,7 @@ require 'rails_helper'
 
 describe CleanupAccessTokenJob do
   before do
-    @media_object = FactoryBot.create(:media_object)
+    @media_object = FactoryBot.create(:published_media_object)
     @unexpired_access_token = FactoryBot.create(:access_token, media_object_id: @media_object.id)
     @expiring_access_token = FactoryBot.create(:access_token, expiration: 30.minutes.from_now, media_object_id: @media_object.id)
     # Access tokens cannot be created as expired, so first create a token, and then set the expiration

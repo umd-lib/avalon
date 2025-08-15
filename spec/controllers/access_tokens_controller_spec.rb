@@ -129,7 +129,7 @@ RSpec.describe AccessTokensController, type: :controller do
 
     it 'when an access token is successfully created, goes to the "show" page for that token' do
       login_as(:administrator)
-      media_object = FactoryBot.create(:media_object)
+      media_object = FactoryBot.create(:published_media_object)
       user = FactoryBot.create(:administrator)
 
       params = { access_token: { media_object_id: media_object.id, expiration: 7.days.from_now, user: user.username,

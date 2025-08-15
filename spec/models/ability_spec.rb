@@ -195,17 +195,6 @@ describe Ability, type: :model do
           expect(ability).to_not be_able_to(:stream, unpublished_media_object)
         end
       end
-
-      it 'is not streamable even if an active access token allowing streaming is provided' do
-        # Access token does not allow streaming because media object is unpublished
-        access_token = FactoryBot.create(:access_token, :allow_streaming)
-        access_token.media_object_id = unpublished_media_object.id
-        access_token.save!
-
-        token = access_token.token
-        ability = Ability.new(nil, { access_token: token })
-        expect(ability).to_not be_able_to(:stream, unpublished_media_object)
-      end
     end
 
     context 'when media object is published' do
