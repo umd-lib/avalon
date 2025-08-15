@@ -298,10 +298,12 @@ class MasterFilesController < ApplicationController
       # if streaming is allowed.
       cannot_stream = true
 
-      access_token = Rack::Utils.parse_nested_query(URI(request.referer).query)["access_token"]
-      if access_token.present?
-        media_object_id = @master_file.media_object.id
-        cannot_stream = !AccessToken.allow_streaming_of?(access_token, media_object_id)
+      unless request.referer.nil?
+        access_token = Rack::Utils.parse_nested_query(URI(request.referer).query)["access_token"]
+        if access_token.present?
+          media_object_id = @master_file.media_object.id
+          cannot_stream = !AccessToken.allow_streaming_of?(access_token, media_object_id)
+        end
       end
 
       return head :unauthorized if cannot?(:read, @master_file) && cannot_stream
