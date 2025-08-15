@@ -19,6 +19,6 @@ Unless required by applicable law or agreed to in writing, software distributed
     urls: { base_url: request.protocol+request.host_with_port, fullpath_url: request.fullpath },
     media_object_id: @master_file.media_object_id,
     is_video: @master_file.is_video?,
-    allow_view_in_repo: user_session[:full_login]
+    allow_view_in_repo: (user_session.nil? || user_session[:full_login])
   }
 ) %>
