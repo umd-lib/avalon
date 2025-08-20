@@ -16,7 +16,9 @@ class Course < ActiveRecord::Base
 #  attr_accessible :context_id, :label, :title
 
   def self.autocomplete(query, _id = nil)
-    self.where("label LIKE :q OR title LIKE :q", q: "%#{query}%").collect { |course|
+    # UMD Customization
+    self.where("LOWER(label) LIKE :q OR LOWER(title) LIKE :q", q: "%#{query.downcase}%").collect { |course|
+    # End UMD Customization
       { id: course.context_id, display: course.title }
     }
   end
