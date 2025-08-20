@@ -1,0 +1,28 @@
+<%= render Blacklight::System::ModalComponent.new do |component| %>
+  <% component.with_prefix do %>
+    <div class="facet-pagination top row justify-content-between">
+      <%= render partial: 'facet_pagination' %>
+    </div>
+  <% end %>
+
+  <% component.with_title { facet_field_label(@facet.key) } %>
+
+  <!-- UMD Customization -->
+  <% if @facet.key == 'course_title_ssim' %>
+    <%= react_component("UMDFacetFilter", { baseUrl: request.original_url, contains: params[:contains] }) %>
+  <% end %>
+  <!-- End UMD Customization -->
+
+
+  <%= render partial: 'facet_index_navigation' if @facet.index_range && @display_facet.index? %>
+
+  <div class="facet-extended-list">
+    <%= render_facet_limit(@display_facet, layout: false) %>
+  </div>
+
+  <% component.with_footer do %>
+    <div class="facet-pagination bottom row justify-content-between">
+      <%= render partial: 'facet_pagination' %>
+    </div>
+  <% end %>
+<% end %>

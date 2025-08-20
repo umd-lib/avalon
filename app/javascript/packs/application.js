@@ -26,6 +26,10 @@
 // console.log('Hello World from Webpacker')
 // Support component names relative to this directory:
 
+// UMD Customization
+import "./facet_filter_react_mount";
+// End UMD Customization
+
 /* 
  * For some reason including the `embeds` directory in this `require.context` breaks
  * the player. Filtering out the directory allows everything to operate as intended.

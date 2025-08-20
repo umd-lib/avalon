@@ -312,6 +312,11 @@ class MediaObject < ActiveFedora::Base
       solr_doc[ActiveFedora.index_field_mapper.solr_name("collection", :symbol, type: :string)] = collection.name if collection.present?
       solr_doc[ActiveFedora.index_field_mapper.solr_name("unit", :symbol, type: :string)] = collection.unit if collection.present?
       solr_doc['read_access_virtual_group_ssim'] = virtual_read_groups + leases('external').map(&:inherited_read_groups).flatten
+      # UMD Customization
+      solr_doc['course_title_ssim'] = virtual_read_groups.filter_map do |group|
+        Course.find_by(context_id: group)&.title
+      end
+      # End UMD Customization
       solr_doc['read_access_ip_group_ssim'] = collect_ips_for_index(ip_read_groups + leases('ip').map(&:inherited_read_groups).flatten)
       solr_doc[Hydra.config.permissions.read.group] ||= []
       solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
