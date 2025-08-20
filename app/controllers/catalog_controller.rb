@@ -99,7 +99,8 @@ class CatalogController < ApplicationController
     config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'read_access_group_ssim', label: 'Access Control', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
+    # Suppress display of External Group facet (the field is still indexed and can be searched)
+    # config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
     config.add_facet_field 'course_title_ssim', label: 'Course Name', limit: 5, if: current_user_is_manager, group:  "workflow", solr_params: { 'facet.contains.ignoreCase' => true }
     config.add_facet_field 'date_digitized_ssim', label: 'Date Digitized', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'date_ingested_ssim', label: 'Date Ingested', limit: 5, if: current_user_is_manager, group: "workflow"
