@@ -74,7 +74,14 @@ class AccessControlStep < Avalon::Workflow::BasicStep
                 context[:error] = e.message
               end
             else
-              media_object.read_groups += [val]
+              # UMD Customization
+              # Validate 'val' to ensure a Course with the given context_id exists
+              if title == 'class' && Course.where(context_id: val).empty?
+                context[:error] = "Course '#{val}' does not exist."
+              else
+                media_object.read_groups += [val]
+              end
+              # End UMD Customization
             end
           end
         else
