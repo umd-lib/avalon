@@ -24,6 +24,9 @@ class CatalogController < ApplicationController
   # These before_actions apply the hydra access controls
   before_action :enforce_show_permissions, only: :show
   before_action :load_home_page_collections, only: :index, if: proc { helpers.current_page? root_path }
+  # UMD Customization
+  before_action :set_facet_contains, only: :facet
+  # End UMD Customization
 
   configure_blacklight do |config|
 
@@ -96,7 +99,9 @@ class CatalogController < ApplicationController
     config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'read_access_group_ssim', label: 'Access Control', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
+    # Suppress display of External Group facet (the field is still indexed and can be searched)
+    # config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
+    config.add_facet_field 'course_title_ssim', label: 'Course Name', limit: 5, if: current_user_is_manager, group:  "workflow", solr_params: { 'facet.contains.ignoreCase' => true }
     config.add_facet_field 'date_digitized_ssim', label: 'Date Digitized', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'date_ingested_ssim', label: 'Date Ingested', limit: 5, if: current_user_is_manager, group: "workflow"
     config.add_facet_field 'has_captions_bsi', label: 'Has Captions', if: current_user_is_manager, group: "workflow", helper_method: :display_has_caption_or_transcript
@@ -221,4 +226,12 @@ class CatalogController < ApplicationController
         @featured_collection = ::Admin::CollectionPresenter.new(collection) if collection
       end
     end
+
+    # UMD Customization
+    def set_facet_contains
+      return unless params[:id] == 'course_title_ssim'
+      blacklight_config.facet_fields[params[:id]].solr_params['facet.contains'] = params[:contains] if params[:contains].present?
+    end
+    # End UMD Customization
+
 end

@@ -96,6 +96,22 @@ Jira links:
 * [Initial implementation - LIBAVALON-168](https://umd-dit.atlassian.net/browse/LIBAVALON-168)
 * [Refactor for Avalon 7.8 - LIBAVALON-403](https://umd-dit.atlassian.net/browse/LIBAVALON-403)
 
+### Course Reserves - Course Name Facet with filtering
+
+The ExternalGroup facet stores the Course `context_id` in the Solr index and
+retrieves the course name from the database at render time. Because of this
+design, filtering by course name using this facet is not possible. To address
+this, a new **Course Name** facet (Solr field: `course_title_ssim`) has been
+introduced, which is based on the Course `title` value. Unlike ExternalGroup, this
+facet excludes token-based VirtualGroups.
+
+Additionally, the UMDFacetFilter React component has been added to the "More"
+Facet dialog to enable case-insensitive substring filtering of facet values.
+
+Jira links:
+
+* <https://umd-dit.atlassian.net/browse/LIBAVALON-438>
+
 ----
 [libavalon197]: https://umd-dit.atlassian.net/browse/LIBAVALON-197
 [libavalon198]: https://umd-dit.atlassian.net/browse/LIBAVALON-198
