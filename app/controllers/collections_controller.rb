@@ -62,22 +62,14 @@ class CollectionsController < CatalogController
   end
 
   def course_reserves
-    @collection = Admin::Collection.find(params['id'])
-    media_objects = @collection.media_objects
-
-    logger.info "Fetching media objects for collection: #{@collection.name}"
-    query = "collection_ssim:\"#{@collection.name}\""
+    course_id = current_user&.uid&.split('@')&.first
+    query = "read_access_virtual_group_ssim:#{course_id} AND has_model_ssim:MediaObject"
     docs = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
 
-    @media_and_metadata = media_objects.map do |media_object|
-      [media_object, docs.find { |doc| doc['id'] == media_object.id }]
-    end
-
-    if params[:course_id].present?
-      docs = docs.select { |doc| contains_course_id?(doc, params[:course_id]) }
-      @media_and_metadata = docs.map do |doc|
-        [media_objects.find(doc['id']), doc]
-      end
+    @media_and_metadata = docs.filter_map do |solr_doc|
+      mo = MediaObject.find(solr_doc['id'])
+      leases = mo.leases.select { |lease| lease.inherited_read_groups.include?(course_id) }
+      [mo, solr_doc] if leases.empty? || leases.any?(&:lease_is_active?)
     end
   end
 
