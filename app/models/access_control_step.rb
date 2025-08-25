@@ -67,22 +67,26 @@ class AccessControlStep < Avalon::Workflow::BasicStep
               context[:error] = "IP Address #{val} is invalid. Valid examples: 124.124.10.10, 124.124.0.0/16, 124.124.0.0/255.255.0.0"
             end
           else
+            # UMD Customization
+            # Validate 'val' to ensure a Course with the given context_id exists
             if create_lease
-              begin
-                media_object.governing_policies += [ Lease.create(begin_time: begin_time, end_time: end_time, inherited_read_groups: [val]) ]
-              rescue Exception => e
-                context[:error] = e.message
+              if title == 'class' && Course.where(context_id: val).empty?
+                context[:error] = "Course '#{val}' does not exist."
+              else
+                begin
+                  media_object.governing_policies += [ Lease.create(begin_time: begin_time, end_time: end_time, inherited_read_groups: [val]) ]
+                rescue Exception => e
+                  context[:error] = e.message
+                end
               end
             else
-              # UMD Customization
-              # Validate 'val' to ensure a Course with the given context_id exists
               if title == 'class' && Course.where(context_id: val).empty?
                 context[:error] = "Course '#{val}' does not exist."
               else
                 media_object.read_groups += [val]
               end
-              # End UMD Customization
             end
+            # End UMD Customization
           end
         else
           context[:error] = "#{title.titleize} can't be blank."
