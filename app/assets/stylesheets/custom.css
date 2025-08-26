@@ -226,6 +226,7 @@ footer {
 }
 .request-special{
   margin: 0 0 1em 0;
+  width: fit-content;
 }
 
 h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets .facets-heading small, h4 .small, .facets .facets-heading .small, h5 small, #documents .document .document-title-heading small, h5 .small, #documents .document .document-title-heading .small, h6 small, h6 .small, .h1 small, .h1 .small, .h2 small, .h2 .small, .h3 small, .h3 .small, .h4 small, .h4 .small, .h5 small, span.constraints-label small, .h5 .small, span.constraints-label .small, .h6 small, .h6 .small {
@@ -363,6 +364,7 @@ h1 small, h1 .small, h2 small, h2 .small, h3 small, h3 .small, h4 small, .facets
 }
 
 .request-and-handle-button {
+  width: 100%;
   background-color: #0000;
   border-color: #e21833;
   color: #e21833;

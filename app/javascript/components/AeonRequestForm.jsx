@@ -17,7 +17,7 @@ const AeonRequestForm = ({ aeonRequest }) => {
       <input type="hidden" name="ReferenceNumber" value={aeonRequest.referenceNumber} />
 
       <button type="submit" className="request-and-handle-button" title="Request from Special Collections">
-        Request from Special Collections
+        REQUEST FROM SPECIAL COLLECTIONS
       </button>
     </form>
   );
