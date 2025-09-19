@@ -122,6 +122,19 @@ This Rails task is intended to be idempotent -- running the task multiple times
 should be safe, as once a file has been moved to the archive, it is no longer
 affected by this task.
 
+### Create S3 Buckets for existing collection
+
+The dropbox folder for a collection is created during the collection creation.
+When switching the Avalon's storage backend from local filesystem to S3, we need
+manually create the folders in the new backend.
+
+To create S3 dropbox folders for all existing collection, the following task
+should be run after configuring Avalon with the S3 backend:
+
+```sh
+rails umd:ensure_collection_s3_bucket
+```
+
 ## Configuration Oddities
 
 ### config/initializers/devise.rb

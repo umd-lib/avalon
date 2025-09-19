@@ -17,6 +17,19 @@ namespace :umd do
       Rails.logger.info("Done move_dropbox_files_to_archive")
     end
   end
+
+  desc "Ensure S3 dropbox folders exist for all collections"
+  task ensure_collection_s3_bucket: :environment do
+    # Ensure Avalon is configured with S3 backend
+    unless Settings.encoding.masterfile_bucket.present?
+      Rails.logger.info("Avalon is NOT configured with S3 backend")
+      return
+    end
+    # For each collection, ensure a S3 Prefix for dropbox path exists
+    Admin::Collection.find_each do |collection|
+      collection.ensure_collection_s3_bucket
+    end
+  end
 end
 
 def move_dropbox_files_to_archive(archive_dir, dry_run=false)

@@ -290,6 +290,19 @@ class Admin::Collection < ActiveFedora::Base
     end
   end
 
+  # UMD Customization
+  def ensure_collection_s3_bucket
+    begin
+      object_key = dropbox_absolute_path.split(Settings.encoding.masterfile_bucket + '/').last + '/'
+      Aws::S3::Client.new.head_object(bucket: Settings.encoding.masterfile_bucket, key: object_key)
+      Rails.logger.info "S3 Prefix already exists for #{name} (#{dropbox_absolute_path}/)"
+    rescue Aws::S3::Errors::NotFound
+      # Prefix does not exist, continue to create it  
+      Rails.logger.info "Creating S3 Prefix for #{name} (#{dropbox_absolute_path}/)"
+      create_s3_dropbox_directory!
+    end
+  end
+
   private
 
     def remove_edit_user(name)
