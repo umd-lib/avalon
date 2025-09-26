@@ -27,6 +27,12 @@ class DerivativesController < ApplicationController
       return head :forbidden
     end
 
+    # If the request header contains 'S3-Presigned-URL', we need to generate a presigned URL
+    if request.headers['X-Want-S3-Presigned-URL'] == 'true'
+      presigned_url = presigned_streaming_url(bucket:  Settings.encoding.derivative_bucket, key: params[:name], expires_in: 300)
+      response.set_header('X-S3-Presigned-URL', presigned_url)
+    end
+
     respond_to do |format|
       format.urlencoded do
         resp[:authorized] = resp[:authorized].join(';')
@@ -45,4 +51,11 @@ class DerivativesController < ApplicationController
   rescue StreamToken::Unauthorized
     return head :forbidden
   end
+
+  private
+
+    def presigned_streaming_url(bucket:, key:, expires_in: 300)
+      object = Aws::S3::Object.new(bucket_name: bucket, key: key)
+      object.presigned_url(:get, expires_in: expires_in)
+    end
 end

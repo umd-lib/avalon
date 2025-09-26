@@ -14,7 +14,9 @@
 
 module UploadFormHelper
   def direct_upload?
-    Settings.encoding.engine_adapter.to_sym == :elastic_transcoder || Settings.minio.present?
+    # UMD Customization
+    Settings.encoding.masterfile_bucket.present? || Settings.minio.present?
+    # END UMD Customization
   end
 
   def upload_form_classes
