@@ -23,6 +23,7 @@ Rails.application.config.to_prepare do
     Sidekiq::Cron::Job.create(name: 'Clean out user sessions older than 7 days - every 6hour', cron: '0 */6 * * *', class: 'CleanupSessionJob')
     # UMD Customization
     Sidekiq::Cron::Job.create(name: 'Clean up access tokens that have past their expiration date - every 1day', cron: '0 1 * * *', class: 'CleanupAccessTokenJob')
+    Sidekiq::Cron::Job.create(name: 'Delete old searches - every 20 minutes', cron: '0,20,40 * * * *', class: 'DeleteOldSearchesJob')
     # End UMD Customization
 rescue Redis::CannotConnectError => e
     Rails.logger.warn "Cannot create sidekiq-cron jobs: #{e.message}"
