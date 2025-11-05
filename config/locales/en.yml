@@ -37,6 +37,8 @@ en:
       streaming_and_download: streaming and download
       streaming_only: streaming
       download_only: download
+  course_reserves:
+    transcript_download: "Download Transcript"
   # End UMD Customization
   media_object:
     empty_share_link: ""

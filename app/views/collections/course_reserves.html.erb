@@ -19,6 +19,20 @@
         <%= link_to image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail", class: 'result-thumbnail block'),
               "/master_files/" + media_object.master_files.first.id + "/embed" %>
 
+        <%# UMD Customization %>
+        <% if media_object.master_files.first.has_transcripts? %>
+          <p>
+            <% transcripts = media_object.master_files.first.supplemental_file_transcripts %>
+            <% transcripts.each_with_index do |transcript_file, index| %>
+              <% language_suffix = " (#{LanguageTerm.find(transcript_file.language).text})" %>
+              <% link_title = I18n.t('course_reserves.transcript_download') + language_suffix %>
+              <%= link_to link_title, "/master_files/" + media_object.master_files.first.id + "/supplemental_files/" + transcript_file.id.to_s %>
+              <% if transcripts.size > (index + 1) %><br/><% end %>
+            <% end %>
+          </p>
+        <% end %>
+        <%# End UMD Customization %>
+
         <ul style="list-style: none; padding: 0; margin: 0;">
           <% (solr_doc['creator_ssim'] || []).each do |creator| %>
             <li><%= creator %></li>
