@@ -107,7 +107,9 @@ Rails.application.routes.draw do
   resources :collections, only: [:index, :show] do
     member do
       get :poster
+      # UMD Customization
       get :course_reserves
+      # End UMD Customization
     end
   end
 
@@ -255,6 +257,17 @@ Rails.application.routes.draw do
 
   # UMD Customization
   resources :access_tokens
+  # End UMD Customization
+
+  # UMD Customization
+  resources :courses do
+    member do
+      post 'impersonate', to: 'courses#impersonate'
+    end
+    collection do
+      post 'stop_impersonating', to: 'courses#stop_impersonating'
+    end
+  end
   # End UMD Customization
 
   scope :persona, as: 'persona' do

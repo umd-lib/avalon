@@ -16,6 +16,12 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% if defined?(true_user) && current_user != true_user %>
   <div class="alert alert-info log-in-out" style="margin-bottom: 0;">
     You (<%= true_user.email %>) are signed in as <%= current_user.email %>
-    <%= link_to "Back to admin", main_app.stop_impersonating_persona_users_path, method: :post %>
+    <%# UMD Customization %>
+    <% if user_session[:full_login] == false %>
+      <%= link_to "Back to orginal login", stop_impersonating_courses_path, method: :post %>
+    <% else %>
+      <%= link_to "Back to admin", main_app.stop_impersonating_persona_users_path, method: :post %>
+    <% end %>
+    <%# End UMD Customization %>
   </div>
 <% end %>

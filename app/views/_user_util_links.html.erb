@@ -65,6 +65,10 @@ Unless required by applicable law or agreed to in writing, software distributed
           <li class="nav-item <%= active_for_controller('access_tokens') %>">
             <%= link_to 'Manage Access Tokens', main_app.access_tokens_path, class: 'nav-link' %></li>
           <% end %>
+          <% if can? :read, Course %>
+          <li class="nav-item <%= active_for_controller('courses') %>">
+            <%= link_to 'View Courses', main_app.courses_path, class: 'nav-link' %></li>
+          <% end %>
           <%# End UMD Customization %>
           <% if can? :read, Admin::Collection %>
           <li class="nav-item <%= active_for_controller('admin/collections') %>">
