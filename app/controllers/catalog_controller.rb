@@ -119,7 +119,10 @@ class CatalogController < ApplicationController
     # solr fields to be displayed in the index (search results) view
     #   The ordering of the field names is the order of the display
     config.add_index_field 'title_tesi', label: 'Title', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
-    config.add_index_field 'date_issued_ssi', label: 'Date', helper_method: :combined_display_date
+    # UMD Customization
+    # This change can removed with 8.x upgrade since 8.x changes effectilvely has similar behavior
+    config.add_index_field 'date_issued_ssi', label: 'Date', helper_method: :combined_display_date, if: Proc.new {|_ctx, _fld_cfg, doc| doc['date_issued_ssi'].present? || doc['date_created_ssi'].present? }
+    # End UMD Customization
     config.add_index_field 'creator_ssim', label: 'Main contributors', helper_method: :contributor_index_display
     config.add_index_field 'abstract_ssi', label: 'Summary', helper_method: :description_index_display
     config.add_index_field 'duration_ssi', label: 'Duration', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
