@@ -17,7 +17,9 @@ class Admin::CollectionsController < ApplicationController
   include Rails::Pagination
 
   before_action :authenticate_user!
-  load_and_authorize_resource except: [:index, :remove, :attach_poster, :remove_poster, :poster]
+  # UMD Customization
+  load_and_authorize_resource except: [:index, :remove, :attach_poster, :remove_poster, :poster, :external_groups]
+  # End UMD Customization
   before_action :load_and_authorize_collections, only: [:index]
   respond_to :html
 
@@ -303,6 +305,7 @@ class Admin::CollectionsController < ApplicationController
   # GET /collections/1/external_groups
   def external_groups
     @collection = Admin::Collection.find(params[:id])
+    authorize!(:read, @collection)
 
     logger.info "Fetching external groups for collection: #{@collection.name}"
     query = "collection_ssim:\"#{@collection.name}\""
