@@ -13,18 +13,17 @@ const UmdRestrictedPlayback = ({ jim_hension_collection = '' }) => {
                     <h3>Playback Restricted</h3>
                     { jim_hension_collection ? (
                     <>
-                        Digital videos from <i>{ jim_hension_collection }</i> are available for viewing only from public computers at these locations:
-                        <ul>
-                        <li><a href="https://www.lib.umd.edu/mspal">Michelle Smith Performing Arts Library</a></li>
-                        <li><a href="https://www.lib.umd.edu/hornbake">Hornbake Library</a></li>
-                        <li><a href="https://www.lib.umd.edu/mckeldin">McKeldin Library</a></li>
-                        </ul>
+                        Digital videos from <i>{ jim_hension_collection }</i> collection at the University of Maryland
+                        are currently accessible by request only and for viewing within specific UMD Libraries branches.
+                        To request a link to view a video, please contact Special Collections in Performing Arts at <a
+                        href="mailto:scpa@umd.edu">scpa@umd.edu</a>.
+                        <br />
+                        <br />
                     </>
                     ) : (
                     <>
                         This content is available for streaming only at the University of Maryland's College Park campus or through a <a
-                        href="https://digital.lib.umd.edu/help_video#vpn">VPN connection</a> with the Tunnel All gateway by choosing the option from Change Gateway dropdown menu. This content may be accessed from public
-                        computers at any of the UMD Libraries on the College Park campus.
+                        href="https://digital.lib.umd.edu/help_video#vpn">VPN connection</a> with the Tunnel All gateway by choosing the option from Change Gateway dropdown menu.
                         <br />
                         <br />
                     </>
