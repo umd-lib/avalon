@@ -330,6 +330,30 @@ describe MasterFilesController do
         get(:download, params: { id: master_file_id})
       end
     end
+
+    context 's3 file' do
+      # Settings.encoding does not have a `masterfile_bucket` method in
+      # the default configuration so we have to use a full double rather
+      # than just stubbing the method in these tests. RSpec also throws
+      # an error when using a double within an `around` block so we 
+      # explicitly use a `before...after` pattern here.
+      before do
+        @encoding_backup = Settings.encoding
+        Settings.encoding = double("encoding", engine_adapter: 'test', masterfile_bucket: 'mybucket')
+      end
+
+      it 'should redirect to a presigned url for AWS' do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
+        get :download, params: { id: master_file.id }
+        expect(response.status).to eq 302
+        expect(response.location).to include('s3.us-stubbed-1.amazonaws.com', 'X-Amz-Algorithm', 'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
+      end
+
+      after do
+        Settings.encoding = @encoding_backup
+      end
+    end
   end
   # UMD Customization
 

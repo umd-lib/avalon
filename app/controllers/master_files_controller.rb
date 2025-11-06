@@ -89,7 +89,12 @@ class MasterFilesController < ApplicationController
       end
 
       begin
-        send_file location
+        case location
+        when /^s3:/
+          redirect_to FileLocator::S3File.new(location).download_url
+        else
+          send_file location, filename: File.basename(location), disposition: 'attachment'
+        end
       rescue ActionController::MissingFile
         redirect_back(fallback_location: root_path, alert: t('master_file.error_file_not_found', location: location))
         return
