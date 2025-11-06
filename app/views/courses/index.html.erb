@@ -16,8 +16,13 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <h1>Courses</h1>
 
-<div>
-  <%= paginate @courses %>
+<div class="d-md-flex justify-content-between" style="margin-bottom: 1em;">
+  <div>
+    <%= paginate @courses %>
+  </div>
+  <div>
+    <%= link_to('Export', export_courses_path(@collection, format: 'csv'), class: 'btn btn-outline') %>
+  </div>
 </div>
 
 <table class="table">
