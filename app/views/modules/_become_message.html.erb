@@ -18,7 +18,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     You (<%= true_user.email %>) are signed in as <%= current_user.email %>
     <%# UMD Customization %>
     <% if user_session[:full_login] == false %>
-      <%= link_to "Back to orginal login", stop_impersonating_courses_path, method: :post %>
+      <%= link_to "Back to original login", stop_impersonating_courses_path, method: :post %>
     <% else %>
       <%= link_to "Back to admin", main_app.stop_impersonating_persona_users_path, method: :post %>
     <% end %>
