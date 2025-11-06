@@ -185,7 +185,7 @@ class User < ActiveRecord::Base
     
     # UMD Customization
     # Creating a dummy email based on the context_id and the streaming hostname (Canvas doesn't provide an email)
-    email = auth_hash.info.email || class_id + '@' + ENV['STREAMING_HOST']
+    email = auth_hash.info.email || class_id + '@' + ENV['SETTINGS__DOMAIN__HOST']
     # Using Avalon course name as the username to be more readable
     find_or_create_by_username_or_email(class_name, email, 'lti')
     # End UMD Customization
