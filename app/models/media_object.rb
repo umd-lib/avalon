@@ -312,7 +312,10 @@ class MediaObject < ActiveFedora::Base
       solr_doc[ActiveFedora.index_field_mapper.solr_name("unit", :symbol, type: :string)] = collection.unit if collection.present?
       solr_doc['read_access_virtual_group_ssim'] = virtual_read_groups + leases('external').map(&:inherited_read_groups).flatten
       # UMD Customization
-      solr_doc['course_title_ssim'] = virtual_read_groups.filter_map do |group|
+      solr_doc['course_title_ssim'] = (
+                virtual_read_groups +
+                leases('external').map(&:inherited_read_groups).flatten
+              ).filter_map do |group|
         Course.find_by(context_id: group)&.title
       end
       # End UMD Customization
