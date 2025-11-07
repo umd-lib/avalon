@@ -13,10 +13,9 @@ const UmdRestrictedPlayback = ({ jim_hension_collection = '' }) => {
                     <h3>Playback Restricted</h3>
                     { jim_hension_collection ? (
                     <>
-                        Digital videos from <i>{ jim_hension_collection }</i> collection at the University of Maryland
-                        are currently accessible by request only and for viewing within specific UMD Libraries branches.
-                        To request a link to view a video, please contact Special Collections in Performing Arts at <a
-                        href="mailto:scpa@umd.edu">scpa@umd.edu</a>.
+                        Digital videos from <i>{ jim_hension_collection }</i> are currently accessible by request only
+                        and for viewing within specific UMD Libraries branches. To request a link to view a video, please
+                        contact Special Collections in Performing Arts at <a href="mailto:scpa@umd.edu">scpa@umd.edu</a>.
                         <br />
                         <br />
                     </>
