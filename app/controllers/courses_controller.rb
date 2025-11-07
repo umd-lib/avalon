@@ -21,6 +21,18 @@ class CoursesController < ApplicationController
     @courses = courses_list
   end
 
+  def export
+    csv_data = CSV.generate(headers: true) do |csv|
+      csv << ["id", "title", "context_id", "created_at"]
+      Course.all.each do |course|
+        csv << [course.id, course.title, course.context_id, course.created_at]
+      end
+    end
+    respond_to do |format|
+      format.csv { send_data csv_data, filename: "courses-#{Time.now.strftime('%Y%m%d_%H%M%S')}.csv" }
+    end
+  end
+
   # Become a user
   def impersonate
     course_context_id = params[:id]

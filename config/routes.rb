@@ -266,6 +266,7 @@ Rails.application.routes.draw do
     end
     collection do
       post 'stop_impersonating', to: 'courses#stop_impersonating'
+      get 'export', to: 'courses#export', defaults: { format: 'csv' }
     end
   end
   # End UMD Customization
