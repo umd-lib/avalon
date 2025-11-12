@@ -309,10 +309,8 @@ class Admin::CollectionsController < ApplicationController
 
     logger.info "Fetching external groups for collection: #{@collection.name}"
     query = "collection_ssim:\"#{@collection.name}\""
-    response = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
+    items = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
     logger.info response
-
-    items = response.select { |item| item["read_access_virtual_group_ssim"] !=  nil }
 
     require 'csv'
 
@@ -320,7 +318,7 @@ class Admin::CollectionsController < ApplicationController
       csv << ["Item", "External Groups"]
 
       items.each do |item|
-        vgroup_display = item["read_access_virtual_group_ssim"].map { |id| Course.find_by_context_id(id).title }
+        vgroup_display = item["read_access_virtual_group_ssim"]&.map { |id| Course.find_by_context_id(id).title } || []
         csv << [item["title_tesi"], vgroup_display.join("|")]
       end
     end
