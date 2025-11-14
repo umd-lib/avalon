@@ -309,8 +309,11 @@ class Admin::CollectionsController < ApplicationController
 
     logger.info "Fetching external groups for collection: #{@collection.name}"
     query = "collection_ssim:\"#{@collection.name}\""
-    items = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
-    logger.info response
+    # Solr does not return all results by default; need to set rows to total found
+    meta_response = ActiveFedora::SolrService.get(query, rows: 0)
+    total_items = meta_response['response']['numFound'] || 0
+    query_params = { rows: total_items, fl: "id,title_tesi,read_access_virtual_group_ssim"}
+    items = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
     require 'csv'
 
