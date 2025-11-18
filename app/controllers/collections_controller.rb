@@ -61,10 +61,12 @@ class CollectionsController < CatalogController
     end
   end
 
+  # UMD Customization
   def course_reserves
     course_id = current_user&.uid&.split('@')&.first
     query = "read_access_virtual_group_ssim:#{course_id} AND has_model_ssim:MediaObject"
-    docs = ActiveFedora::SolrService.get(query)['response']['docs'] ||= []
+    query_params = { fq: "workflow_published_sim:Published" }
+    docs = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
     @media_and_metadata = docs.filter_map do |solr_doc|
       mo = MediaObject.find(solr_doc['id'])
@@ -80,4 +82,5 @@ class CollectionsController < CatalogController
 
     return document['read_access_group_ssim'].include?(id)
   end
+  # End UMD Customization
 end
