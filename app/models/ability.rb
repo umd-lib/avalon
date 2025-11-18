@@ -374,8 +374,8 @@ class Ability
 
   def is_course_reserves_manager?
     course_reserves_collection = Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
-    Rails.logger.debug "Course Reserves Collection: #{course_reserves_collection.managers.inspect} for user #{@user.username}"
-    @user.in?(course_reserves_collection.managers)
+    Rails.logger.debug "Checking Course Reserves Collection: #{course_reserves_collection&.managers&.inspect} for user #{@user.username}"
+    @user.in?(course_reserves_collection&.managers || [])
   end
   # End UMD Customization
 

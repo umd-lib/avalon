@@ -40,33 +40,42 @@ module Avalon
       @construct_download_path ||= lambda do |derivative|
         url = derivative.hls_url
         http_base = Settings.streaming.http_base
+        # UMD Customization
+        # Filesystem based stream URLs have /avalon and S3 based stream URLs have /s3-avalon
+        # We need to account for both possibilities when extracting the location from the URL
+        # as we are operation in hybrid environment where some derivatives are still on local
+        # filesystem and new derivatives go to S3
+        old_http_base = http_base.gsub("/s3-avalon", "/avalon")
 
         # `Settings.streaming.server` returns symbols in testing environment
         # but strings in dev/prod. Explicitly call to_sym for consistency.
         location = case Settings.streaming.server.to_sym
                    # HLS Url templates can be found in config/url_handlers.yml
                    when :generic, :adobe
-                     url.gsub(/(?:#{Regexp.escape(http_base)}\/)(?:audio-only\/)?(.*)(?:\.m3u8)/, '\1')
+                     url.gsub(/(?:#{Regexp.escape(http_base)}|#{Regexp.escape(old_http_base)}\/)(?:audio-only\/)?(.*)(?:\.m3u8)/, '\1')
                    when :nginx
-                     url.gsub(/(?:#{Regexp.escape(Settings.streaming.http_base)}\/)(.*)(?:\/index\.m3u8)/, '\1')
+                     url.gsub(/(?:#{Regexp.escape(http_base)}|#{Regexp.escape(old_http_base)}\/)(.*)(?:\/index\.m3u8)/, '\1')
                    when :wowza
                      # Wowza HLS urls include the extension between the base and relative path.
                      # "http_base/extension:path/filename.extension/playlist.m3u8"
                      # (?:.*?:) is a non-capturing group that will non-greedily match
                      # any character until the first colon. This removes the extension from
                      # the middle of the path.
-                     url.gsub(/(?:#{Regexp.escape(Settings.streaming.http_base)}\/)(?:.*?:)(.*)(?:\/playlist.m3u8)/, '\1')
+                     url.gsub(/(?:#{Regexp.escape(http_base)}|#{Regexp.escape(old_http_base)}\/)(?:.*?:)(.*)(?:\/playlist.m3u8)/, '\1')
                    end
 
         # Derivative files that have been moved from their original location/server should have been moved into
         # the new root path for derivatives/encodings. Combining the subpath from the existing record with the 
         # derivative path defined in our environment variables, we should be able to retrieve the derivative files, 
         # regardless of how many times they have been rehomed.
-        if Settings.encoding.derivative_bucket
+        # Check if http_base string contains "/s3-avalon"
+        # Since we are in a hybrid environment, we cannot rely on bucket configurationpresence to determine S3 vs local
+        if url.include?("/s3-avalon")
           File.join('s3://', Settings.encoding.derivative_bucket, location)
         else
-          File.join(ENV["ENCODE_WORK_DIR"], location).to_s
+          File.join(ENV["LOCAL_DERIVATIVES_DIR"], location).to_s
         end
+        # End UMD Customization
       end
     end
 
