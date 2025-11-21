@@ -157,8 +157,6 @@ class Ability
       can :list_all, AccessToken if is_administrator?
 
       can :manage, AccessToken if (is_member_of_any_collection? or @user_groups.include? 'manager')
-
-      can :read, Course if is_course_reserves_manager?
       # End UMD Customization
 
       cannot :read, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection] unless (full_login? || is_api_request?)
@@ -373,9 +371,13 @@ class Ability
   end
 
   def is_course_reserves_manager?
-    course_reserves_collection = Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
+    course_reserves_collection = self.class.course_reserves_collection
     Rails.logger.debug "Checking Course Reserves Collection: #{course_reserves_collection&.managers&.inspect} for user #{@user.username}"
     @user.in?(course_reserves_collection&.managers || [])
+  end
+
+  def self.course_reserves_collection
+    @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
   end
   # End UMD Customization
 

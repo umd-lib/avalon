@@ -57,7 +57,7 @@ class CoursesController < ApplicationController
   private
 
     def auth
-      authorize! :read, Course
+      current_ability.is_course_reserves_manager?
     end
 
     def auth_admin
