@@ -298,6 +298,10 @@ module Avalon
         # Create SupplementalFile
         supplemental_file = SupplementalFile.new(label: label, tags: [type, treat_as_transcript, machine_generated].uniq.compact, language: language, parent_id: parent_id)
         supplemental_file.file.attach(io: FileLocator.new(datastream[file_key]).reader, filename: filename)
+        # UMD Customization (This can be removed after v8.1.1 upgrade)
+        extension = File.extname(datastream[file_key])
+        supplemental_file.file.content_type = Mime::Type.lookup_by_extension(extension.slice(1..-1)).to_s if extension == '.srt'
+        # End UMD Customization
         supplemental_file.save ? supplemental_file : nil
       end
       private_class_method :process_datastream
