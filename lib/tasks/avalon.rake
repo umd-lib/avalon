@@ -54,8 +54,13 @@ namespace :avalon do
 
   desc 'clean out old ffmpeg and pass_through encode files'
   task local_encode_cleanup: :environment do
+    # UMD Customization
+    older_than_raw = ENV['older_than'] || "2.weeks"
+    older_than = parse_duration(older_than_raw)
+
     options = {
-      older_than: ENV['older_than'], # Default is 2.weeks
+      older_than: older_than, # Default is 2.weeks
+      # End UMD Customization
       no_outputs: ENV['no_outputs']&.to_a, # Default is ['input_metadata', 'duration_input_metadata', 'error.log', 'exit_status.code', 'progress', 'completed', 'pid', 'output_metadata-*']
       outputs: ENV['outputs'], # Default is false
       all: ENV['all'] # Default is false
@@ -63,6 +68,19 @@ namespace :avalon do
 
     ActiveEncode::EngineAdapters::FfmpegAdapter.remove_old_files!(options)
   end
+
+  # UMD Customization
+  def parse_duration(str)
+    unless str =~ /\A(\d+)\.(days?|weeks?|hours?|minutes?|seconds?)\z/
+      raise ArgumentError, "Invalid format: #{str.inspect}"
+    end
+
+    amount = $1.to_i
+    unit   = $2
+
+    amount.public_send(unit)
+  end
+  # End UMD Customization
 
   namespace :services do
     services = ["jetty", "felix", "delayed_job"]
