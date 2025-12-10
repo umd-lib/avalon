@@ -14,7 +14,9 @@
 
 class WatchedEncode < ActiveEncode::Base
   include ::ActiveEncode::Persistence
-  include ::ActiveEncode::Polling
+  # UMD Customization
+  include ::CustomPolling
+  # End UMD Customization
 
   around_create do |encode, block|
     master_file_id = encode.options[:master_file_id]
