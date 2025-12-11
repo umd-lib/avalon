@@ -16,28 +16,32 @@
 
 #!/bin/bash
 
-SIDEKIQ_PID=""
-
-# Trap signals and forward them
-trap 'handle_tstp' USR1
-
-forward_signal() {
-  echo "Received SIGUSR1, forwarding to Sidekiq..." >&2
+forward_term() {
+  echo "Received SIGTERM, forwarding to Sidekiq..." >&2
   # Find the actual sidekiq process
-  SIDEKIQ_PID=$(pgrep -f "sidekiq.*config/sidekiq.yml")
+  SIDEKIQ_PID=$(pgrep -f "sidekiq")
   if [ -n "$SIDEKIQ_PID" ]; then
     echo "Forwarding to PID: $SIDEKIQ_PID" >&2
-    kill -USR1 "$SIDEKIQ_PID"
+    kill -TERM "$SIDEKIQ_PID"
   else
     echo "Sidekiq process not found" >&2
   fi
 }
 
-trap 'forward_signal' USR1
+# Trap TERM signal
+trap 'forward_term' TERM
 
 # Start periodic script
 /home/app/avalon/script/worker_rake_tasks.sh &
 
 # Start Sidekiq
 echo "Starting Sidekiq..."
-exec bundle exec sidekiq -t "${SIDEKIQ_TERMINATION_GRACE_PERIOD:-1800}" -C config/sidekiq.yml
+bundle exec sidekiq -t "${SIDEKIQ_TERMINATION_GRACE_PERIOD:-1800}" -C config/sidekiq.yml &
+
+# Wait for Sidekiq to exit
+wait $(pgrep -f "sidekiq")
+
+# Allow rake tasks to run one last time before exiting
+echo "Sidekiq exiting, waiting for rake tasks polling interval + 60 seconds to ensure progress update"
+sleep $(( ${POLLING_INTERVAL:-60} + 60 ))
+echo "Worker exiting."
