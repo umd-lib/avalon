@@ -30,6 +30,41 @@ namespace :umd do
       collection.ensure_collection_s3_bucket
     end
   end
+
+  desc "Process running encodes on distributed workers"
+  task process_running_encodes: :environment do
+    # Find encode records in 'running' state within the 24 hours
+    encodes = ActiveEncode::EncodeRecord.where(state: 'running').where('updated_at >= ?', 24.hours.ago)
+
+    # For each running encode, process it if the encode dir exists in the current worker
+    processed_encodes = encodes.filter_map do |encode_record|
+      global_id = encode_record.global_id
+      uuid = global_id.split('/').last
+      encode_dir = File.join(ENV['ENCODE_WORK_DIR'], uuid)
+      if Dir.exist?(encode_dir)
+        encode = FfmpegEncode.find(uuid)
+        process_encode(encode)
+        encode
+      end
+    end
+    Rails.logger.info("Processed #{processed_encodes.count} running encodes on this worker.")
+  end
+end
+
+def process_encode(encode)
+  encode.run_callbacks(:status_update) { encode }
+  case encode.state
+  when :failed
+    encode.run_callbacks(:failed) { encode }
+  when :cancelled
+    encode.run_callbacks(:cancelled) { encode }
+  when :completed
+    encode.run_callbacks(:completed) { encode }
+  when :running
+    # no-op
+  else # other states are illegal and ignored
+    raise StandardError, "Illegal state #{encode.state} in encode #{encode.id}!"
+  end
 end
 
 def move_dropbox_files_to_archive(archive_dir, dry_run=false)
