@@ -15,18 +15,29 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 #!/bin/bash
-set -e
+
+SIDEKIQ_PID=""
+
+# Trap signals and forward them
+trap 'handle_tstp' USR1
+
+forward_signal() {
+  echo "Received SIGUSR1, forwarding to Sidekiq..." >&2
+  # Find the actual sidekiq process
+  SIDEKIQ_PID=$(pgrep -f "sidekiq.*config/sidekiq.yml")
+  if [ -n "$SIDEKIQ_PID" ]; then
+    echo "Forwarding to PID: $SIDEKIQ_PID" >&2
+    kill -USR1 "$SIDEKIQ_PID"
+  else
+    echo "Sidekiq process not found" >&2
+  fi
+}
+
+trap 'forward_signal' USR1
 
 # Start periodic script
 /home/app/avalon/script/worker_rake_tasks.sh &
 
 # Start Sidekiq
 echo "Starting Sidekiq..."
-
-bundle exec sidekiq -t "${SIDEKIQ_TERMINATION_GRACE_PERIOD:-1800}" -C config/sidekiq.yml &
-
-# Wait for either process to exit
-wait -n
-
-# Exit with status of the first process that exits
-exit $?
+exec bundle exec sidekiq -t "${SIDEKIQ_TERMINATION_GRACE_PERIOD:-1800}" -C config/sidekiq.yml
