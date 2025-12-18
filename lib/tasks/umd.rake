@@ -31,11 +31,36 @@ namespace :umd do
     end
   end
 
+  desc "Cancel and requeue active encode jobs"
+  task cancel_and_requeue_active_encode_jobs: :environment do
+    encodes = ActiveEncode::EncodeRecord.where(state: 'running').where('updated_at >= ?', 24.hours.ago)
+
+    cancelled_count = 0
+    encodes.each do |encode_record|
+      global_id = encode_record.global_id
+      uuid = global_id.split('/').last
+      encode_dir = File.join(ENV['ENCODE_WORK_DIR'], uuid)
+      if Dir.exist?(encode_dir)
+        master_file = MasterFile.find(encode_record.master_file_id)
+        workflow_id = master_file&.workflow_id
+        # Cancel the running encode job
+        ActiveEncodeJobs::CancelEncodeJob.perform_now(workflow_id, master_file.id) if workflow_id.present? && !master_file.finished_processing?
+        cancelled_count += 1
+        # Requeue the master file for processing
+        master_file.workflow_id = nil
+        master_file.save
+        master_file.process
+      end
+    end
+    Rails.logger.info("Cancelled and requeued #{cancelled_count} of running encodes on this worker.")
+  end
+
   desc "Process running encodes on distributed workers"
   task process_running_encodes: :environment do
     # Find encode records in 'running' state within the 24 hours
     encodes = ActiveEncode::EncodeRecord.where(state: 'running').where('updated_at >= ?', 24.hours.ago)
 
+    state_change_counts = Hash.new
     # For each running encode, process it if the encode dir exists in the current worker
     processed_encodes = encodes.filter_map do |encode_record|
       global_id = encode_record.global_id
@@ -44,10 +69,18 @@ namespace :umd do
       if Dir.exist?(encode_dir)
         encode = FfmpegEncode.find(uuid)
         process_encode(encode)
+        if encode.state.to_s != "running"
+          state_change_counts[encode.state.to_s]   ||= 0
+          state_change_counts[encode.state.to_s]   += 1
+          Rails.logger.info("Encode #{encode.id} changed state to #{encode.state} on this worker.")
+        end
         encode
       end
     end
     Rails.logger.info("Processed #{processed_encodes.count} running encodes on this worker.")
+    state_change_counts.each do |state, count|
+      Rails.logger.info(" - #{count} encodes changed to state #{state}.")
+    end
   end
 end
 

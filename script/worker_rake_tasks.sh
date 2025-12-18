@@ -27,8 +27,18 @@ while true; do
   cd /home/app/avalon || exit 2
   echo "[periodic] Processing running encodes..."
   bundle exec rake umd:process_running_encodes
+
+  # Cancel and requeue active encode jobs and exit, if sidekiq is not running
+  if ! pgrep -f "sidekiq" > /dev/null; then
+    echo "[periodic] Sidekiq not running, cancelling active encode jobs..."
+    bundle exec rake umd:cancel_and_requeue_active_encode_jobs
+    echo "[periodic] Exiting worker rake tasks script."
+    exit 0
+  fi
+
   echo "[periodic] Cleaning up local encode files older than ${older_than}..."
   bundle exec rake avalon:local_encode_cleanup
+
   echo "[periodic] Worker rake tasks completed at $(date). Sleeping for ${POLLING_INTERVAL} seconds."
   sleep "${POLLING_INTERVAL}"
 done
