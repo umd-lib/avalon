@@ -10,7 +10,7 @@ Bundler.require(*Rails.groups)
 
 module Avalon
   # UMD Customization
-  VERSION = '7.8.0-umd-2'
+  VERSION = '7.8.0-umd-2.1'
   # End UMD Customization
 
   class Application < Rails::Application
