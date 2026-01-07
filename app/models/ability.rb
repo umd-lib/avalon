@@ -379,6 +379,10 @@ class Ability
   def self.course_reserves_collection
     @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
   end
+
+  def self.clear_course_reserves_collection_cache
+    @course_reserves_collection = nil
+  end
   # End UMD Customization
 
   def is_editor_of?(collection)
