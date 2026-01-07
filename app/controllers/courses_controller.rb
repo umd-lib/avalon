@@ -15,7 +15,6 @@
 class CoursesController < ApplicationController
   before_action :authenticate_user!
   before_action :auth, except: [:stop_impersonating]
-  before_action :auth_admin, only: [:impersonate]
 
   def index
     @courses = courses_list
@@ -58,10 +57,6 @@ class CoursesController < ApplicationController
 
     def auth
       current_ability.is_course_reserves_manager? || current_ability.is_administrator?
-    end
-
-    def auth_admin
-      current_ability.is_administrator?
     end
 
     def courses_list
