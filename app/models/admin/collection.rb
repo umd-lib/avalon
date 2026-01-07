@@ -233,7 +233,7 @@ class Admin::Collection < ActiveFedora::Base
   end
 
    # UMD Customization
-  def is_content_reserves?
+  def is_course_reserves?
     self.unit == Settings.streaming_reserves.unit_name
   end
 
