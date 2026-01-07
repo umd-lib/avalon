@@ -65,7 +65,9 @@ class CollectionsController < CatalogController
   def course_reserves
     course_id = current_user&.uid&.split('@')&.first
     query = "read_access_virtual_group_ssim:#{course_id} AND has_model_ssim:MediaObject"
-    query_params = { fq: "workflow_published_sim:Published" }
+    meta_response = ActiveFedora::SolrService.get(query, rows: 0)
+    total_items = meta_response['response']['numFound'] || 0
+    query_params = { fq: "workflow_published_sim:Published", sort: "title_ssort asc", rows: total_items }
     docs = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
     @media_and_metadata = docs.filter_map do |solr_doc|
