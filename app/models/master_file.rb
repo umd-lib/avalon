@@ -175,6 +175,9 @@ class MasterFile < ActiveFedora::Base
   after_transcoding :update_stills_from_offset!
 
   after_processing :post_processing_file_management
+  # UMD Customization
+  after_destroy :delete_master_file, if: :is_master_file_archived?
+  # End UMD Customization
 
   # Make sure that the uploaded file does not exceed the limits of the system
   MAXIMUM_UPLOAD_SIZE = Settings.max_upload_size
@@ -829,4 +832,14 @@ class MasterFile < ActiveFedora::Base
       # Do nothing
     end
   end
+
+  # UMD Customization
+  def is_master_file_archived?
+    file_location.present? && file_location.start_with?(Settings.master_file_management.path)
+  end
+
+  def delete_master_file
+    MasterFileManagementJobs::Delete.perform_later self.id
+  end
+  # End UMD Customization
 end
