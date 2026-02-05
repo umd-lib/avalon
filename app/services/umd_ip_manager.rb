@@ -25,12 +25,16 @@ class UmdIpManager
       @connection = Faraday.new(ENV['IP_MANAGER_SERVER_URL']) do |connection|
         connection.response :json
         connection.adapter :net_http
+        # Timeout for both connection establishment and request completion
+        # Can be configured via IP_MANAGER_TIMEOUT env var (default: 5 seconds)
+        connection.options.timeout = ENV['IP_MANAGER_TIMEOUT']&.to_i || 5
+        connection.options.open_timeout = ENV['IP_MANAGER_TIMEOUT']&.to_i || 5
       end
     end
 
     # Returns an array of UmdIpManager::Group, or raises an exception
     def all_groups
-      response = @connection.get('/groups')
+      response = @connection.get('/groups/')
       raise APIError, 'unable to retrieve list of groups from IPManager' unless response.success?
 
       response.body['groups'].map do |group|
