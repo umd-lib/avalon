@@ -82,6 +82,50 @@ namespace :umd do
       Rails.logger.info(" - #{count} encodes changed to state #{state}.")
     end
   end
+
+  desc "List orphaned archived master files in S3."
+  task list_orphaned_archived_master_files: :environment do
+    orphaned_files, bucket_name = get_orphaned_master_files
+    if orphaned_files.empty?
+      Rails.logger.info("No orphaned archived master files found in S3.")
+    else
+      Rails.logger.info("Orphaned archived master files in S3:")
+      orphaned_files.each do |file_key|
+        Rails.logger.info(" - s3://#{bucket_name}/#{file_key}")
+      end
+      Rails.logger.info("Total orphaned files: #{orphaned_files.count}")
+    end
+  end
+
+  desc "Delete orphaned archived master files in S3."
+  task delete_orphaned_archived_master_files: :environment do
+    orphaned_files, bucket_name = get_orphaned_master_files
+    if orphaned_files.empty?
+      Rails.logger.info("No orphaned archived master files found in S3.")
+    else
+      Rails.logger.info("Found #{orphaned_files.count} orphaned archived master files from S3:")
+      Rails.logger.info("You can list them using the rake task 'umd:list_orphaned_archived_master_files'.")
+
+      # Get user confirmation before proceeding
+      puts "\nAre you sure you want to delete #{orphaned_files.count} orphaned archived master files from S3? (yes/no)"
+      confirmation = STDIN.gets.chomp
+      unless confirmation.downcase == 'yes'
+        Rails.logger.info("Deletion of orphaned archived master files cancelled by user.")
+        next
+      end
+
+      s3_client = Aws::S3::Client.new
+      Rails.logger.info("Deleting #{orphaned_files.count} orphaned archived master files from S3:")
+      orphaned_files.each do |file_key|
+        begin
+          s3_client.delete_object(bucket: bucket_name, key: file_key)
+          Rails.logger.info(" - Deleted s3://#{bucket_name}/#{file_key}")
+        rescue => e
+          Rails.logger.error(" - Failed to delete s3://#{bucket_name}/#{file_key}, reason: #{e.message}")
+        end
+      end
+    end
+  end
 end
 
 def process_encode(encode)
@@ -176,5 +220,50 @@ def move_dropbox_files_to_archive(archive_dir, dry_run=false)
       end
     end
   end
+end
+
+def get_orphaned_master_files
+  # Get all archived master files in S3
+  s3_base_path = Settings.master_file_management.path
+  s3_client = Aws::S3::Client.new
+  s3_resource = Aws::S3::Resource.new(client: s3_client)
+  bucket_name = Settings.encoding.masterfile_bucket
+  bucket = s3_resource.bucket(bucket_name)
+  prefix = Addressable::URI.parse(s3_base_path).path.sub(%r{^/}, '')
+  
+  # Build a Set of master file archived paths for O(1) lookup
+  # Query Solr directly to avoid loading ActiveFedora objects (much faster and more memory efficient)
+  master_file_archived_paths = Set.new
+  
+  # Query Solr in batches to get all master files with file_location containing the archive path
+  start = 0
+  batch_size = 5000
+  loop do
+    # Query for MasterFiles with file_location starting with the s3 archive path
+    # file_location_ssi is a stored, sortable string field in Solr
+    query = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/#{bucket_name}\\/#{prefix.gsub('/', '\\/')}*"
+    response = ActiveFedora::SolrService.get(query, fl: 'file_location_ssi', rows: batch_size, start: start)
+    docs = response['response']['docs']
+    
+    break if docs.empty?
+    
+    docs.each do |doc|
+      next unless doc['file_location_ssi'].present?
+      # Extract the S3 key from the full S3 URI (e.g., "s3://bucket/path/file.mp4" -> "path/file.mp4")
+      uri = Addressable::URI.parse(doc['file_location_ssi'])
+      path = uri.path.sub(%r{^/}, '')
+      master_file_archived_paths.add(path)
+    end
+    
+    start += batch_size
+  end
+
+  # Stream through S3 objects and identify orphaned files without loading all into memory
+  orphaned_files = []
+  bucket.objects(prefix: prefix).each do |obj|
+    orphaned_files << obj.key unless master_file_archived_paths.include?(obj.key)
+  end
+  
+  [orphaned_files, bucket_name]
 end
 
