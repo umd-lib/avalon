@@ -83,8 +83,8 @@ class Admin::Collection < ActiveFedora::Base
   before_destroy :destroy_dropbox_directory!
 
   # UMD Customization
-  after_save :Ability.clear_course_reserves_collection_cache, if: :is_course_reserves?
-  after_destroy :Ability.clear_course_reserves_collection_cache, if: :is_course_reserves?
+  after_save(if: :is_course_reserves?) { Ability.clear_course_reserves_collection_cache }
+  after_destroy(if: :is_course_reserves?) { Ability.clear_course_reserves_collection_cache }
   # End UMD Customization
 
   def self.units
