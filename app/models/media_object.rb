@@ -186,6 +186,9 @@ class MediaObject < ActiveFedora::Base
     # attempt to stop the matterhorn processing job
     self.sections.each(&:stop_processing!)
     # avoid calling destroy on each section since it calls save on parent media object
+    # UMD Customization
+    self.sections.each(&:delete_archived_master_file)
+    # End UMD Customization
     self.sections.each(&:delete)
     Bookmark.where(document_id: self.id).destroy_all
     super

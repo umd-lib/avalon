@@ -164,6 +164,9 @@ class MasterFile < ActiveFedora::Base
   after_save :update_stills_from_offset!, if: Proc.new { |mf| mf.previous_changes.include?("poster_offset") || mf.previous_changes.include?("thumbnail_offset") }
   before_destroy :stop_processing!
   before_destroy :update_parent!
+  # UMD Customization
+  before_destroy :delete_archived_master_file, if: :is_master_file_archived?
+  # End UMD Customization
   define_hooks :after_transcoding, :after_processing
   after_update_index { |mf| mf.media_object&.enqueue_long_indexing }
 
@@ -175,9 +178,6 @@ class MasterFile < ActiveFedora::Base
   after_transcoding :update_stills_from_offset!
 
   after_processing :post_processing_file_management
-  # UMD Customization
-  after_destroy :delete_master_file, if: :is_master_file_archived?
-  # End UMD Customization
 
   # Make sure that the uploaded file does not exceed the limits of the system
   MAXIMUM_UPLOAD_SIZE = Settings.max_upload_size
@@ -578,6 +578,16 @@ class MasterFile < ActiveFedora::Base
     ActiveEncodeJobs::CancelEncodeJob.perform_later(workflow_id, id) if workflow_id.present? && !finished_processing?
   end
 
+  # UMD Customization
+  def is_master_file_archived?
+    file_location.present? && file_location.start_with?(Settings.master_file_management.path)
+  end
+
+  def delete_archived_master_file
+    MasterFileManagementJobs::Delete.perform_now self.id
+  end
+  # End UMD Customization
+
   protected
 
   def mediainfo
@@ -832,14 +842,4 @@ class MasterFile < ActiveFedora::Base
       # Do nothing
     end
   end
-
-  # UMD Customization
-  def is_master_file_archived?
-    file_location.present? && file_location.start_with?(Settings.master_file_management.path)
-  end
-
-  def delete_master_file
-    MasterFileManagementJobs::Delete.perform_later self.id
-  end
-  # End UMD Customization
 end
