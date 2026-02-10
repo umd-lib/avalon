@@ -165,7 +165,7 @@ class MasterFile < ActiveFedora::Base
   before_destroy :stop_processing!
   before_destroy :update_parent!
   # UMD Customization
-  before_destroy :delete_archived_master_file, if: :is_master_file_archived?
+  before_destroy :delete_archived_master_file
   # End UMD Customization
   define_hooks :after_transcoding, :after_processing
   after_update_index { |mf| mf.media_object&.enqueue_long_indexing }
@@ -584,7 +584,7 @@ class MasterFile < ActiveFedora::Base
   end
 
   def delete_archived_master_file
-    MasterFileManagementJobs::Delete.perform_now self.id
+    is_master_file_archived? && MasterFileManagementJobs::Delete.perform_now(self.id)
   end
   # End UMD Customization
 
