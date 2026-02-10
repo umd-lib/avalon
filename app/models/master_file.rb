@@ -164,6 +164,9 @@ class MasterFile < ActiveFedora::Base
   after_save :update_stills_from_offset!, if: Proc.new { |mf| mf.previous_changes.include?("poster_offset") || mf.previous_changes.include?("thumbnail_offset") }
   before_destroy :stop_processing!
   before_destroy :update_parent!
+  # UMD Customization
+  before_destroy :delete_archived_master_file
+  # End UMD Customization
   define_hooks :after_transcoding, :after_processing
   after_update_index { |mf| mf.media_object&.enqueue_long_indexing }
 
@@ -574,6 +577,16 @@ class MasterFile < ActiveFedora::Base
     # Stops all processing
     ActiveEncodeJobs::CancelEncodeJob.perform_later(workflow_id, id) if workflow_id.present? && !finished_processing?
   end
+
+  # UMD Customization
+  def is_master_file_archived?
+    file_location.present? && file_location.start_with?(Settings.master_file_management.path)
+  end
+
+  def delete_archived_master_file
+    is_master_file_archived? && MasterFileManagementJobs::Delete.perform_now(self.id)
+  end
+  # End UMD Customization
 
   protected
 
