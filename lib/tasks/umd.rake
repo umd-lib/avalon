@@ -118,6 +118,12 @@ namespace :umd do
       Rails.logger.info("Deleting #{orphaned_files.count} orphaned archived master files from S3:")
       orphaned_files.each do |file_key|
         begin
+          # Confirm master file does not exist before deletion
+          mf_id = File.basename(file_key).split('-').first
+          if MasterFile.exists?(mf_id)
+            Rails.logger.warn(" - Skipping deletion of s3://#{bucket_name}/#{file_key} because MasterFile #{mf_id} exists.")
+            next
+          end
           s3_client.delete_object(bucket: bucket_name, key: file_key)
           Rails.logger.info(" - Deleted s3://#{bucket_name}/#{file_key}")
         rescue => e
