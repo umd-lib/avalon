@@ -668,4 +668,101 @@ describe Admin::Collection do
       end
     end
   end
+
+  # UMD Customization
+  describe '#is_course_reserves?' do
+    let(:course_reserves_collection) do
+      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+    end
+    let(:regular_collection) do
+      FactoryBot.create(:collection, unit: 'Default Unit')
+    end
+
+    it 'returns true for course reserves collections' do
+      expect(course_reserves_collection.is_course_reserves?).to be true
+    end
+
+    it 'returns false for non-course reserves collections' do
+      expect(regular_collection.is_course_reserves?).to be false
+    end
+  end
+
+  describe 'course reserves collection cache clearing' do
+    let(:course_reserves_collection) do
+      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+    end
+
+    context 'after_save callback' do
+      it 'clears the cache when a course reserves collection is saved' do
+        # Allow during setup, then expect during the actual save
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        course_reserves_collection # Create the collection (triggers callback)
+        
+        # Populate the cache
+        Ability.course_reserves_collection
+        
+        # Now expect the callback on the update
+        expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        course_reserves_collection.name = 'Updated Name'
+        course_reserves_collection.save!
+      end
+
+      it 'does not clear the cache when a non-course reserves collection is saved' do
+        # Non-course reserves collections should not trigger the callback at all
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
+        
+        expect(Ability).not_to receive(:clear_course_reserves_collection_cache)
+        regular_collection.name = 'Updated Name'
+        regular_collection.save!
+      end
+
+      it 'clears the cache when unit changes to streaming reserves' do
+        # Allow during initial creation
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
+        
+        # Expect when changing to course reserves unit
+        expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        regular_collection.unit = Settings.streaming_reserves.unit_name
+        regular_collection.save!
+      end
+    end
+
+    context 'after_destroy callback' do
+      it 'clears the cache when a course reserves collection is destroyed' do
+        # Allow during setup
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        course_reserves_collection # Create the collection
+        
+        # Populate the cache
+        Ability.course_reserves_collection
+        
+        # Expect on destroy
+        expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        course_reserves_collection.destroy
+      end
+
+      it 'does not clear the cache when a non-course reserves collection is destroyed' do
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
+        
+        expect(Ability).not_to receive(:clear_course_reserves_collection_cache)
+        regular_collection.destroy
+      end
+
+      it 'checks is_course_reserves? state before destroy' do
+        # Allow during setup
+        allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        
+        # The callback should check the unit before destruction
+        expect(course_reserves_collection.is_course_reserves?).to be true
+        
+        # Expect on destroy
+        expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
+        course_reserves_collection.destroy
+      end
+    end
+  end
+  # End UMD Customization
 end
