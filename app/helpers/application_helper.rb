@@ -227,6 +227,13 @@ module ApplicationHelper
   end
 
   # UMD Customization
+  def vgroup_display_with_id value
+    c = Course.find_by_context_id(value)
+    c.nil? ? value : (content_tag(:i, "#{c.id}:") + ' ' + (c.title || c.label || value))
+  end
+  # End UMD Customization
+
+  # UMD Customization
   def umd_ip_manager_group_display(value)
     if value.is_a?(UmdIpManager::Group)
       # For groups without leases, just return the human-readable name for the
