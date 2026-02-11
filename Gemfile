@@ -168,6 +168,9 @@ group :production do
   gem 'lograge'
   gem 'okcomputer'
   gem 'puma', '>= 6.4.2'
+  # UMD Customization
+  gem 'rbtrace', '~> 0.5.3'
+  # End UMD Customization
 end
 
 # Install the bundle --with aws when running on Amazon Elastic Beanstalk
