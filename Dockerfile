@@ -146,3 +146,9 @@ COPY        --from=bundle-prod --chown=app:app /usr/local/bundle /usr/local/bund
 
 USER        app
 ENV         RAILS_ENV=production
+# UMD Customization
+# Puma configuration for production
+ENV PUMA_WORKERS=4
+ENV PUMA_MIN_THREADS=5
+ENV PUMA_MAX_THREADS=5
+# End UMD Customization
