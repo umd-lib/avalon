@@ -61,6 +61,7 @@ RUN         echo "deb     http://ftp.us.debian.org/debian/    bullseye main cont
          && cat /etc/apt/sources.list.d/nodesource.list \
          && cat /etc/apt/sources.list.d/yarn.list
 
+# UMD Customization - include libjemalloc2
 RUN         apt-get update && \
             apt-get -y dist-upgrade && \
             apt-get install -y --no-install-recommends --allow-unauthenticated \
@@ -77,8 +78,10 @@ RUN         apt-get update && \
             zip \
             dumb-init \
             libsqlite3-dev \
+            libjemalloc2 \
          && apt-get -y install mediainfo \
          && ln -s /usr/bin/lsof /usr/sbin/
+# End UMD Customization
 
 RUN         useradd -m -U app \
          && su -s /bin/bash -c "mkdir -p /home/app/avalon" app
@@ -146,7 +149,15 @@ COPY        --from=bundle-prod --chown=app:app /usr/local/bundle /usr/local/bund
 
 USER        app
 ENV         RAILS_ENV=production
+
 # UMD Customization
+# Enable jemalloc for better memory management in production
+ENV         LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+ENV         MALLOC_CONF="narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0,tcache:true"
+
+# Enable YJIT for improved performance
+ENV RUBY_YJIT_ENABLE=1
+
 # Puma configuration for production
 ENV PUMA_WORKERS=4
 ENV PUMA_MIN_THREADS=5
