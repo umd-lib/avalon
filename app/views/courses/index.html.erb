@@ -46,9 +46,7 @@ Unless required by applicable law or agreed to in writing, software distributed
           <%= link_to 'Browse Course Items', search_catalog_path('f[course_title_ssim][]' => course.title), class: 'btn btn-outline' %>
         </td>
         <td>
-          <% if current_ability.is_administrator? %>
             <%= link_to 'Impersonate as course user', impersonate_course_path(course.context_id), method: :post, class: 'btn btn-outline' %>
-          <% end %>
         </td>
       </tr>
     <% end %>

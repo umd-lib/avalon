@@ -371,5 +371,97 @@ describe Ability, type: :model do
       end
     end
   end
+
+  describe '.course_reserves_collection' do
+    let!(:course_reserves_collection) do
+      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+    end
+    let!(:regular_collection) { FactoryBot.create(:collection, unit: 'Default Unit') }
+
+    it 'returns the collection with streaming_reserves unit' do
+      expect(Ability.course_reserves_collection).to eq(course_reserves_collection)
+    end
+
+    it 'returns nil if no course reserves collection exists' do
+      course_reserves_collection.destroy
+      expect(Ability.course_reserves_collection).to be_nil
+    end
+
+    it 'caches the result' do
+      # First call should query
+      result1 = Ability.course_reserves_collection
+      expect(result1).to eq(course_reserves_collection)
+      
+      # Subsequent calls should use cached value
+      expect(Admin::Collection).not_to receive(:all)
+      result2 = Ability.course_reserves_collection
+      expect(result2).to eq(course_reserves_collection)
+    end
+  end
+
+  describe '.clear_course_reserves_collection_cache' do
+    let!(:course_reserves_collection) do
+      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+    end
+
+    it 'clears the cached course reserves collection' do
+      # Populate the cache
+      Ability.course_reserves_collection
+      
+      # Clear the cache
+      Ability.clear_course_reserves_collection_cache
+      
+      # Should query again
+      expect(Admin::Collection).to receive(:all).and_call_original
+      Ability.course_reserves_collection
+    end
+
+    it 'allows cache to be repopulated after clearing' do
+      # Populate the cache
+      first_result = Ability.course_reserves_collection
+      expect(first_result).to eq(course_reserves_collection)
+      
+      # Clear the cache
+      Ability.clear_course_reserves_collection_cache
+      
+      # Create a new course reserves collection with different name
+      course_reserves_collection.destroy
+      new_course_reserves_collection = FactoryBot.create(:collection, 
+        unit: Settings.streaming_reserves.unit_name, 
+        name: 'New Course Reserves')
+      
+      # Should return the new collection
+      second_result = Ability.course_reserves_collection
+      expect(second_result).to eq(new_course_reserves_collection)
+      expect(second_result).not_to eq(first_result)
+    end
+  end
+
+  describe '#is_course_reserves_manager?' do
+    let(:user) { FactoryBot.create(:user) }
+    let(:manager) { FactoryBot.create(:manager) }
+    let!(:course_reserves_collection) do
+      FactoryBot.create(:collection, 
+        unit: Settings.streaming_reserves.unit_name,
+        managers: [manager.user_key])
+    end
+
+    it 'returns true for course reserves collection managers' do
+      ability = Ability.new(manager)
+      expect(ability.is_course_reserves_manager?).to be true
+    end
+
+    it 'returns false for non-managers' do
+      ability = Ability.new(user)
+      expect(ability.is_course_reserves_manager?).to be false
+    end
+
+    it 'returns false when no course reserves collection exists' do
+      course_reserves_collection.destroy
+      Ability.clear_course_reserves_collection_cache
+      ability = Ability.new(manager)
+      expect(ability.is_course_reserves_manager?).to be false
+    end
+  end
   # End UMD Customization
 end

@@ -79,8 +79,13 @@ class Admin::Collection < ActiveFedora::Base
 
   around_save :reindex_members, if: Proc.new{ |c| c.name_changed? or c.unit_changed? }
   before_create :create_dropbox_directory!
-
+  
   before_destroy :destroy_dropbox_directory!
+
+  # UMD Customization
+  after_save(if: :is_course_reserves?) { Ability.clear_course_reserves_collection_cache }
+  after_destroy(if: :is_course_reserves?) { Ability.clear_course_reserves_collection_cache }
+  # End UMD Customization
 
   def self.units
     Avalon::ControlledVocabulary.find_by_name(:units, sort: true) || []
@@ -233,7 +238,7 @@ class Admin::Collection < ActiveFedora::Base
   end
 
    # UMD Customization
-  def is_content_reserves?
+  def is_course_reserves?
     self.unit == Settings.streaming_reserves.unit_name
   end
 

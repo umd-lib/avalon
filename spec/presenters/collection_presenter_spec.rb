@@ -121,4 +121,33 @@ describe CollectionPresenter do
       expect(presenter_json[:url]).to eq presenter.collection_url
     end
   end
+
+  # UMD Customization
+  describe '#is_course_reserves?' do
+    let(:course_reserves_doc) do
+      SolrDocument.new(
+        id: 'test123',
+        "name_ssi": 'Course Reserves Collection',
+        "unit_ssi": Settings.streaming_reserves.unit_name
+      )
+    end
+    let(:regular_doc) do
+      SolrDocument.new(
+        id: 'test456',
+        "name_ssi": 'Regular Collection',
+        "unit_ssi": 'Default Unit'
+      )
+    end
+
+    it 'returns true for course reserves collections' do
+      course_reserves_presenter = described_class.new(course_reserves_doc, view_context)
+      expect(course_reserves_presenter.is_course_reserves?).to be true
+    end
+
+    it 'returns false for non-course reserves collections' do
+      regular_presenter = described_class.new(regular_doc, view_context)
+      expect(regular_presenter.is_course_reserves?).to be false
+    end
+  end
+  # End UMD Customization
 end
