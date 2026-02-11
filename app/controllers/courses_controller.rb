@@ -60,7 +60,7 @@ class CoursesController < ApplicationController
     end
 
     def courses_list
-      courses = Course.all.order(created_at: :desc)
+      courses = Course.all.order(title: :asc)
       courses.page(params[:page])
     end
 end
