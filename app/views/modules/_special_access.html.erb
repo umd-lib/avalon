@@ -28,11 +28,13 @@ Unless required by applicable law or agreed to in writing, software distributed
           access_object: "group", members: @groups, leases: @group_leases,
           dropdown_values: [@addable_groups, 'name', 'name'],
           input_disabled: !can_update %>
+    <%# UMD Customization %>
     <%= render "modules/access_object", object: object,
           access_object: "class", members: @virtual_groups, leases: @virtual_leases,
           autocomplete_model: 'externalGroup',
-          display_helper: :vgroup_display,
+          display_helper: :vgroup_display_with_id,
           input_disabled: !can_update %>
+    <%# End UMD Customization %>
     <%= render "modules/access_object", object: object,
           access_object: "ipaddress", members: @ip_groups, leases: @ip_leases,
           input_disabled: !can_update %>

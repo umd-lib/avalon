@@ -18,9 +18,9 @@ class Course < ActiveRecord::Base
   def self.autocomplete(query, _id = nil)
     # UMD Customization
     self.where("LOWER(label) LIKE :q OR LOWER(title) LIKE :q", q: "%#{query.downcase}%").collect { |course|
-    # End UMD Customization
-      { id: course.context_id, display: course.title }
+      { id: course.context_id, display: "#{course.id}: #{course.title}" }
     }
+    # End UMD Customization
   end
 
   def self.unlink_all(context_id)
