@@ -327,7 +327,8 @@ class MediaObject < ActiveFedora::Base
       solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
       # UMD Customization
       solr_doc[Hydra.config.permissions.discover.group] ||= [] # Customization for LIBAVALON-168
-      solr_doc[Hydra.config.permissions.discover.group] += ['public'] # Customization for LIBAVALON-168
+       # Customization for LIBAVALON-168, LIBAVALON-498
+      solr_doc[Hydra.config.permissions.discover.group] += ['public'] unless is_streaming_reserve?
       # End UMD Customization
       solr_doc["title_ssort"] = self.title
       solr_doc["creator_ssort"] = Array(self.creator).join(', ')
