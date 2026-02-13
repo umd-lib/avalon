@@ -1,11 +1,7 @@
+# This file is UMD-managed since upstream Avalon 7.x did not use Puma.
+# We should reconcile with upstream during Avalon 8.x upgrade.
 # Configure puma workers and threads based on CPU Limits
-cpu_limit = (Integer(ENV['CPU_LIMIT_IN_M']) / 1000) || 2
-# UMD Customization
-workers_count = Integer(ENV['PUMA_WORKERS']) || cpu_limit
-# End UMD Customization
+workers_count = ENV.fetch('PUMA_WORKERS', 2).to_i
 workers workers_count
-# UMD Customization
-max_threads_count = Integer(ENV['PUMA_MAX_THREADS']) || cpu_limit * 8
-min_threads_count = Integer(ENV['PUMA_MIN_THREADS']) || 8
-# End UMD Customization
-threads min_threads_count, max_threads_count
+threads_count = ENV.fetch('RAILS_MAX_THREADS', 3).to_i
+threads threads_count, threads_count
