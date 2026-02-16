@@ -117,7 +117,11 @@ class Ability
       # UMD Customization
       # Begin customization for LIBAVALON-168
       can :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
-        media_object.published? || test_edit(media_object.id)
+        if media_object.is_streaming_reserve?
+          (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
+        else
+          media_object.published? || test_edit(media_object.id)
+        end
       end
 
       # For media playback

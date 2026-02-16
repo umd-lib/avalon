@@ -154,6 +154,107 @@ describe Ability, type: :model do
     end
   end
 
+  # UMD Customization
+  describe "read Ability for streaming reserve items" do
+    context 'when media object is a streaming reserve' do
+      let(:streaming_collection) { FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name) }
+
+      context 'and the media object is published' do
+        let(:media_object) do
+          FactoryBot.create(:published_media_object, collection: streaming_collection, visibility: 'private')
+        end
+
+        it 'is not readable by non-logged in users' do
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by ordinary logged in users without read access' do
+          ability = Ability.new(FactoryBot.create(:public))
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is readable by users with read access (e.g., added to read_users)' do
+          user = FactoryBot.create(:user)
+          media_object.read_users += [user.user_key]
+          media_object.save!
+          ability = Ability.new(user)
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is readable by admin users' do
+          ability = Ability.new(FactoryBot.create(:admin))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is readable by managers, editors, and depositors of the collection' do
+          collection_users = media_object.collection.managers +
+                            media_object.collection.editors +
+                            media_object.collection.depositors
+          collection_users.each do |user_name|
+            ability = Ability.new(User.find_by(username: user_name))
+            expect(ability).to be_able_to(:read, media_object)
+          end
+        end
+      end
+
+      context 'and the media object is unpublished' do
+        let(:media_object) do
+          FactoryBot.create(:media_object, collection: streaming_collection)
+        end
+
+        it 'is not readable by non-logged in users' do
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is still readable by users with explicit read access even when unpublished (Hydra base permissions)' do
+          user = FactoryBot.create(:user)
+          media_object.read_users += [user.user_key]
+          media_object.save!
+          ability = Ability.new(user)
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by ordinary logged in users without read access' do
+          ability = Ability.new(FactoryBot.create(:public))
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is readable by managers, editors, and depositors of the collection (via edit access)' do
+          collection_users = media_object.collection.managers +
+                            media_object.collection.editors +
+                            media_object.collection.depositors
+          collection_users.each do |user_name|
+            ability = Ability.new(User.find_by(username: user_name))
+            expect(ability).to be_able_to(:read, media_object)
+          end
+        end
+      end
+    end
+
+    context 'when media object is NOT a streaming reserve (regression)' do
+      let(:regular_collection) { FactoryBot.create(:collection, unit: 'Default Unit') }
+
+      context 'and the media object is published' do
+        let(:media_object) do
+          FactoryBot.create(:published_media_object, collection: regular_collection, visibility: 'private')
+        end
+
+        it 'is readable by non-logged in users even without read access' do
+          ability = Ability.new(nil)
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is readable by ordinary logged in users without read access' do
+          ability = Ability.new(FactoryBot.create(:public))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+      end
+    end
+  end
+  # End UMD Customization
+
   describe "stream Ability" do
     context 'when media object is unpublished' do
       let(:unpublished_media_object) { FactoryBot.create(:media_object) }
