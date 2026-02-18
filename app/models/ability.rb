@@ -376,10 +376,10 @@ class Ability
     @user.in?(course_reserves_collection&.managers || [])
   end
 
-  def is_course_reserves_privileged_member?
+  def is_course_reserves_member?
     course_reserves_collection = self.class.course_reserves_collection
     return false unless course_reserves_collection
-    is_editor_of?(course_reserves_collection)
+    is_member_of?(course_reserves_collection)
   end
 
   def self.course_reserves_collection
