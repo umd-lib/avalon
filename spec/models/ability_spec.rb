@@ -463,5 +463,52 @@ describe Ability, type: :model do
       expect(ability.is_course_reserves_manager?).to be false
     end
   end
+
+  describe '#is_course_reserves_privileged_member?' do
+    let(:user) { FactoryBot.create(:user) }
+    let(:manager) { FactoryBot.create(:manager) }
+    let(:editor) { FactoryBot.create(:user) }
+    let(:depositor) { FactoryBot.create(:user) }
+    let!(:course_reserves_collection) do
+      FactoryBot.create(:collection,
+        unit: Settings.streaming_reserves.unit_name,
+        managers: [manager.user_key],
+        editors: [editor.user_key],
+        depositors: [depositor.user_key])
+    end
+
+    it 'returns true for course reserves collection managers' do
+      ability = Ability.new(manager)
+      expect(ability.is_course_reserves_privileged_member?).to be true
+    end
+
+    it 'returns true for course reserves collection editors' do
+      ability = Ability.new(editor)
+      expect(ability.is_course_reserves_privileged_member?).to be true
+    end
+
+    it 'returns false for course reserves collection depositors' do
+      ability = Ability.new(depositor)
+      expect(ability.is_course_reserves_privileged_member?).to be false
+    end
+
+    it 'returns false for non-members' do
+      ability = Ability.new(user)
+      expect(ability.is_course_reserves_privileged_member?).to be false
+    end
+
+    it 'returns false when no course reserves collection exists' do
+      course_reserves_collection.destroy
+      Ability.clear_course_reserves_collection_cache
+      ability = Ability.new(manager)
+      expect(ability.is_course_reserves_privileged_member?).to be false
+    end
+
+    it 'returns true for administrators' do
+      admin = FactoryBot.create(:admin)
+      ability = Ability.new(admin)
+      expect(ability.is_course_reserves_privileged_member?).to be true
+    end
+  end
   # End UMD Customization
 end

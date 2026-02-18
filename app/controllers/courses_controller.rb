@@ -56,7 +56,7 @@ class CoursesController < ApplicationController
   private
 
     def auth
-      current_ability.is_course_reserves_manager? || current_ability.is_administrator?
+      current_ability.is_course_reserves_privileged_member? || current_ability.is_administrator?
     end
 
     def courses_list

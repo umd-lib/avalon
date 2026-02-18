@@ -376,6 +376,12 @@ class Ability
     @user.in?(course_reserves_collection&.managers || [])
   end
 
+  def is_course_reserves_privileged_member?
+    course_reserves_collection = self.class.course_reserves_collection
+    return false unless course_reserves_collection
+    is_editor_of?(course_reserves_collection)
+  end
+
   def self.course_reserves_collection
     @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
   end
