@@ -92,6 +92,12 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
     @collection ||= SpeedyAF::Proxy::Admin::Collection.find(collection_id)
   end
 
+  # UMD Customization
+  def is_streaming_reserve?
+    collection&.unit == Settings.streaming_reserves.unit_name
+  end
+  # End UMD Customization
+
   def lending_period
     attrs[:lending_period].presence || collection&.default_lending_period
   end

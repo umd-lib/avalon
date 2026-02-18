@@ -105,4 +105,23 @@ describe SpeedyAF::Proxy::MediaObject do
       expect(presenter.sections.map(&:class)).to eq [SpeedyAF::Proxy::MasterFile, SpeedyAF::Proxy::MasterFile]
     end
   end
+
+  # UMD Customization
+  describe '#is_streaming_reserve?' do
+    context 'when the media object is in the streaming reserves unit' do
+      let(:collection) { FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name) }
+      let(:media_object) { FactoryBot.create(:media_object, collection: collection) }
+
+      it 'returns true' do
+        expect(presenter.is_streaming_reserve?).to eq true
+      end
+    end
+
+    context 'when the media object is not in the streaming reserves unit' do
+      it 'returns false' do
+        expect(presenter.is_streaming_reserve?).to eq false
+      end
+    end
+  end
+  # End UMD Customization
 end
