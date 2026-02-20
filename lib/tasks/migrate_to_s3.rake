@@ -7,6 +7,7 @@
 #   2. rake avalon:migrate:enqueue_s3_migration          # Enqueue MasterFile+Derivative jobs
 #   3. rake avalon:migrate:active_storage_to_s3          # Migrate SupplementalFile blobs
 #   4. rake avalon:migrate:s3_migration_status          # Monitor progress
+#   5. rake avalon:migrate:enqueue_s3_validation         # Post-migration checksum validation
 #
 # All tasks are idempotent and safe to re-run.
 #
@@ -114,6 +115,54 @@ namespace :avalon do
 
       puts ""
       puts "ActiveStorage migration complete: #{migrated} migrated, #{errors} error(s) out of #{total} total"
+    end
+
+    # ── Enqueue post-migration validation ───────────────────────────────
+
+    desc "Enqueue S3 validation jobs for all migrated MasterFiles (Solr-based)"
+    task enqueue_s3_validation: :environment do
+      batch_size  = ENV.fetch('BATCH_SIZE', '100').to_i
+      dry_run     = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      cutoff_date = ENV.fetch('CUTOFF_DATE', '')
+
+      # Find MasterFiles whose file_location starts with s3://
+      # These are the ones that have been migrated.
+      query = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*"
+
+      # Optional: restrict to items ingested before a cutoff date.
+      # Items ingested before this date were originally on the local filesystem.
+      # Format: ISO 8601, e.g. CUTOFF_DATE=2026-02-01T00:00:00Z
+      if cutoff_date.present?
+        query += " AND date_digitized_dtsi:[* TO #{cutoff_date}]"
+        puts "Filtering to items digitized before #{cutoff_date}"
+      end
+
+      start = 0
+      total_enqueued = 0
+
+      puts "Querying Solr for migrated (S3-based) MasterFiles..."
+      puts "[DRY RUN] No jobs will be enqueued" if dry_run
+
+      loop do
+        response = ActiveFedora::SolrService.get(query, fl: 'id,file_location_ssi', rows: batch_size, start: start)
+        docs = response['response']['docs']
+        break if docs.empty?
+
+        docs.each do |doc|
+          master_file_id = doc['id']
+          if dry_run
+            puts "  [DRY RUN] Would enqueue validation: #{master_file_id}"
+          else
+            ValidateS3MigrationJob.perform_later(master_file_id)
+          end
+          total_enqueued += 1
+        end
+
+        start += batch_size
+        puts "  Processed #{start} records..." if (start % 500).zero?
+      end
+
+      puts "#{dry_run ? 'Would enqueue' : 'Enqueued'} #{total_enqueued} MasterFile(s) for S3 validation"
     end
 
     # ── Status / progress reporting ─────────────────────────────────────
