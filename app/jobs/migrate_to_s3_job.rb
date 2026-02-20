@@ -3,6 +3,16 @@
 # Sidekiq job that migrates a single MasterFile and all its Derivatives
 # from the local filesystem to S3.
 #
+# The job operates in two phases:
+#   Phase 1 — Upload all files (MasterFile + Derivatives) to S3 with
+#             SHA-256 checksum verification, confirming existence and size.
+#   Phase 2 — Only after ALL uploads succeed, update the Avalon records
+#             with their new S3 locations.
+#
+# This ensures that a partial upload failure never leaves records pointing
+# at S3 objects that don't exist. On retry, already-uploaded objects will
+# be re-uploaded (S3 overwrites are atomic) and then records are updated.
+#
 # Usage:
 #   MigrateToS3Job.perform_later("master_file_id")
 #
@@ -28,28 +38,36 @@ class MigrateToS3Job < ActiveJob::Base
     Rails.logger.info "[S3Migration] Starting migration for MasterFile #{master_file_id}"
 
     master_file = MasterFile.find(master_file_id)
-    migrate_master_file!(master_file)
-    migrate_derivatives!(master_file)
+
+    # Phase 1: Upload all files to S3 and verify (no metadata changes yet)
+    master_file_s3_uri = upload_master_file(master_file)
+    derivative_s3_uris = upload_derivatives(master_file)
+
+    # Phase 2: Update Avalon records only after ALL uploads succeeded
+    save_master_file!(master_file, master_file_s3_uri)
+    save_derivatives!(derivative_s3_uris)
 
     Rails.logger.info "[S3Migration] Completed migration for MasterFile #{master_file_id}"
   end
 
   private
 
-    # ── MasterFile ──────────────────────────────────────────────────────
+    # ── Phase 1: Upload & Verify ────────────────────────────────────────
 
-    def migrate_master_file!(master_file)
+    # Uploads the MasterFile to S3 and verifies. Returns the S3 URI,
+    # or nil if the file was skipped (already migrated, blank, etc.).
+    def upload_master_file(master_file)
       file_location = master_file.file_location
 
       if file_location.blank?
         Rails.logger.info "[S3Migration] MasterFile #{master_file.id} has blank file_location, skipping"
-        return
+        return nil
       end
 
       # Only migrate local filesystem paths (not already S3, http, etc.)
       unless file_location.start_with?('/')
         Rails.logger.info "[S3Migration] MasterFile #{master_file.id} is not on local filesystem (#{truncate_path(file_location)}), skipping"
-        return
+        return nil
       end
 
       raise "Source file not found: #{file_location}" unless File.exist?(file_location)
@@ -69,39 +87,41 @@ class MigrateToS3Job < ActiveJob::Base
         raise "Size mismatch for MasterFile #{master_file.id}: expected #{expected}, got #{actual}" unless expected == actual
       end
 
-      # Atomic metadata update — this is the only moment of "transition"
-      master_file.file_location = s3_uri
-      master_file.save!
-
-      Rails.logger.info "[S3Migration] MasterFile #{master_file.id} migrated successfully"
+      Rails.logger.info "[S3Migration] MasterFile #{master_file.id} uploaded and verified"
+      s3_uri
     end
 
-    # ── Derivatives ─────────────────────────────────────────────────────
-
-    def migrate_derivatives!(master_file)
+    # Uploads all Derivatives to S3 and verifies. Returns an array of
+    # { derivative:, s3_uri: } hashes for those that were uploaded.
+    def upload_derivatives(master_file)
+      results = []
       master_file.derivatives.each do |derivative|
-        migrate_derivative!(derivative, master_file.id)
+        s3_uri = upload_derivative(derivative, master_file.id)
+        results << { derivative: derivative, s3_uri: s3_uri } if s3_uri
       end
+      results
     end
 
-    def migrate_derivative!(derivative, master_file_id)
+    # Uploads a single Derivative to S3 and verifies. Returns the S3 URI,
+    # or nil if skipped.
+    def upload_derivative(derivative, master_file_id)
       deriv_location = derivative.derivativeFile
 
       if deriv_location.blank?
         Rails.logger.info "[S3Migration] Derivative #{derivative.id} has blank location, skipping"
-        return
+        return nil
       end
 
       # Only migrate file:// derivatives (not already S3, http, etc.)
       unless deriv_location.start_with?('file://')
         Rails.logger.info "[S3Migration] Derivative #{derivative.id} is not file-based (#{truncate_path(deriv_location)}), skipping"
-        return
+        return nil
       end
 
       # Skip unmanaged derivatives — Avalon doesn't control their lifecycle
       unless derivative.managed
         Rails.logger.warn "[S3Migration] Derivative #{derivative.id} is unmanaged, skipping"
-        return
+        return nil
       end
 
       local_path = Addressable::URI.parse(deriv_location).path
@@ -120,12 +140,31 @@ class MigrateToS3Job < ActiveJob::Base
       actual     = s3_object.content_length
       raise "Size mismatch for Derivative #{derivative.id}: expected #{local_size}, got #{actual}" unless local_size == actual
 
-      # Setting absolute_location triggers set_streaming_locations! which
-      # recalculates location_url and hls_url for the S3-based path
-      derivative.absolute_location = s3_uri
-      derivative.save!
+      Rails.logger.info "[S3Migration] Derivative #{derivative.id} uploaded and verified"
+      s3_uri
+    end
 
-      Rails.logger.info "[S3Migration] Derivative #{derivative.id} migrated successfully"
+    # ── Phase 2: Update Avalon Records ──────────────────────────────────
+
+    def save_master_file!(master_file, s3_uri)
+      return if s3_uri.nil?
+
+      master_file.file_location = s3_uri
+      master_file.save!
+      Rails.logger.info "[S3Migration] MasterFile #{master_file.id} record updated to #{truncate_path(s3_uri)}"
+    end
+
+    def save_derivatives!(derivative_s3_uris)
+      derivative_s3_uris.each do |entry|
+        derivative = entry[:derivative]
+        s3_uri     = entry[:s3_uri]
+
+        # Setting absolute_location triggers set_streaming_locations! which
+        # recalculates location_url and hls_url for the S3-based path
+        derivative.absolute_location = s3_uri
+        derivative.save!
+        Rails.logger.info "[S3Migration] Derivative #{derivative.id} record updated to #{truncate_path(s3_uri)}"
+      end
     end
 
     # ── Path helpers ────────────────────────────────────────────────────
