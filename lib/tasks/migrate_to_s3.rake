@@ -123,7 +123,7 @@ namespace :avalon do
     task enqueue_s3_validation: :environment do
       batch_size  = ENV.fetch('BATCH_SIZE', '100').to_i
       dry_run     = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
-      cutoff_date = ENV.fetch('CUTOFF_DATE', '')
+      S3_MIGRATION_CUTOFF_DATE = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
 
       # Find MasterFiles whose file_location starts with s3://
       # These are the ones that have been migrated.
@@ -131,10 +131,10 @@ namespace :avalon do
 
       # Optional: restrict to items ingested before a cutoff date.
       # Items ingested before this date were originally on the local filesystem.
-      # Format: ISO 8601, e.g. CUTOFF_DATE=2026-02-01T00:00:00Z
-      if cutoff_date.present?
-        query += " AND date_digitized_dtsi:[* TO #{cutoff_date}]"
-        puts "Filtering to items digitized before #{cutoff_date}"
+      # Format: ISO 8601, e.g. S3_MIGRATION_CUTOFF_DATE=2026-02-01T00:00:00Z
+      if S3_MIGRATION_CUTOFF_DATE.present?
+        query += " AND system_create_dtsi:[* TO #{S3_MIGRATION_CUTOFF_DATE}]"
+        puts "Filtering to items created before #{S3_MIGRATION_CUTOFF_DATE}"
       end
 
       start = 0
