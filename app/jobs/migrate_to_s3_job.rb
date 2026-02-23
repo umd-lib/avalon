@@ -40,12 +40,15 @@ class MigrateToS3Job < ActiveJob::Base
     master_file = MasterFile.find(master_file_id)
 
     # Phase 1: Upload all files to S3 and verify (no metadata changes yet)
-    master_file_s3_uri = upload_master_file(master_file)
-    derivative_s3_uris = upload_derivatives(master_file)
+    master_file_upload = upload_master_file(master_file)
+    derivative_uploads = upload_derivatives(master_file)
 
     # Phase 2: Update Avalon records only after ALL uploads succeeded
-    save_master_file!(master_file, master_file_s3_uri)
-    save_derivatives!(derivative_s3_uris)
+    save_master_file!(master_file, master_file_upload)
+    save_derivatives!(derivative_uploads)
+
+    # Phase 3: Write audit trail (single record for MasterFile + Derivatives)
+    log_migration_audit(master_file, master_file_upload, derivative_uploads)
 
     Rails.logger.info "[S3Migration] Completed migration for MasterFile #{master_file_id}"
   end
@@ -54,8 +57,8 @@ class MigrateToS3Job < ActiveJob::Base
 
     # ── Phase 1: Upload & Verify ────────────────────────────────────────
 
-    # Uploads the MasterFile to S3 and verifies. Returns the S3 URI,
-    # or nil if the file was skipped (already migrated, blank, etc.).
+    # Uploads the MasterFile to S3 and verifies. Returns a hash with
+    # upload details, or nil if the file was skipped.
     def upload_master_file(master_file)
       file_location = master_file.file_location
 
@@ -81,29 +84,29 @@ class MigrateToS3Job < ActiveJob::Base
       # Verify
       raise "Upload verification failed for MasterFile #{master_file.id}" unless s3_object.exists?
 
+      file_size = s3_object.content_length
       if master_file.file_size.present?
         expected = master_file.file_size.to_i
-        actual   = s3_object.content_length
-        raise "Size mismatch for MasterFile #{master_file.id}: expected #{expected}, got #{actual}" unless expected == actual
+        raise "Size mismatch for MasterFile #{master_file.id}: expected #{expected}, got #{file_size}" unless expected == file_size
       end
 
       Rails.logger.info "[S3Migration] MasterFile #{master_file.id} uploaded and verified"
-      s3_uri
+      { s3_uri: s3_uri, source_path: file_location, file_size: file_size }
     end
 
     # Uploads all Derivatives to S3 and verifies. Returns an array of
-    # { derivative:, s3_uri: } hashes for those that were uploaded.
+    # upload detail hashes for those that were uploaded.
     def upload_derivatives(master_file)
       results = []
       master_file.derivatives.each do |derivative|
-        s3_uri = upload_derivative(derivative, master_file.id)
-        results << { derivative: derivative, s3_uri: s3_uri } if s3_uri
+        result = upload_derivative(derivative, master_file.id)
+        results << result if result
       end
       results
     end
 
-    # Uploads a single Derivative to S3 and verifies. Returns the S3 URI,
-    # or nil if skipped.
+    # Uploads a single Derivative to S3 and verifies. Returns a hash
+    # with upload details, or nil if skipped.
     def upload_derivative(derivative, master_file_id)
       deriv_location = derivative.derivativeFile
 
@@ -136,26 +139,26 @@ class MigrateToS3Job < ActiveJob::Base
       # Verify
       raise "Upload verification failed for Derivative #{derivative.id}" unless s3_object.exists?
 
+      file_size  = s3_object.content_length
       local_size = File.size(local_path)
-      actual     = s3_object.content_length
-      raise "Size mismatch for Derivative #{derivative.id}: expected #{local_size}, got #{actual}" unless local_size == actual
+      raise "Size mismatch for Derivative #{derivative.id}: expected #{local_size}, got #{file_size}" unless local_size == file_size
 
       Rails.logger.info "[S3Migration] Derivative #{derivative.id} uploaded and verified"
-      s3_uri
+      { derivative: derivative, s3_uri: s3_uri, source_path: local_path, file_size: file_size }
     end
 
     # ── Phase 2: Update Avalon Records ──────────────────────────────────
 
-    def save_master_file!(master_file, s3_uri)
-      return if s3_uri.nil?
+    def save_master_file!(master_file, upload)
+      return if upload.nil?
 
-      master_file.file_location = s3_uri
+      master_file.file_location = upload[:s3_uri]
       master_file.save!
-      Rails.logger.info "[S3Migration] MasterFile #{master_file.id} record updated to #{truncate_path(s3_uri)}"
+      Rails.logger.info "[S3Migration] MasterFile #{master_file.id} record updated to #{truncate_path(upload[:s3_uri])}"
     end
 
-    def save_derivatives!(derivative_s3_uris)
-      derivative_s3_uris.each do |entry|
+    def save_derivatives!(derivative_uploads)
+      derivative_uploads.each do |entry|
         derivative = entry[:derivative]
         s3_uri     = entry[:s3_uri]
 
@@ -165,6 +168,61 @@ class MigrateToS3Job < ActiveJob::Base
         derivative.save!
         Rails.logger.info "[S3Migration] Derivative #{derivative.id} record updated to #{truncate_path(s3_uri)}"
       end
+    end
+
+    # ── Phase 3: Audit Trail ───────────────────────────────────────────
+
+    # Write a single audit record containing the MasterFile and all its
+    # Derivatives, keyed by the MasterFile ID.
+    def log_migration_audit(master_file, master_file_upload, derivative_uploads)
+      media_object_id = master_file.media_object&.id
+
+      mf_entry = nil
+      if master_file_upload
+        mf_entry = {
+          source_path:    master_file_upload[:source_path],
+          destination_uri: master_file_upload[:s3_uri],
+          file_size:      master_file_upload[:file_size],
+          checksum:       fetch_s3_checksum(master_file_upload[:s3_uri]),
+          checksum_type:  'SHA256'
+        }
+      end
+
+      deriv_entries = derivative_uploads.map do |entry|
+        {
+          resource_id:    entry[:derivative].id,
+          source_path:    entry[:source_path],
+          destination_uri: entry[:s3_uri],
+          file_size:      entry[:file_size],
+          checksum:       fetch_s3_checksum(entry[:s3_uri]),
+          checksum_type:  'SHA256'
+        }
+      end
+
+      S3MigrationLogger.log_master_file_migration(
+        master_file_id:  master_file.id,
+        media_object_id: media_object_id,
+        master_file:     mf_entry,
+        derivatives:     deriv_entries
+      )
+    rescue => e
+      # Audit logging failure should not fail the migration itself
+      Rails.logger.warn "[S3Migration] Failed to log audit entry for MasterFile #{master_file.id}: #{e.message}"
+    end
+
+    # Fetch the SHA-256 checksum stored on the S3 object after upload.
+    # Returns nil if the checksum cannot be retrieved.
+    def fetch_s3_checksum(s3_uri)
+      s3_object = FileLocator::S3File.new(s3_uri).object
+      resp = s3_object.client.head_object(
+        bucket: s3_object.bucket_name,
+        key:    s3_object.key,
+        checksum_mode: 'ENABLED'
+      )
+      resp.checksum_sha256
+    rescue => e
+      Rails.logger.warn "[S3Migration] Could not fetch checksum for #{truncate_path(s3_uri)}: #{e.message}"
+      nil
     end
 
     # ── Path helpers ────────────────────────────────────────────────────

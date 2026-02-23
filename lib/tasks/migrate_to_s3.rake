@@ -8,6 +8,13 @@
 #   3. rake avalon:migrate:active_storage_to_s3          # Migrate SupplementalFile blobs
 #   4. rake avalon:migrate:s3_migration_status          # Monitor progress
 #   5. rake avalon:migrate:enqueue_s3_validation         # Post-migration checksum validation
+ #   6. rake avalon:migrate:s3_migration_report           # View audit trail summary
+#   7. rake avalon:migrate:validate_active_storage       # Validate ActiveStorage blobs on S3
+#
+# An audit trail is written automatically to S3 during steps 2 and 3.
+# Each entry is stored as an individual S3 object under a configurable prefix:
+#   S3_MIGRATION_LOG_BUCKET  (default: Settings.encoding.masterfile_bucket)
+#   S3_MIGRATION_LOG_PREFIX  (default: migration-audit)
 #
 # All tasks are idempotent and safe to re-run.
 #
@@ -59,6 +66,8 @@ namespace :avalon do
     task active_storage_to_s3: :environment do
       dry_run             = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
       target_service_name = ENV.fetch('TARGET_SERVICE', 'amazon')
+      local_root          = ENV.fetch('ACTIVE_STORAGE_LOCAL_ROOT',
+                              Settings.active_storage&.root || '/masterfiles/supplemental_files/rails_active_storage')
 
       local_blobs = ActiveStorage::Blob.where(service_name: "local")
       total = local_blobs.count
@@ -90,6 +99,7 @@ namespace :avalon do
           if target_service.exist?(blob.key)
             puts "  Blob #{blob.id} already exists in #{target_service_name}, updating record"
             blob.update_column(:service_name, target_service_name)
+            log_active_storage_migration(blob, local_root, target_service_name)
             migrated += 1
             next
           end
@@ -107,9 +117,15 @@ namespace :avalon do
           blob.update_column(:service_name, target_service_name)
           migrated += 1
           puts "  Migrated blob #{blob.id}: #{blob.filename}"
+
+          # Audit trail
+          log_active_storage_migration(blob, local_root, target_service_name)
         rescue => e
           errors += 1
           puts "  ERROR migrating blob #{blob.id}: #{e.class} - #{e.message}"
+
+          # Log failure
+          log_active_storage_failure(blob, local_root, target_service_name, e)
         end
       end
 
@@ -163,6 +179,137 @@ namespace :avalon do
       end
 
       puts "#{dry_run ? 'Would enqueue' : 'Enqueued'} #{total_enqueued} MasterFile(s) for S3 validation"
+    end
+
+    # ── Migration report (from S3 audit trail) ─────────────────────────
+
+    desc "Display a summary of the S3 migration audit trail and optionally export to CSV"
+    task s3_migration_report: :environment do
+      require 'csv'
+
+      puts "=== S3 Migration Audit Trail ==="
+      puts "Source: #{S3MigrationLogger.log_path}"
+      puts ""
+
+      puts "Fetching audit entries from S3..."
+      entries = S3MigrationLogger.list_entries
+      total = entries.length
+
+      if total.zero?
+        puts "No audit entries found. Run the migration first."
+        puts ""
+        puts "Audit entries are written automatically to:"
+        puts "  Bucket: #{S3MigrationLogger.log_bucket}"
+        puts "  Prefix: #{S3MigrationLogger.log_prefix}/"
+        next
+      end
+
+      # Parse entries into hashes for easy filtering
+      headers = S3MigrationLogger::HEADERS
+      rows = entries.map { |row| headers.zip(row).to_h }
+
+      mf_count = rows.count { |r| r['resource_type'] == 'MasterFile' }
+      d_count  = rows.count { |r| r['resource_type'] == 'Derivative' }
+      as_count = rows.count { |r| r['resource_type'] == 'ActiveStorage' }
+      migrated = rows.count { |r| r['status'] == 'migrated' }
+      failed   = rows.count { |r| r['status'] == 'failed' }
+
+      puts "Total entries:    #{total}"
+      puts "  MasterFiles:    #{mf_count}"
+      puts "  Derivatives:    #{d_count}"
+      puts "  ActiveStorage:  #{as_count}"
+      puts ""
+      puts "  Migrated:       #{migrated}"
+      puts "  Failed:         #{failed}" if failed > 0
+      puts ""
+
+      if failed > 0
+        puts "Failed entries:"
+        rows.select { |r| r['status'] == 'failed' }.each do |r|
+          puts "  #{r['resource_type']} #{r['resource_id']}: #{r['error_message']}"
+        end
+        puts ""
+      end
+
+      # Export to local CSV if REPORT_PATH is set
+      output_path = ENV['REPORT_PATH']
+      if output_path.present?
+        count = S3MigrationLogger.export_csv(output_path)
+        puts "Exported #{count} entries to #{output_path}"
+      else
+        puts "Set REPORT_PATH to export the audit trail to a local CSV file."
+      end
+
+      puts "==============================="
+    end
+
+    # ── Validate ActiveStorage blobs ────────────────────────────────────
+
+    desc "Validate ActiveStorage blobs migrated to S3 (checksum + size)"
+    task validate_active_storage: :environment do
+      dry_run = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      target_service_name = ENV.fetch('TARGET_SERVICE', 'amazon')
+
+      s3_blobs = ActiveStorage::Blob.where(service_name: target_service_name)
+      total = s3_blobs.count
+
+      puts "Found #{total} ActiveStorage blob(s) on #{target_service_name}"
+
+      if total.zero?
+        puts "Nothing to validate."
+        next
+      end
+
+      target_service = ActiveStorage::Blob.services.fetch(target_service_name)
+
+      passed  = 0
+      failed  = 0
+      skipped = 0
+
+      s3_blobs.find_each do |blob|
+        # 1. Check existence on S3
+        unless target_service.exist?(blob.key)
+          puts "  FAIL blob #{blob.id} (#{blob.filename}): not found on S3"
+          failed += 1
+          next
+        end
+
+        # 2. Download and verify MD5 checksum
+        #    ActiveStorage stores base64-encoded MD5 in the checksum column.
+        begin
+          if dry_run
+            puts "  [DRY RUN] Would validate blob #{blob.id}: #{blob.filename} (#{blob.byte_size} bytes)"
+            skipped += 1
+            next
+          end
+
+          # Download from S3 into a tempfile and compute MD5
+          blob.open do |tempfile|
+            computed_md5 = Digest::MD5.file(tempfile.path).base64digest
+            file_size    = File.size(tempfile.path)
+
+            size_ok     = (file_size == blob.byte_size)
+            checksum_ok = (computed_md5 == blob.checksum)
+
+            if size_ok && checksum_ok
+              puts "  PASS blob #{blob.id} (#{blob.filename}): size=#{file_size}, md5=#{computed_md5}"
+              passed += 1
+            else
+              reasons = []
+              reasons << "size mismatch (expected=#{blob.byte_size}, got=#{file_size})" unless size_ok
+              reasons << "checksum mismatch (expected=#{blob.checksum}, got=#{computed_md5})" unless checksum_ok
+              puts "  FAIL blob #{blob.id} (#{blob.filename}): #{reasons.join(', ')}"
+              failed += 1
+            end
+          end
+        rescue => e
+          puts "  ERROR blob #{blob.id} (#{blob.filename}): #{e.class} - #{e.message}"
+          failed += 1
+        end
+      end
+
+      puts ""
+      puts "ActiveStorage validation complete: #{passed} passed, #{failed} failed, #{skipped} skipped out of #{total} total"
     end
 
     # ── Status / progress reporting ─────────────────────────────────────
@@ -233,6 +380,57 @@ namespace :avalon do
     def percentage(numerator, denominator)
       return 0.0 if denominator.zero?
       (numerator.to_f / denominator * 100).round(1)
+    end
+
+    # Look up the parent MediaObject ID for an ActiveStorage blob.
+    # SupplementalFile stores parent_id which is the MediaObject ID.
+    def media_object_id_for_blob(blob)
+      attachment = blob.attachments.first
+      return nil unless attachment
+      record = attachment.record
+      if record.respond_to?(:parent_id)
+        master_file = MasterFile.find(record.parent_id)
+        if master_file.present?
+          return master_file.media_object.id if master_file.media_object
+        else
+          record.parent_id
+        end
+      else
+        nil
+      end
+    rescue => e
+      puts "  WARNING: Failed to determine media_object_id for blob #{blob.id}: #{e.message}"
+      nil
+    end
+
+    # Log a successful ActiveStorage blob migration to the audit CSV.
+    def log_active_storage_migration(blob, local_root, target_service_name)
+      S3MigrationLogger.log_migration(
+        resource_id:     "blob-#{blob.id}",
+        resource_type:   'ActiveStorage',
+        media_object_id: media_object_id_for_blob(blob),
+        source_path:     File.join(local_root, blob.key),
+        destination_uri: "s3://#{Settings.active_storage&.bucket || target_service_name}/#{blob.key}",
+        file_size:       blob.byte_size,
+        checksum:        blob.checksum,
+        checksum_type:   'MD5'
+      )
+    rescue => e
+      puts "  WARNING: Failed to log audit entry for blob #{blob.id}: #{e.message}"
+    end
+
+    # Log a failed ActiveStorage blob migration to the audit CSV.
+    def log_active_storage_failure(blob, local_root, target_service_name, error)
+      S3MigrationLogger.log_failure(
+        resource_id:     "blob-#{blob.id}",
+        resource_type:   'ActiveStorage',
+        media_object_id: media_object_id_for_blob(blob),
+        source_path:     File.join(local_root, blob.key),
+        destination_uri: "s3://#{Settings.active_storage&.bucket || target_service_name}/#{blob.key}",
+        error_message:   "#{error.class}: #{error.message}"
+      )
+    rescue => e
+      puts "  WARNING: Failed to log audit failure for blob #{blob.id}: #{e.message}"
     end
 
   end
