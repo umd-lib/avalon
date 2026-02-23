@@ -316,13 +316,26 @@ namespace :avalon do
 
     desc "Show S3 migration progress for MasterFiles, Derivatives, and ActiveStorage"
     task s3_migration_status: :environment do
+      cutoff_date = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
+
       puts "=== S3 Migration Status ==="
+      if cutoff_date.present?
+        date_filter = " AND system_create_dtsi:[* TO #{cutoff_date}]"
+        cutoff_time = Time.parse(cutoff_date)
+        puts "Cutoff date: #{cutoff_date}"
+        puts "  Items created before this date are filesystem-origin (migration candidates)."
+        puts "  Items created after this date are S3-native (excluded from counts)."
+      else
+        date_filter = ""
+        cutoff_time = nil
+        puts "No S3_MIGRATION_CUTOFF_DATE set — counting all items."
+      end
       puts ""
 
       # ── MasterFiles ──
-      mf_total_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *]"
-      mf_s3_q    = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*"
-      mf_local_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*"
+      mf_total_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *]#{date_filter}"
+      mf_s3_q    = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*#{date_filter}"
+      mf_local_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*#{date_filter}"
 
       mf_total = solr_count(mf_total_q)
       mf_s3    = solr_count(mf_s3_q)
@@ -337,9 +350,9 @@ namespace :avalon do
       puts ""
 
       # ── Derivatives ──
-      d_total_q = "has_model_ssim:Derivative AND derivativeFile_ssi:[* TO *]"
-      d_s3_q    = "has_model_ssim:Derivative AND derivativeFile_ssi:s3\\:\\/\\/*"
-      d_local_q = "has_model_ssim:Derivative AND derivativeFile_ssi:file\\:\\/\\/*"
+      d_total_q = "has_model_ssim:Derivative AND derivativeFile_ssi:[* TO *]#{date_filter}"
+      d_s3_q    = "has_model_ssim:Derivative AND derivativeFile_ssi:s3\\:\\/\\/*#{date_filter}"
+      d_local_q = "has_model_ssim:Derivative AND derivativeFile_ssi:file\\:\\/\\/*#{date_filter}"
 
       d_total = solr_count(d_total_q)
       d_s3    = solr_count(d_s3_q)
@@ -355,8 +368,11 @@ namespace :avalon do
 
       # ── ActiveStorage blobs ──
       if defined?(ActiveStorage::Blob)
-        as_total = ActiveStorage::Blob.count
-        as_local = ActiveStorage::Blob.where(service_name: "local").count
+        scope = ActiveStorage::Blob.all
+        scope = scope.where("created_at < ?", cutoff_time) if cutoff_time
+
+        as_total = scope.count
+        as_local = scope.where(service_name: "local").count
         as_s3    = as_total - as_local
 
         puts "ActiveStorage Blobs: #{as_total}"
