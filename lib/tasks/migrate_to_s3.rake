@@ -212,6 +212,7 @@ namespace :avalon do
       d_count  = rows.count { |r| r['resource_type'] == 'Derivative' }
       as_count = rows.count { |r| r['resource_type'] == 'ActiveStorage' }
       migrated = rows.count { |r| r['status'] == 'migrated' }
+      partial  = rows.count { |r| r['status'] == 'partial' }
       failed   = rows.count { |r| r['status'] == 'failed' }
 
       puts "Total entries:    #{total}"
@@ -220,8 +221,18 @@ namespace :avalon do
       puts "  ActiveStorage:  #{as_count}"
       puts ""
       puts "  Migrated:       #{migrated}"
+      puts "  Partial:        #{partial}" if partial > 0
       puts "  Failed:         #{failed}" if failed > 0
       puts ""
+
+      if partial > 0
+        puts "Partial migrations (MasterFile source missing, derivatives migrated):"
+        rows.select { |r| r['status'] == 'partial' }.each do |r|
+          mo_id = r['media_object_id'].presence || 'unknown'
+          puts "  MasterFile #{r['resource_id']} (MediaObject: #{mo_id}): #{r['source_path']}"
+        end
+        puts ""
+      end
 
       if failed > 0
         puts "Failed entries:"

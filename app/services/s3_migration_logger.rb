@@ -45,14 +45,19 @@ class S3MigrationLogger
     #
     # @param master_file_id  [String] The MasterFile ID (used as the S3 key)
     # @param media_object_id [String] The parent MediaObject ID
-    # @param master_file     [Hash]   { source_path:, destination_uri:, file_size:, checksum:, checksum_type: }
-    #                                 or nil if the MasterFile was skipped
+    # @param master_file     [Hash]   { source_path:, destination_uri:, file_size:, checksum:, checksum_type:, status: }
+    #                                 or nil if the MasterFile was skipped.
+    #                                 status defaults to 'migrated'. Use 'partial' when the source
+    #                                 file is missing but derivatives were migrated.
     # @param derivatives     [Array<Hash>] each: { resource_id:, source_path:, destination_uri:, file_size:, checksum:, checksum_type: }
     def log_master_file_migration(master_file_id:, media_object_id:, master_file: nil, derivatives: [])
       rows = []
       now = Time.current.iso8601
 
       if master_file
+        mf_status = master_file[:status] || 'migrated'
+        error_msg = mf_status == 'partial' ? 'Source file missing on local filesystem' : nil
+
         rows << {
           resource_id:     master_file_id,
           resource_type:   'MasterFile',
@@ -63,8 +68,8 @@ class S3MigrationLogger
           file_size:       master_file[:file_size],
           checksum:        master_file[:checksum],
           checksum_type:   master_file[:checksum_type] || 'SHA256',
-          status:          'migrated',
-          error_message:   nil,
+          status:          mf_status,
+          error_message:   error_msg,
           migrated_at:     now
         }
       end

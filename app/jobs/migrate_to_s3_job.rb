@@ -9,6 +9,11 @@
 #   Phase 2 — Only after ALL uploads succeed, update the Avalon records
 #             with their new S3 locations.
 #
+# Partial migration: If the MasterFile source file is missing from the
+# local filesystem but Derivatives are present, the job uploads and updates
+# the Derivatives while leaving the MasterFile record unchanged. This is
+# logged as a "partial" migration in the audit trail.
+#
 # This ensures that a partial upload failure never leaves records pointing
 # at S3 objects that don't exist. On retry, already-uploaded objects will
 # be re-uploaded (S3 overwrites are atomic) and then records are updated.
@@ -43,14 +48,33 @@ class MigrateToS3Job < ActiveJob::Base
     master_file_upload = upload_master_file(master_file)
     derivative_uploads = upload_derivatives(master_file)
 
-    # Phase 2: Update Avalon records only after ALL uploads succeeded
-    save_master_file!(master_file, master_file_upload)
+    # Mark as failed if derivative uploads contains nil entries
+    if derivative_uploads.any?(&:nil?)
+      Rails.logger.warn "[S3Migration] One or more derivatives for MasterFile #{master_file_id} failed to upload, aborting migration"
+      return
+    end
+
+    masterfile_non_migrateable = master_file_upload.is_a?(Hash) && [:source_missing, :non_local].include?(master_file_upload[:status])
+    if derivative_uploads.all? { |u| u[:status] == :already_migrated } && masterfile_non_migrateable
+      Rails.logger.info "[S3Migration] All derivatives for MasterFile #{master_file_id} already migrated and masterfile non-migrateable, skipping"
+      return
+    end
+
+    # Detect partial migration: MasterFile source missing but derivatives uploaded
+    partial = masterfile_non_migrateable
+
+    # Phase 2: Update Avalon records only after uploads succeeded
+    save_master_file!(master_file, master_file_upload) unless partial
     save_derivatives!(derivative_uploads)
 
     # Phase 3: Write audit trail (single record for MasterFile + Derivatives)
-    log_migration_audit(master_file, master_file_upload, derivative_uploads)
+    log_migration_audit(master_file, master_file_upload, derivative_uploads, partial: partial)
 
-    Rails.logger.info "[S3Migration] Completed migration for MasterFile #{master_file_id}"
+    if partial
+      Rails.logger.warn "[S3Migration] Partial migration for MasterFile #{master_file_id}: source file missing, derivatives migrated"
+    else
+      Rails.logger.info "[S3Migration] Completed migration for MasterFile #{master_file_id}"
+    end
   end
 
   private
@@ -64,16 +88,19 @@ class MigrateToS3Job < ActiveJob::Base
 
       if file_location.blank?
         Rails.logger.info "[S3Migration] MasterFile #{master_file.id} has blank file_location, skipping"
-        return nil
+        return { status: :source_missing, source_path: nil }
       end
 
       # Only migrate local filesystem paths (not already S3, http, etc.)
       unless file_location.start_with?('/')
         Rails.logger.info "[S3Migration] MasterFile #{master_file.id} is not on local filesystem (#{truncate_path(file_location)}), skipping"
-        return nil
+        return { status: :non_local, source_path: file_location }
       end
 
-      raise "Source file not found: #{file_location}" unless File.exist?(file_location)
+      unless File.exist?(file_location)
+        Rails.logger.warn "[S3Migration] MasterFile #{master_file.id} source file not found: #{file_location}"
+        return { status: :source_missing, source_path: file_location }
+      end
 
       s3_uri    = masterfile_s3_uri(file_location)
       s3_object = FileLocator::S3File.new(s3_uri).object
@@ -113,6 +140,12 @@ class MigrateToS3Job < ActiveJob::Base
       if deriv_location.blank?
         Rails.logger.info "[S3Migration] Derivative #{derivative.id} has blank location, skipping"
         return nil
+      end
+
+      # If already in S3
+      if deriv_location.start_with?('s3://')
+        Rails.logger.info "[S3Migration] Derivative #{derivative.id} already in S3 (#{truncate_path(deriv_location)}), skipping"
+        return { derivative: derivative, s3_uri: deriv_location, status: :already_migrated }
       end
 
       # Only migrate file:// derivatives (not already S3, http, etc.)
@@ -174,18 +207,30 @@ class MigrateToS3Job < ActiveJob::Base
 
     # Write a single audit record containing the MasterFile and all its
     # Derivatives, keyed by the MasterFile ID.
-    def log_migration_audit(master_file, master_file_upload, derivative_uploads)
+    def log_migration_audit(master_file, master_file_upload, derivative_uploads, partial: false)
       media_object_id = master_file.media_object&.id
 
       mf_entry = nil
       if master_file_upload
-        mf_entry = {
-          source_path:    master_file_upload[:source_path],
-          destination_uri: master_file_upload[:s3_uri],
-          file_size:      master_file_upload[:file_size],
-          checksum:       fetch_s3_checksum(master_file_upload[:s3_uri]),
-          checksum_type:  'SHA256'
-        }
+        if [:source_missing, :non_local].include?(master_file_upload[:status])
+          # Partial migration: record the missing source file
+          mf_entry = {
+            source_path:    master_file_upload[:source_path],
+            destination_uri: nil,
+            file_size:      nil,
+            checksum:       nil,
+            checksum_type:  nil,
+            status:         'partial'
+          }
+        else
+          mf_entry = {
+            source_path:    master_file_upload[:source_path],
+            destination_uri: master_file_upload[:s3_uri],
+            file_size:      master_file_upload[:file_size],
+            checksum:       fetch_s3_checksum(master_file_upload[:s3_uri]),
+            checksum_type:  'SHA256'
+          }
+        end
       end
 
       deriv_entries = derivative_uploads.map do |entry|
