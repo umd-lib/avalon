@@ -258,10 +258,16 @@ namespace :avalon do
 
     desc "Validate ActiveStorage blobs migrated to S3 (checksum + size)"
     task validate_active_storage: :environment do
-      dry_run = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      dry_run             = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
       target_service_name = ENV.fetch('TARGET_SERVICE', 'amazon')
+      cutoff_date         = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
 
       s3_blobs = ActiveStorage::Blob.where(service_name: target_service_name)
+      if cutoff_date.present?
+        cutoff_time = Time.parse(cutoff_date)
+        s3_blobs = s3_blobs.where("created_at < ?", cutoff_time)
+        puts "Cutoff date: #{cutoff_date} — only validating blobs created before this date"
+      end
       total = s3_blobs.count
 
       puts "Found #{total} ActiveStorage blob(s) on #{target_service_name}"
