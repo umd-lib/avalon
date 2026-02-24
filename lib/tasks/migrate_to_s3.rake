@@ -316,7 +316,9 @@ namespace :avalon do
 
     desc "Show S3 migration progress for MasterFiles, Derivatives, and ActiveStorage"
     task s3_migration_status: :environment do
-      cutoff_date = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
+      cutoff_date       = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
+      check_local_files = ENV.fetch('CHECK_LOCAL_FILES', 'false').casecmp('true').zero?
+      batch_size        = ENV.fetch('BATCH_SIZE', '100').to_i
 
       puts "=== S3 Migration Status ==="
       if cutoff_date.present?
@@ -384,6 +386,155 @@ namespace :avalon do
         puts ""
       end
 
+      # ── Local file existence check ──
+      if check_local_files
+        puts "--- Local File Existence Check ---"
+        puts ""
+
+        # Check MasterFiles on filesystem
+        mf_missing = []
+        start = 0
+        mf_checked = 0
+
+        puts "Checking MasterFiles on filesystem..."
+        loop do
+          response = ActiveFedora::SolrService.get(mf_local_q,
+            fl: 'id,file_location_ssi,isPartOf_ssim', rows: batch_size, start: start)
+          docs = response['response']['docs']
+          break if docs.empty?
+
+          docs.each do |doc|
+            file_path = doc['file_location_ssi']
+            next if file_path.blank?
+            mf_checked += 1
+
+            unless File.exist?(file_path)
+              media_object_title = media_object_title_for_master_file(doc)
+              mf_missing << {
+                id: doc['id'],
+                path: file_path,
+                media_object_title: media_object_title
+              }
+            end
+          end
+
+          start += batch_size
+          puts "  Checked #{start} MasterFiles..." if (start % 500).zero?
+        end
+
+        puts "MasterFiles checked:  #{mf_checked}"
+        puts "  Missing locally:    #{mf_missing.size}"
+        if mf_checked > 0
+          puts "  Missing:            #{percentage(mf_missing.size, mf_checked)}%"
+        end
+
+        if mf_missing.any?
+          puts ""
+          puts "  Missing MasterFiles:"
+          mf_missing.each do |entry|
+            puts "    #{entry[:id]} | #{entry[:media_object_title]} | #{entry[:path]}"
+          end
+        end
+        puts ""
+
+        # Check Derivatives on filesystem
+        d_missing = []
+        start = 0
+        d_checked = 0
+
+        puts "Checking Derivatives on filesystem..."
+        loop do
+          response = ActiveFedora::SolrService.get(d_local_q,
+            fl: 'id,derivativeFile_ssi,isDerivationOf_ssim', rows: batch_size, start: start)
+          docs = response['response']['docs']
+          break if docs.empty?
+
+          docs.each do |doc|
+            deriv_uri = doc['derivativeFile_ssi']
+            next if deriv_uri.blank?
+            d_checked += 1
+
+            begin
+              local_path = Addressable::URI.parse(deriv_uri).path
+            rescue
+              local_path = deriv_uri.sub(%r{^file://}, '')
+            end
+
+            unless File.exist?(local_path)
+              media_object_title = media_object_title_for_derivative(doc)
+              d_missing << {
+                id: doc['id'],
+                path: local_path,
+                media_object_title: media_object_title
+              }
+            end
+          end
+
+          start += batch_size
+          puts "  Checked #{start} Derivatives..." if (start % 500).zero?
+        end
+
+        puts "Derivatives checked:  #{d_checked}"
+        puts "  Missing locally:    #{d_missing.size}"
+        if d_checked > 0
+          puts "  Missing:            #{percentage(d_missing.size, d_checked)}%"
+        end
+
+        if d_missing.any?
+          puts ""
+          puts "  Missing Derivatives:"
+          d_missing.each do |entry|
+            puts "    #{entry[:id]} | #{entry[:media_object_title]} | #{entry[:path]}"
+          end
+        end
+        puts ""
+
+        # Check ActiveStorage blobs on local disk
+        if defined?(ActiveStorage::Blob)
+          as_scope = ActiveStorage::Blob.where(service_name: "local")
+          as_scope = as_scope.where("created_at < ?", cutoff_time) if cutoff_time
+
+          local_root = ENV.fetch('ACTIVE_STORAGE_LOCAL_ROOT',
+                        Settings.active_storage&.root || '/masterfiles/supplemental_files/rails_active_storage')
+
+          as_missing = []
+          as_checked = 0
+
+          puts "Checking ActiveStorage blobs on local disk..."
+          as_scope.find_each do |blob|
+            as_checked += 1
+            blob_path = File.join(local_root, blob.key)
+
+            unless File.exist?(blob_path)
+              title = media_object_title_for_blob(blob)
+              as_missing << {
+                id: "blob-#{blob.id}",
+                filename: blob.filename.to_s,
+                path: blob_path,
+                media_object_title: title
+              }
+            end
+          end
+
+          puts "ActiveStorage blobs checked: #{as_checked}"
+          puts "  Missing locally:           #{as_missing.size}"
+          if as_checked > 0
+            puts "  Missing:                   #{percentage(as_missing.size, as_checked)}%"
+          end
+
+          if as_missing.any?
+            puts ""
+            puts "  Missing ActiveStorage blobs:"
+            as_missing.each do |entry|
+              puts "    #{entry[:id]} | #{entry[:media_object_title]} | #{entry[:filename]} | #{entry[:path]}"
+            end
+          end
+          puts ""
+        end
+
+        puts "--- End Local File Check ---"
+      end
+
       puts "==========================="
     end
 
@@ -396,6 +547,62 @@ namespace :avalon do
     def percentage(numerator, denominator)
       return 0.0 if denominator.zero?
       (numerator.to_f / denominator * 100).round(1)
+    end
+
+    # Look up the parent MediaObject title from a MasterFile Solr doc.
+    # MasterFile → isPartOf_ssim → MediaObject ID → title_tesi
+    def media_object_title_for_master_file(solr_doc)
+      media_object_ids = solr_doc['isPartOf_ssim']
+      return 'Orphan item' if media_object_ids.blank?
+
+      mo_id = media_object_ids.first
+      mo_response = ActiveFedora::SolrService.get(
+        "id:\"#{mo_id}\"", fl: 'title_tesi', rows: 1
+      )
+      mo_doc = mo_response['response']['docs'].first
+      return 'Orphan item' if mo_doc.nil?
+
+      mo_doc['title_tesi'].presence || 'Untitled'
+    rescue => e
+      "Error: #{e.message}"
+    end
+
+    # Look up the parent MediaObject title from a Derivative Solr doc.
+    # Derivative → isDerivationOf_ssim → MasterFile → isPartOf_ssim → MediaObject
+    def media_object_title_for_derivative(solr_doc)
+      master_file_ids = solr_doc['isDerivationOf_ssim']
+      return 'Orphan item' if master_file_ids.blank?
+
+      mf_id = master_file_ids.first
+      mf_response = ActiveFedora::SolrService.get(
+        "id:\"#{mf_id}\"", fl: 'isPartOf_ssim', rows: 1
+      )
+      mf_doc = mf_response['response']['docs'].first
+      return 'Orphan item' if mf_doc.nil?
+
+      media_object_title_for_master_file(mf_doc)
+    rescue => e
+      "Error: #{e.message}"
+    end
+
+    # Look up the parent MediaObject title from an ActiveStorage blob.
+    # Blob → attachment → SupplementalFile → parent_id → MediaObject
+    def media_object_title_for_blob(blob)
+      attachment = blob.attachments.first
+      return 'Orphan item' unless attachment
+
+      record = attachment.record
+      return 'Orphan item' unless record.respond_to?(:parent_id) && record.parent_id.present?
+
+      mo_response = ActiveFedora::SolrService.get(
+        "id:\"#{record.parent_id}\"", fl: 'title_tesi', rows: 1
+      )
+      mo_doc = mo_response['response']['docs'].first
+      return 'Orphan item' if mo_doc.nil?
+
+      mo_doc['title_tesi'].presence || 'Untitled'
+    rescue => e
+      "Error: #{e.message}"
     end
 
     # Look up the parent MediaObject ID for an ActiveStorage blob.
