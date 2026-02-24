@@ -30,6 +30,11 @@
 class MigrateToS3Job < ActiveJob::Base
   queue_as :s3_migration
 
+  # Multipart upload part size (default 64 MB). Configurable via env var
+  # so each environment can tune for throughput. Must match the value used
+  # by S3_VALIDATION_PART_SIZE_MB when validating checksums.
+  MULTIPART_PART_SIZE = (ENV.fetch('S3_MIGRATION_PART_SIZE_MB', '64').to_i * 1024 * 1024)
+
   # Retry transient S3 / network errors with exponential backoff
   retry_on Aws::S3::Errors::ServiceError, wait: :polynomially_longer, attempts: 5
   retry_on Errno::ECONNRESET,             wait: :polynomially_longer, attempts: 5
@@ -106,7 +111,7 @@ class MigrateToS3Job < ActiveJob::Base
       s3_object = FileLocator::S3File.new(s3_uri).object
 
       Rails.logger.info "[S3Migration] Uploading MasterFile #{master_file.id}: #{truncate_path(file_location)} -> #{truncate_path(s3_uri)}"
-      s3_object.upload_file(file_location, checksum_algorithm: 'SHA256')
+      s3_object.upload_file(file_location, checksum_algorithm: 'SHA256', part_size: MULTIPART_PART_SIZE)
 
       # Verify
       raise "Upload verification failed for MasterFile #{master_file.id}" unless s3_object.exists?
@@ -167,7 +172,7 @@ class MigrateToS3Job < ActiveJob::Base
       s3_object = FileLocator::S3File.new(s3_uri).object
 
       Rails.logger.info "[S3Migration] Uploading Derivative #{derivative.id}: #{truncate_path(local_path)} -> #{truncate_path(s3_uri)}"
-      s3_object.upload_file(local_path, checksum_algorithm: 'SHA256')
+      s3_object.upload_file(local_path, checksum_algorithm: 'SHA256', part_size: MULTIPART_PART_SIZE)
 
       # Verify
       raise "Upload verification failed for Derivative #{derivative.id}" unless s3_object.exists?

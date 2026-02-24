@@ -183,44 +183,51 @@ class ValidateS3MigrationJob < ActiveJob::Base
 
     # Compute the composite SHA-256 that matches S3's multipart checksum.
     #
+    # For multipart uploads, S3 stores a composite checksum:
+    #   Base64(SHA-256(part1_sha256 + part2_sha256 + ...))-N
+    # where N is the number of parts.
+    #
+    # Instead of fetching part sizes from S3 (which requires the
+    # s3:GetObjectAttributes permission), we compute the part size
+    # using the same formula the AWS SDK uses by default:
+    #   part_size = max(ceil(file_size / 10_000), 5 MB)
+    #
     # Steps:
-    #   1. Fetch part metadata (sizes) via GetObjectAttributes
-    #   2. Read the local file in matching chunks
-    #   3. SHA-256 each chunk
-    #   4. SHA-256 the concatenated raw digests
-    #   5. Base64-encode and append "-N"
-    def compute_local_multipart_sha256(local_path, s3_object, s3_checksum)
-      parts = fetch_object_parts(s3_object)
-
-      if parts.nil? || parts.empty?
-        Rails.logger.warn "[S3Validation] Could not retrieve multipart part info; falling back to size-only validation"
-        return nil
-      end
+    #   1. Derive the number of parts from the S3 checksum suffix
+    #   2. Compute the default SDK part size from the local file size
+    #   3. Read the local file in matching chunks
+    #   4. SHA-256 each chunk
+    #   5. SHA-256 the concatenated raw digests
+    #   6. Base64-encode and append "-N"
+    def compute_local_multipart_sha256(local_path, _s3_object, s3_checksum)
+      num_parts = s3_checksum.split('-').last.to_i
+      file_size = File.size(local_path)
+      part_size = default_multipart_part_size(file_size)
 
       raw_digests = []
 
       File.open(local_path, 'rb') do |f|
-        parts.each do |part|
-          chunk = f.read(part.size)
+        num_parts.times do
+          chunk = f.read(part_size)
+          break if chunk.nil?
           raw_digests << Digest::SHA256.digest(chunk)
         end
       end
 
       composite_raw = Digest::SHA256.digest(raw_digests.join)
-      "#{Base64.strict_encode64(composite_raw)}-#{parts.size}"
+      "#{Base64.strict_encode64(composite_raw)}-#{raw_digests.size}"
     end
 
-    # Retrieve part-level metadata for a multipart-uploaded S3 object.
-    def fetch_object_parts(s3_object)
-      resp = s3_object.client.get_object_attributes(
-        bucket: s3_object.bucket_name,
-        key:    s3_object.key,
-        object_attributes: ['ObjectParts']
-      )
-      resp.object_parts&.parts
-    rescue Aws::S3::Errors::ServiceError => e
-      Rails.logger.warn "[S3Validation] GetObjectAttributes failed: #{e.message}"
-      nil
+    # Part size for multipart checksum validation. Must match the part size
+    # used during upload (S3_MIGRATION_PART_SIZE_MB). Separate env var so
+    # environments where migration already completed with a different part
+    # size can set validation independently.
+    #   part_size = max(ceil(file_size / 10_000), VALIDATION_PART_SIZE)
+    SDK_MAX_PARTS = 10_000
+    VALIDATION_PART_SIZE = (ENV.fetch('S3_VALIDATION_PART_SIZE_MB', '64').to_i * 1024 * 1024)
+
+    def default_multipart_part_size(file_size)
+      [(file_size.to_f / SDK_MAX_PARTS).ceil, VALIDATION_PART_SIZE].max
     end
 
     # ── Reverse path mapping ────────────────────────────────────────────
