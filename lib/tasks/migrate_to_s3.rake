@@ -25,15 +25,18 @@ namespace :avalon do
 
     desc "Enqueue S3 migration jobs for all filesystem-based MasterFiles"
     task enqueue_s3_migration: :environment do
-      batch_size = ENV.fetch('BATCH_SIZE', '100').to_i
-      dry_run    = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      batch_size    = ENV.fetch('BATCH_SIZE', '100').to_i
+      dry_run       = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      filter_query  = ENV.fetch('SOLR_FILTER_QUERY', '')
 
       # Find MasterFiles that have a file_location and it does NOT start with s3://
       query = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*"
+      query += " AND #{filter_query}" if filter_query.present?
       start = 0
       total_enqueued = 0
 
       puts "Querying Solr for filesystem-based MasterFiles..."
+      puts "Filter query: #{filter_query}" if filter_query.present?
       puts "[DRY RUN] No jobs will be enqueued" if dry_run
 
       loop do
@@ -137,8 +140,9 @@ namespace :avalon do
 
     desc "Enqueue S3 validation jobs for all migrated MasterFiles (Solr-based)"
     task enqueue_s3_validation: :environment do
-      batch_size  = ENV.fetch('BATCH_SIZE', '100').to_i
-      dry_run     = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      batch_size   = ENV.fetch('BATCH_SIZE', '100').to_i
+      dry_run      = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      filter_query = ENV.fetch('SOLR_FILTER_QUERY', '')
       S3_MIGRATION_CUTOFF_DATE = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
 
       # Find MasterFiles whose file_location starts with s3://
@@ -153,10 +157,13 @@ namespace :avalon do
         puts "Filtering to items created before #{S3_MIGRATION_CUTOFF_DATE}"
       end
 
+      query += " AND #{filter_query}" if filter_query.present?
+
       start = 0
       total_enqueued = 0
 
       puts "Querying Solr for migrated (S3-based) MasterFiles..."
+      puts "Filter query: #{filter_query}" if filter_query.present?
       puts "[DRY RUN] No jobs will be enqueued" if dry_run
 
       loop do
