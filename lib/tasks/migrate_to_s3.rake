@@ -27,20 +27,28 @@ namespace :avalon do
     task enqueue_s3_migration: :environment do
       batch_size    = ENV.fetch('BATCH_SIZE', '100').to_i
       dry_run       = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
-      filter_query  = ENV.fetch('SOLR_FILTER_QUERY', '')
+      filter_query  = ENV.fetch('S3_MIGRATION_FILTER_QUERY', '')
+      collection    = ENV.fetch('S3_MIGRATION_COLLECTION', '')
 
       # Find MasterFiles that have a file_location and it does NOT start with s3://
       query = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*"
       query += " AND #{filter_query}" if filter_query.present?
+
+      # Collection filter uses Solr join — must be passed as fq, not in q
+      solr_fq = collection.present? ? media_object_join_clause(collection) : nil
+
       start = 0
       total_enqueued = 0
 
       puts "Querying Solr for filesystem-based MasterFiles..."
       puts "Filter query: #{filter_query}" if filter_query.present?
+      puts "Collection: #{collection}" if collection.present?
       puts "[DRY RUN] No jobs will be enqueued" if dry_run
 
       loop do
-        response = ActiveFedora::SolrService.get(query, fl: 'id,file_location_ssi', rows: batch_size, start: start)
+        solr_params = { fl: 'id,file_location_ssi', rows: batch_size, start: start }
+        solr_params[:fq] = solr_fq if solr_fq
+        response = ActiveFedora::SolrService.get(query, solr_params)
         docs = response['response']['docs']
         break if docs.empty?
 
@@ -142,7 +150,8 @@ namespace :avalon do
     task enqueue_s3_validation: :environment do
       batch_size   = ENV.fetch('BATCH_SIZE', '100').to_i
       dry_run      = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
-      filter_query = ENV.fetch('SOLR_FILTER_QUERY', '')
+      filter_query = ENV.fetch('S3_MIGRATION_FILTER_QUERY', '')
+      collection   = ENV.fetch('S3_MIGRATION_COLLECTION', '')
       S3_MIGRATION_CUTOFF_DATE = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
 
       # Find MasterFiles whose file_location starts with s3://
@@ -159,15 +168,21 @@ namespace :avalon do
 
       query += " AND #{filter_query}" if filter_query.present?
 
+      # Collection filter uses Solr join — must be passed as fq, not in q
+      solr_fq = collection.present? ? media_object_join_clause(collection) : nil
+
       start = 0
       total_enqueued = 0
 
       puts "Querying Solr for migrated (S3-based) MasterFiles..."
       puts "Filter query: #{filter_query}" if filter_query.present?
+      puts "Collection: #{collection}" if collection.present?
       puts "[DRY RUN] No jobs will be enqueued" if dry_run
 
       loop do
-        response = ActiveFedora::SolrService.get(query, fl: 'id,file_location_ssi', rows: batch_size, start: start)
+        solr_params = { fl: 'id,file_location_ssi', rows: batch_size, start: start }
+        solr_params[:fq] = solr_fq if solr_fq
+        response = ActiveFedora::SolrService.get(query, solr_params)
         docs = response['response']['docs']
         break if docs.empty?
 
@@ -343,6 +358,8 @@ namespace :avalon do
       cutoff_date       = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
       check_local_files = ENV.fetch('CHECK_LOCAL_FILES', 'false').casecmp('true').zero?
       batch_size        = ENV.fetch('BATCH_SIZE', '100').to_i
+      filter_query      = ENV.fetch('S3_MIGRATION_FILTER_QUERY', '')
+      collection        = ENV.fetch('S3_MIGRATION_COLLECTION', '')
 
       puts "=== S3 Migration Status ==="
       if cutoff_date.present?
@@ -356,16 +373,24 @@ namespace :avalon do
         cutoff_time = nil
         puts "No S3_MIGRATION_CUTOFF_DATE set — counting all items."
       end
+
+      # Optional filters applied to MasterFile/Derivative Solr queries
+      extra_filter = ""
+      extra_filter += " AND #{filter_query}" if filter_query.present?
+      solr_fq = collection.present? ? media_object_join_clause(collection) : nil
+
+      puts "Filter query: #{filter_query}" if filter_query.present?
+      puts "Collection: #{collection}" if collection.present?
       puts ""
 
       # ── MasterFiles ──
-      mf_total_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *]#{date_filter}"
-      mf_s3_q    = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*#{date_filter}"
-      mf_local_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*#{date_filter}"
+      mf_total_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *]#{date_filter}#{extra_filter}"
+      mf_s3_q    = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*#{date_filter}#{extra_filter}"
+      mf_local_q = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *] AND -file_location_ssi:s3\\:\\/\\/*#{date_filter}#{extra_filter}"
 
-      mf_total = solr_count(mf_total_q)
-      mf_s3    = solr_count(mf_s3_q)
-      mf_local = solr_count(mf_local_q)
+      mf_total = solr_count(mf_total_q, fq: solr_fq)
+      mf_s3    = solr_count(mf_s3_q, fq: solr_fq)
+      mf_local = solr_count(mf_local_q, fq: solr_fq)
 
       puts "MasterFiles (with file_location): #{mf_total}"
       puts "  On S3:           #{mf_s3}"
@@ -376,13 +401,13 @@ namespace :avalon do
       puts ""
 
       # ── Derivatives ──
-      d_total_q = "has_model_ssim:Derivative AND derivativeFile_ssi:[* TO *]#{date_filter}"
-      d_s3_q    = "has_model_ssim:Derivative AND derivativeFile_ssi:s3\\:\\/\\/*#{date_filter}"
-      d_local_q = "has_model_ssim:Derivative AND derivativeFile_ssi:file\\:\\/\\/*#{date_filter}"
+      d_total_q = "has_model_ssim:Derivative AND derivativeFile_ssi:[* TO *]#{date_filter}#{extra_filter}"
+      d_s3_q    = "has_model_ssim:Derivative AND derivativeFile_ssi:s3\\:\\/\\/*#{date_filter}#{extra_filter}"
+      d_local_q = "has_model_ssim:Derivative AND derivativeFile_ssi:file\\:\\/\\/*#{date_filter}#{extra_filter}"
 
-      d_total = solr_count(d_total_q)
-      d_s3    = solr_count(d_s3_q)
-      d_local = solr_count(d_local_q)
+      d_total = solr_count(d_total_q, fq: solr_fq)
+      d_s3    = solr_count(d_s3_q, fq: solr_fq)
+      d_local = solr_count(d_local_q, fq: solr_fq)
 
       puts "Derivatives (with derivativeFile): #{d_total}"
       puts "  On S3:           #{d_s3}"
@@ -422,8 +447,9 @@ namespace :avalon do
 
         puts "Checking MasterFiles on filesystem..."
         loop do
-          response = ActiveFedora::SolrService.get(mf_local_q,
-            fl: 'id,file_location_ssi,isPartOf_ssim', rows: batch_size, start: start)
+          solr_params = { fl: 'id,file_location_ssi,isPartOf_ssim', rows: batch_size, start: start }
+          solr_params[:fq] = solr_fq if solr_fq
+          response = ActiveFedora::SolrService.get(mf_local_q, solr_params)
           docs = response['response']['docs']
           break if docs.empty?
 
@@ -468,8 +494,9 @@ namespace :avalon do
 
         puts "Checking Derivatives on filesystem..."
         loop do
-          response = ActiveFedora::SolrService.get(d_local_q,
-            fl: 'id,derivativeFile_ssi,isDerivationOf_ssim', rows: batch_size, start: start)
+          solr_params = { fl: 'id,derivativeFile_ssi,isDerivationOf_ssim', rows: batch_size, start: start }
+          solr_params[:fq] = solr_fq if solr_fq
+          response = ActiveFedora::SolrService.get(d_local_q, solr_params)
           docs = response['response']['docs']
           break if docs.empty?
 
@@ -564,8 +591,21 @@ namespace :avalon do
 
     # ── Helpers ─────────────────────────────────────────────────────────
 
-    def solr_count(query)
-      ActiveFedora::SolrService.get(query, rows: 0)['response']['numFound']
+    # Build a Solr join clause that filters MasterFiles by their parent
+    # MediaObject belonging to the given collection. Uses Solr's {!join}
+    # to run the subquery server-side, scaling to any collection size.
+    #
+    # Example:
+    #   media_object_join_clause('My Collection')
+    #   => '{!join from=id to=isPartOf_ssim}has_model_ssim:MediaObject AND collection_ssim:"My Collection"'
+    def media_object_join_clause(collection)
+      "{!join from=id to=isPartOf_ssim}has_model_ssim:MediaObject AND collection_ssim:\"#{collection}\""
+    end
+
+    def solr_count(query, fq: nil)
+      params = { rows: 0 }
+      params[:fq] = fq if fq
+      ActiveFedora::SolrService.get(query, params)['response']['numFound']
     end
 
     def percentage(numerator, denominator)
