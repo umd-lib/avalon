@@ -111,7 +111,12 @@ class MigrateToS3Job < ActiveJob::Base
       s3_object = FileLocator::S3File.new(s3_uri).object
 
       Rails.logger.info "[S3Migration] Uploading MasterFile #{master_file.id}: #{truncate_path(file_location)} -> #{truncate_path(s3_uri)}"
-      s3_object.upload_file(file_location, checksum_algorithm: 'SHA256', part_size: MULTIPART_PART_SIZE)
+      # multipart_threshold must match MULTIPART_PART_SIZE so the SDK's own
+      # decision on single-part vs multipart always aligns with us passing
+      # part_size — put_object rejects part_size as an unexpected parameter.
+      upload_options = { checksum_algorithm: 'SHA256', multipart_threshold: MULTIPART_PART_SIZE }
+      upload_options[:part_size] = MULTIPART_PART_SIZE if File.size(file_location) >= MULTIPART_PART_SIZE
+      s3_object.upload_file(file_location, **upload_options)
 
       # Verify
       raise "Upload verification failed for MasterFile #{master_file.id}" unless s3_object.exists?
@@ -172,7 +177,9 @@ class MigrateToS3Job < ActiveJob::Base
       s3_object = FileLocator::S3File.new(s3_uri).object
 
       Rails.logger.info "[S3Migration] Uploading Derivative #{derivative.id}: #{truncate_path(local_path)} -> #{truncate_path(s3_uri)}"
-      s3_object.upload_file(local_path, checksum_algorithm: 'SHA256', part_size: MULTIPART_PART_SIZE)
+      upload_options = { checksum_algorithm: 'SHA256', multipart_threshold: MULTIPART_PART_SIZE }
+      upload_options[:part_size] = MULTIPART_PART_SIZE if File.size(local_path) >= MULTIPART_PART_SIZE
+      s3_object.upload_file(local_path, **upload_options)
 
       # Verify
       raise "Upload verification failed for Derivative #{derivative.id}" unless s3_object.exists?
