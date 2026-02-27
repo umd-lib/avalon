@@ -11,6 +11,10 @@
  #   6. rake avalon:migrate:s3_migration_report           # View audit trail summary
 #   7. rake avalon:migrate:validate_active_storage       # Validate ActiveStorage blobs on S3
 #
+# Rollback:
+#   rake avalon:migrate:revert_s3_migration            # Revert MasterFile+Derivative records to local paths
+#   rake avalon:migrate:revert_active_storage           # Revert ActiveStorage blobs to local service
+#
 # An audit trail is written automatically to S3 during steps 2 and 3.
 # Each entry is stored as an individual S3 object under a configurable prefix:
 #   S3_MIGRATION_LOG_BUCKET  (default: Settings.encoding.masterfile_bucket)
@@ -589,7 +593,168 @@ namespace :avalon do
       puts "==========================="
     end
 
+    # ── Revert MasterFile / Derivative records to local paths ───────────
+
+    desc "Revert MasterFile and Derivative records from S3 back to local filesystem paths"
+    task revert_s3_migration: :environment do
+      batch_size   = ENV.fetch('BATCH_SIZE', '100').to_i
+      dry_run      = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      filter_query = ENV.fetch('S3_MIGRATION_FILTER_QUERY', '')
+      collection   = ENV.fetch('S3_MIGRATION_COLLECTION', '')
+      cutoff_date  = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
+
+      masterfile_base  = ENV.fetch('MIGRATE_MASTERFILE_LOCAL_BASE', '/masterfiles')
+      derivative_base  = ENV.fetch('MIGRATE_DERIVATIVE_LOCAL_BASE',
+                           ENV.fetch('LOCAL_DERIVATIVES_DIR', '/streamfiles'))
+
+      puts "=== Revert S3 Migration ==="
+      puts "[DRY RUN] No records will be changed" if dry_run
+      puts "MasterFile local base:  #{masterfile_base}"
+      puts "Derivative local base:  #{derivative_base}"
+
+      # ── Revert MasterFiles ──
+      mf_query = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*"
+      mf_query += " AND system_create_dtsi:[* TO #{cutoff_date}]" if cutoff_date.present?
+      mf_query += " AND #{filter_query}" if filter_query.present?
+      solr_fq = collection.present? ? media_object_join_clause(collection) : nil
+
+      start = 0
+      mf_reverted = 0
+      mf_errors   = 0
+      d_reverted  = 0
+      d_errors    = 0
+
+      puts ""
+      puts "Reverting MasterFiles and their Derivatives from S3 to local paths..."
+      puts "Cutoff date: #{cutoff_date}" if cutoff_date.present?
+      puts "Filter query: #{filter_query}" if filter_query.present?
+      puts "Collection: #{collection}" if collection.present?
+
+      loop do
+        solr_params = { fl: 'id,file_location_ssi', rows: batch_size, start: start }
+        solr_params[:fq] = solr_fq if solr_fq
+        response = ActiveFedora::SolrService.get(mf_query, solr_params)
+        docs = response['response']['docs']
+        break if docs.empty?
+
+        docs.each do |doc|
+          s3_uri = doc['file_location_ssi']
+          next if s3_uri.blank?
+
+          local_path = s3_uri_to_local_path(s3_uri, masterfile_base)
+
+          if dry_run
+            puts "  [DRY RUN] Would revert MasterFile #{doc['id']}: #{s3_uri} -> #{local_path}"
+            mf_reverted += 1
+            next
+          end
+
+          begin
+            master_file = MasterFile.find(doc['id'])
+            master_file.file_location = local_path
+            master_file.save!
+            mf_reverted += 1
+            puts "  Reverted MasterFile #{doc['id']}"
+
+            # Revert S3-based derivatives belonging to this MasterFile
+            master_file.derivatives.each do |derivative|
+              d_s3_uri = derivative.absolute_location
+              next if d_s3_uri.blank? || !d_s3_uri.start_with?('s3://')
+
+              d_local_path = s3_uri_to_local_path(d_s3_uri, derivative_base)
+              file_uri     = "file://#{d_local_path}"
+
+              begin
+                # absolute_location= triggers set_streaming_locations! which
+                # recalculates location_url and hls_url based on current config.
+                # Since config targets S3 (/s3-avalon/streamfiles), we must fix
+                # the URLs to use the filesystem streaming path (/avalon).
+                derivative.absolute_location = file_uri
+                derivative.hls_url = derivative.hls_url&.gsub('/s3-avalon/streamfiles', '/avalon')
+                derivative.location_url = derivative.location_url&.gsub('/s3-avalon/streamfiles', '/avalon')
+                derivative.save!
+                d_reverted += 1
+                puts "    Reverted Derivative #{derivative.id}"
+              rescue => e
+                d_errors += 1
+                puts "    ERROR Derivative #{derivative.id}: #{e.class} - #{e.message}"
+              end
+            end
+          rescue => e
+            mf_errors += 1
+            puts "  ERROR MasterFile #{doc['id']}: #{e.class} - #{e.message}"
+          end
+        end
+
+        start += batch_size
+        puts "  Processed #{start} records..." if (start % 500).zero?
+      end
+
+      puts ""
+      puts "=== Revert Complete ==="
+      puts "  MasterFiles:  #{mf_reverted} reverted, #{mf_errors} errors"
+      puts "  Derivatives:  #{d_reverted} reverted, #{d_errors} errors"
+    end
+
+    # ── Revert ActiveStorage blobs to local service ─────────────────────
+
+    desc "Revert ActiveStorage blobs from S3 back to local disk service"
+    task revert_active_storage: :environment do
+      dry_run             = ENV.fetch('DRY_RUN', 'false').casecmp('true').zero?
+      target_service_name = ENV.fetch('TARGET_SERVICE', 'amazon')
+      cutoff_date         = ENV.fetch('S3_MIGRATION_CUTOFF_DATE', '')
+
+      s3_blobs = ActiveStorage::Blob.where(service_name: target_service_name)
+      if cutoff_date.present?
+        cutoff_time = Time.parse(cutoff_date)
+        s3_blobs = s3_blobs.where("created_at < ?", cutoff_time)
+        puts "Cutoff date: #{cutoff_date} — only reverting blobs created before this date"
+      end
+      total = s3_blobs.count
+
+      puts "=== Revert ActiveStorage ==="
+      puts "Found #{total} ActiveStorage blob(s) on #{target_service_name}"
+      puts "[DRY RUN] No records will be changed" if dry_run
+
+      if total.zero?
+        puts "Nothing to revert."
+        next
+      end
+
+      reverted = 0
+      errors   = 0
+
+      s3_blobs.find_each do |blob|
+        if dry_run
+          puts "  [DRY RUN] Would revert blob #{blob.id}: #{blob.filename} (#{blob.byte_size} bytes)"
+          reverted += 1
+          next
+        end
+
+        begin
+          blob.update_column(:service_name, 'local')
+          reverted += 1
+          puts "  Reverted blob #{blob.id}: #{blob.filename}"
+        rescue => e
+          errors += 1
+          puts "  ERROR blob #{blob.id}: #{e.class} - #{e.message}"
+        end
+      end
+
+      puts ""
+      puts "ActiveStorage revert complete: #{reverted} reverted, #{errors} errors out of #{total} total"
+    end
+
     # ── Helpers ─────────────────────────────────────────────────────────
+
+    # Reverse an S3 URI to a local filesystem path.
+    # s3://bucket/archive/2v/23/vt/36/id-file.mp4 -> /masterfiles/archive/2v/23/vt/36/id-file.mp4
+    # s3://bucket/uuid/outputs/name-high.mp4      -> /streamfiles/uuid/outputs/name-high.mp4
+    def s3_uri_to_local_path(s3_uri, local_base)
+      uri = Addressable::URI.parse(s3_uri)
+      key = Addressable::URI.unencode(uri.path).sub(%r{^/}, '')
+      File.join(local_base, key)
+    end
 
     # Build a Solr join clause that filters MasterFiles by their parent
     # MediaObject belonging to the given collection. Uses Solr's {!join}
