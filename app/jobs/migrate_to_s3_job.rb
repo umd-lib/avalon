@@ -53,12 +53,6 @@ class MigrateToS3Job < ActiveJob::Base
     master_file_upload = upload_master_file(master_file)
     derivative_uploads = upload_derivatives(master_file)
 
-    # Mark as failed if derivative uploads contains nil entries
-    if derivative_uploads.any?(&:nil?)
-      Rails.logger.warn "[S3Migration] One or more derivatives for MasterFile #{master_file_id} failed to upload, aborting migration"
-      return
-    end
-
     masterfile_non_migrateable = master_file_upload.is_a?(Hash) && [:source_missing, :non_local].include?(master_file_upload[:status])
     if derivative_uploads.all? { |u| u[:status] == :already_migrated } && masterfile_non_migrateable
       Rails.logger.info "[S3Migration] All derivatives for MasterFile #{master_file_id} already migrated and masterfile non-migrateable, skipping"
@@ -128,7 +122,7 @@ class MigrateToS3Job < ActiveJob::Base
       end
 
       Rails.logger.info "[S3Migration] MasterFile #{master_file.id} uploaded and verified"
-      { s3_uri: s3_uri, source_path: file_location, file_size: file_size }
+      { s3_uri: s3_uri, source_path: file_location, file_size: file_size, status: :success }
     end
 
     # Uploads all Derivatives to S3 and verifies. Returns an array of
@@ -136,38 +130,45 @@ class MigrateToS3Job < ActiveJob::Base
     def upload_derivatives(master_file)
       results = []
       master_file.derivatives.each do |derivative|
-        result = upload_derivative(derivative, master_file.id)
-        results << result if result
+        results << upload_derivative(derivative, master_file.id)
       end
       results
     end
 
-    # Uploads a single Derivative to S3 and verifies. Returns a hash
-    # with upload details, or nil if skipped.
+    # Uploads a single Derivative to S3 and verifies. Returns a hash with
+    # upload details (:success) or {:already_migrated} if already on S3.
+    # Raises for all other conditions (:source_missing, :non_local, :unmanaged)
+    # so the entire job fails rather than silently skipping a derivative.
     def upload_derivative(derivative, master_file_id)
       deriv_location = derivative.derivativeFile
 
       if deriv_location.blank?
-        Rails.logger.info "[S3Migration] Derivative #{derivative.id} has blank location, skipping"
-        return nil
+        raise "[S3Migration] Derivative #{derivative.id} has blank location, cannot migrate MasterFile #{master_file_id}"
       end
 
       # If already in S3
       if deriv_location.start_with?('s3://')
         Rails.logger.info "[S3Migration] Derivative #{derivative.id} already in S3 (#{truncate_path(deriv_location)}), skipping"
-        return { derivative: derivative, s3_uri: deriv_location, status: :already_migrated }
+        s3_object = FileLocator::S3File.new(deriv_location).object
+        file_size = begin
+          s3_object.content_length
+        rescue => e
+          Rails.logger.warn "[S3Migration] Could not fetch file_size for #{deriv_location}: #{e.message}"
+          nil
+        end
+        return { derivative: derivative, s3_uri: deriv_location,
+                 source_path: reverse_derivative_s3_uri(deriv_location),
+                 file_size: file_size, status: :already_migrated }
       end
 
       # Only migrate file:// derivatives (not already S3, http, etc.)
       unless deriv_location.start_with?('file://')
-        Rails.logger.info "[S3Migration] Derivative #{derivative.id} is not file-based (#{truncate_path(deriv_location)}), skipping"
-        return nil
+        raise "[S3Migration] Derivative #{derivative.id} is not file-based (#{truncate_path(deriv_location)}), cannot migrate MasterFile #{master_file_id}"
       end
 
-      # Skip unmanaged derivatives — Avalon doesn't control their lifecycle
+      # Unmanaged derivatives — Avalon doesn't control their lifecycle
       unless derivative.managed
-        Rails.logger.warn "[S3Migration] Derivative #{derivative.id} is unmanaged, skipping"
-        return nil
+        raise "[S3Migration] Derivative #{derivative.id} is unmanaged, cannot migrate MasterFile #{master_file_id}"
       end
 
       local_path = Addressable::URI.parse(deriv_location).path
@@ -189,7 +190,7 @@ class MigrateToS3Job < ActiveJob::Base
       raise "Size mismatch for Derivative #{derivative.id}: expected #{local_size}, got #{file_size}" unless local_size == file_size
 
       Rails.logger.info "[S3Migration] Derivative #{derivative.id} uploaded and verified"
-      { derivative: derivative, s3_uri: s3_uri, source_path: local_path, file_size: file_size }
+      { derivative: derivative, s3_uri: s3_uri, source_path: local_path, file_size: file_size, status: :success }
     end
 
     # ── Phase 2: Update Avalon Records ──────────────────────────────────
@@ -204,6 +205,9 @@ class MigrateToS3Job < ActiveJob::Base
 
     def save_derivatives!(derivative_uploads)
       derivative_uploads.each do |entry|
+        # Only update records for derivatives that were actually uploaded
+        next unless entry[:status] == :success
+
         derivative = entry[:derivative]
         s3_uri     = entry[:s3_uri]
 
@@ -245,7 +249,8 @@ class MigrateToS3Job < ActiveJob::Base
         end
       end
 
-      deriv_entries = derivative_uploads.map do |entry|
+      # Only derivatives that reached S3 (uploaded this run or already there)
+      deriv_entries = derivative_uploads.select { |e| %i[success already_migrated].include?(e[:status]) }.map do |entry|
         {
           resource_id:    entry[:derivative].id,
           source_path:    entry[:source_path],
@@ -313,6 +318,18 @@ class MigrateToS3Job < ActiveJob::Base
     def derivative_local_base
       ENV.fetch('MIGRATE_DERIVATIVE_LOCAL_BASE',
                  ENV.fetch('LOCAL_DERIVATIVES_DIR', '/streamfiles'))
+    end
+
+    # Reverse a derivative S3 URI back to the expected local path.
+    # Used when the DB record already points at S3 (re-run scenario) and
+    # we want to preserve source_path in the audit trail.
+    # e.g. s3://bucket/uuid/outputs/name-high.mp4 -> /streamfiles/uuid/outputs/name-high.mp4
+    def reverse_derivative_s3_uri(s3_uri)
+      uri = Addressable::URI.parse(s3_uri)
+      key = Addressable::URI.unencode(uri.path).sub(%r{^/}, '')
+      File.join(derivative_local_base, key)
+    rescue
+      nil
     end
 
     def truncate_path(path, max: 80)
