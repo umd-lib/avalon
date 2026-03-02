@@ -160,7 +160,7 @@ namespace :avalon do
 
       # Find MasterFiles whose file_location starts with s3://
       # These are the ones that have been migrated.
-      query = "has_model_ssim:MasterFile AND file_location_ssi:s3\\:\\/\\/*"
+      query = "has_model_ssim:MasterFile AND file_location_ssi:[* TO *]"
 
       # Optional: restrict to items ingested before a cutoff date.
       # Items ingested before this date were originally on the local filesystem.
