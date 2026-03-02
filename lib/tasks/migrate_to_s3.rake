@@ -8,7 +8,7 @@
 #   3. rake avalon:migrate:active_storage_to_s3          # Migrate SupplementalFile blobs
 #   4. rake avalon:migrate:s3_migration_status          # Monitor progress
 #   5. rake avalon:migrate:enqueue_s3_validation         # Post-migration checksum validation
- #   6. rake avalon:migrate:s3_migration_report           # View audit trail summary
+#   6. rake avalon:migrate:s3_migration_report           # View audit trail summary
 #   7. rake avalon:migrate:validate_active_storage       # Validate ActiveStorage blobs on S3
 #
 # Rollback:
@@ -404,23 +404,6 @@ namespace :avalon do
       end
       puts ""
 
-      # ── Derivatives ──
-      d_total_q = "has_model_ssim:Derivative AND derivativeFile_ssi:[* TO *]#{date_filter}#{extra_filter}"
-      d_s3_q    = "has_model_ssim:Derivative AND derivativeFile_ssi:s3\\:\\/\\/*#{date_filter}#{extra_filter}"
-      d_local_q = "has_model_ssim:Derivative AND derivativeFile_ssi:file\\:\\/\\/*#{date_filter}#{extra_filter}"
-
-      d_total = solr_count(d_total_q, fq: solr_fq)
-      d_s3    = solr_count(d_s3_q, fq: solr_fq)
-      d_local = solr_count(d_local_q, fq: solr_fq)
-
-      puts "Derivatives (with derivativeFile): #{d_total}"
-      puts "  On S3:           #{d_s3}"
-      puts "  On filesystem:   #{d_local}"
-      if d_total > 0
-        puts "  Progress:        #{percentage(d_s3, d_total)}%"
-      end
-      puts ""
-
       # ── ActiveStorage blobs ──
       if defined?(ActiveStorage::Blob)
         scope = ActiveStorage::Blob.all
@@ -491,58 +474,6 @@ namespace :avalon do
         end
         puts ""
 
-        # Check Derivatives on filesystem
-        d_missing = []
-        start = 0
-        d_checked = 0
-
-        puts "Checking Derivatives on filesystem..."
-        loop do
-          solr_params = { fl: 'id,derivativeFile_ssi,isDerivationOf_ssim', rows: batch_size, start: start }
-          solr_params[:fq] = solr_fq if solr_fq
-          response = ActiveFedora::SolrService.get(d_local_q, solr_params)
-          docs = response['response']['docs']
-          break if docs.empty?
-
-          docs.each do |doc|
-            deriv_uri = doc['derivativeFile_ssi']
-            next if deriv_uri.blank?
-            d_checked += 1
-
-            begin
-              local_path = Addressable::URI.parse(deriv_uri).path
-            rescue
-              local_path = deriv_uri.sub(%r{^file://}, '')
-            end
-
-            unless File.exist?(local_path)
-              media_object_title = media_object_title_for_derivative(doc)
-              d_missing << {
-                id: doc['id'],
-                path: local_path,
-                media_object_title: media_object_title
-              }
-            end
-          end
-
-          start += batch_size
-          puts "  Checked #{start} Derivatives..." if (start % 500).zero?
-        end
-
-        puts "Derivatives checked:  #{d_checked}"
-        puts "  Missing locally:    #{d_missing.size}"
-        if d_checked > 0
-          puts "  Missing:            #{percentage(d_missing.size, d_checked)}%"
-        end
-
-        if d_missing.any?
-          puts ""
-          puts "  Missing Derivatives:"
-          d_missing.each do |entry|
-            puts "    #{entry[:id]} | #{entry[:media_object_title]} | #{entry[:path]}"
-          end
-        end
-        puts ""
 
         # Check ActiveStorage blobs on local disk
         if defined?(ActiveStorage::Blob)
