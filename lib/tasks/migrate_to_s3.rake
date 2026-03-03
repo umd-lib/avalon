@@ -599,10 +599,12 @@ namespace :avalon do
                 # absolute_location= triggers set_streaming_locations! which
                 # recalculates location_url and hls_url based on current config.
                 # Since config targets S3 (/s3-avalon/streamfiles), we must fix
-                # the URLs to use the filesystem streaming path (/avalon).
+                # the URLs to use the filesystem streaming path (/avalon). Also,
+                # recompute location_url to be relative to derivative_base.
                 derivative.absolute_location = file_uri
                 derivative.hls_url = derivative.hls_url&.gsub('/s3-avalon/streamfiles', '/avalon')
-                derivative.location_url = derivative.location_url&.gsub('/s3-avalon/streamfiles', '/avalon')
+                rel = Pathname.new(d_local_path).relative_path_from(Pathname.new(derivative_base))
+                derivative.location_url = "#{rel.dirname}/#{rel.basename(rel.extname)}"
                 derivative.save!
                 d_reverted += 1
                 puts "    Reverted Derivative #{derivative.id}"
