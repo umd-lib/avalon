@@ -489,7 +489,7 @@ namespace :avalon do
           puts "Checking ActiveStorage blobs on local disk..."
           as_scope.find_each do |blob|
             as_checked += 1
-            blob_path = File.join(local_root, blob.key)
+            blob_path = File.join(local_root, blob.key[0..1], blob.key[2..3], blob.key)
 
             unless File.exist?(blob_path)
               title = media_object_title_for_blob(blob)
@@ -794,7 +794,7 @@ namespace :avalon do
         resource_id:     "blob-#{blob.id}",
         resource_type:   'ActiveStorage',
         media_object_id: media_object_id_for_blob(blob),
-        source_path:     File.join(local_root, blob.key),
+        source_path:     File.join(local_root, blob.key[0..1], blob.key[2..3], blob.key),
         destination_uri: "s3://#{Settings.active_storage&.bucket || target_service_name}/#{blob.key}",
         file_size:       blob.byte_size,
         checksum:        blob.checksum,
@@ -810,7 +810,7 @@ namespace :avalon do
         resource_id:     "blob-#{blob.id}",
         resource_type:   'ActiveStorage',
         media_object_id: media_object_id_for_blob(blob),
-        source_path:     File.join(local_root, blob.key),
+        source_path:     File.join(local_root, blob.key[0..1], blob.key[2..3], blob.key),
         destination_uri: "s3://#{Settings.active_storage&.bucket || target_service_name}/#{blob.key}",
         error_message:   "#{error.class}: #{error.message}"
       )
