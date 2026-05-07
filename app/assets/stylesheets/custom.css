@@ -213,6 +213,40 @@ footer {
   color: #fff;
   line-height: 2.5rem;
 }
+/* UMD Customization */
+#accessibility-statement {
+  background-color: #f2f2f2;
+  color: #000;
+  line-height: 1.5;
+  padding-top: 1rem;
+}
+
+#accessibility-statement .accessibility-statement-inner {
+  border-left: 4px solid #6c757d;
+  padding-left: 1rem;
+}
+
+#accessibility-statement .accessibility-statement-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+#accessibility-statement .accessibility-statement-text {
+  margin-bottom: 0;
+}
+
+#accessibility-statement a {
+  color: inherit;
+  text-decoration: underline !important;
+}
+
+ul.navbar-nav.ml-auto .nav-link {
+  text-decoration: underline;
+}
+/* End UMD Customization */
 .subfooter{
   background: #272727;
   padding: 20px;
