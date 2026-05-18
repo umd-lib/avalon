@@ -12,19 +12,19 @@
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
-class PreviewStep < Avalon::Workflow::BasicStep
-  def initialize(step = 'preview',
-                 title = "Preview and publish",
-                 summary = "Release the item for use",
-                 template = 'preview')
-    super
-  end
+require 'rails_helper'
 
-  def execute context
-    media_object = context[:media_object]
-          # Publish the media object
-          media_object.avalon_publisher = context[:user]
-          media_object.save
-    context
+describe 'search', type: :request do
+  describe 'subject links' do
+    let!(:media_object) { FactoryBot.create(:fully_searchable_media_object, subject: ['both/and']) }
+
+    it 'searches and finds the item' do
+      get "/media_objects/#{media_object.id}/manifest.json"
+      manifest_json = JSON.parse(response.body)
+      subject_links = manifest_json["metadata"].find {|hash| hash["label"]["none"] == ["Subject"] }["value"]["none"]
+      link = subject_links.first.match(/href="(.*)"/)[1]
+      get link
+      expect(response.body).to include(media_object.id)
+    end
   end
 end

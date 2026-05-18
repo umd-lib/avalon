@@ -18,10 +18,7 @@ class Users::SessionsController < Devise::SessionsController
     params[:request_uri] = session[:previous_url]
     # End UMD Customization
     if Avalon::Authentication::VisibleProviders.length == 1 && params[:admin].blank?
-      omniauth_params = params.reject { |k,v| ['controller','action'].include?(k) }
-      omniauth_params.permit!
-      login_path = user_omniauth_authorize_path(Avalon::Authentication::VisibleProviders.first[:provider], omniauth_params)
-      redirect_to login_path
+      render :omniauth_new, layout: false
     else
       super
     end

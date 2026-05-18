@@ -105,8 +105,8 @@ class AccessControlStep < Avalon::Workflow::BasicStep
     end
     if context['remove_lease'].present?
       limited_access_submit = true
-      lease = Lease.find( context['remove_lease'] )
-      media_object.governing_policies.delete( lease )
+      lease = Lease.find(context['remove_lease'])
+      media_object.governing_policies.delete(lease)
       lease.destroy
     end
 

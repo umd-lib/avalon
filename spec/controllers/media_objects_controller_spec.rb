@@ -1543,6 +1543,23 @@ describe MediaObjectsController, type: :controller do
       expect(flash[:notice]).to include('3 media objects')
       media_objects.each {|mo| expect(MediaObject.exists?(mo.id)).to be_falsey }
     end
+
+    it "should remove child supplemental files" do
+      supplemental_file = FactoryBot.create(:supplemental_file)
+      media_object = FactoryBot.create(:media_object, collection: collection, supplemental_files: [supplemental_file] )
+      expect(SupplementalFile.exists?(supplemental_file.id)).to be_truthy
+      delete :destroy, params: { id: media_object.id }
+      expect(SupplementalFile.exists?(supplemental_file.id)).to be_falsey
+    end
+
+    it "should remove section supplemental files" do
+      supplemental_file = FactoryBot.create(:supplemental_file)
+      media_object = FactoryBot.create(:media_object, collection: collection )
+      master_file = FactoryBot.create(:master_file, media_object: media_object, supplemental_files: [supplemental_file])
+      expect(SupplementalFile.exists?(supplemental_file.id)).to be_truthy
+      delete :destroy, params: { id: media_object.id }
+      expect(SupplementalFile.exists?(supplemental_file.id)).to be_falsey
+    end
   end
 
   describe "#confirm_remove" do
@@ -2027,6 +2044,34 @@ describe MediaObjectsController, type: :controller do
   end
 
   describe '#manifest' do
+    before do
+      login_as :administrator
+    end
+
+    context 'with supplemental files' do
+      let(:mf_supplemental_file) { FactoryBot.create(:supplemental_file) }
+      let(:mo_supplemental_file) { FactoryBot.create(:supplemental_file) }
+      let(:master_file) { FactoryBot.create(:master_file, media_object: media_object, supplemental_files: [mf_supplemental_file]) }
+      let(:media_object) { FactoryBot.create(:published_media_object, supplemental_files: [mo_supplemental_file]) }
+
+      before do
+        mf_supplemental_file.parent_id = master_file.id
+        mo_supplemental_file.parent_id = media_object.id
+        mf_supplemental_file.save
+        mo_supplemental_file.save
+      end
+
+      it 'should link to proper object route in rendering section' do
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        parsed_response = JSON.parse(response.body)
+        mo_rendering = parsed_response['rendering'].first
+        expect(mo_rendering['id']).to eq Rails.application.routes.url_helpers.media_object_supplemental_file_url(id: mo_supplemental_file.id, media_object_id: media_object.id)
+        item = parsed_response['items'].first
+        mf_rendering = item['rendering'].first
+        expect(mf_rendering['id']).to eq Rails.application.routes.url_helpers.master_file_supplemental_file_url(id: mf_supplemental_file.id, master_file_id: master_file.id)
+      end
+    end
+ 
     context 'read from solr' do
       let!(:master_file) { FactoryBot.create(:master_file, :with_derivative, media_object: media_object) }
       let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }

@@ -181,6 +181,10 @@ class MediaObject < ActiveFedora::Base
     return [] if self.section_list.nil?
     @section_ids = JSON.parse(self.section_list)
   end
+  
+  def published?
+    !avalon_publisher.blank?
+  end
 
   def destroy
     # attempt to stop the matterhorn processing job
@@ -303,6 +307,13 @@ class MediaObject < ActiveFedora::Base
     solr_doc['all_comments_ssim'] = all_comments
   end
 
+  def fill_in_solr_fields_needing_leases(solr_doc)
+    solr_doc['read_access_virtual_group_ssim'] = virtual_read_groups + leases('external').map(&:inherited_read_groups).flatten
+    solr_doc['read_access_ip_group_ssim'] = collect_ips_for_index(ip_read_groups + leases('ip').map(&:inherited_read_groups).flatten)
+    solr_doc[Hydra.config.permissions.read.group] ||= []
+    solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
+  end
+
   # Enqueue background job to do a full indexing including more costly fields that read from children
   def enqueue_long_indexing
     MediaObjectIndexingJob.perform_later(id)
@@ -342,9 +353,10 @@ class MediaObject < ActiveFedora::Base
       solr_doc['section_id_ssim'] = section_ids
       if include_child_fields
         fill_in_solr_fields_that_need_sections(solr_doc)
+        fill_in_solr_fields_needing_leases(solr_doc)
       elsif id.present? # avoid error in test suite
         # Fill in other identifier so these values aren't stripped from the solr doc while waiting for the background job
-        mf_docs = ActiveFedora::SolrService.query("isPartOf_ssim:#{id}", rows: 1_000_000)
+        mf_docs = ActiveFedora::SolrService.query("isPartOf_ssim:#{id}", rows: 100_000)
         solr_doc["other_identifier_sim"] +=  mf_docs.collect { |h| h['identifier_ssim'] }.flatten
       end
 
@@ -491,7 +503,7 @@ class MediaObject < ActiveFedora::Base
       # in the section_list
       return [] unless section_ids.present?
       query = "id:" + section_ids.join(" id:")
-      @section_docs ||= ActiveFedora::SolrService.query(query, rows: 1_000_000)
+      @section_docs ||= ActiveFedora::SolrService.query(query, rows: 100_000)
     end
 
     def calculate_duration

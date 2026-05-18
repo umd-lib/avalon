@@ -44,24 +44,15 @@ class Admin::CollectionPresenter
   end
 
   def managers
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     @managers ||= Array(document["edit_access_person_ssim"]) & Array(document["collection_managers_ssim"])
-    # End UMD Customization
   end
 
   def editors
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     @editors ||= Array(document["edit_access_person_ssim"]) - managers
-    # End UMD Customization
   end
 
   def depositors
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     Array(document["read_access_person_ssim"])
-    # End UMD Customization
   end
 
   def manager_count

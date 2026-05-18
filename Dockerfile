@@ -1,5 +1,5 @@
 # Base stage for building gems
-FROM        ruby:3.2-bullseye as bundle
+FROM        ruby:3.3-bullseye as bundle
 LABEL       stage=build
 LABEL       project=avalon
 RUN        apt-get update && apt-get upgrade -y build-essential && apt-get autoremove \
@@ -10,6 +10,7 @@ RUN        apt-get update && apt-get upgrade -y build-essential && apt-get autor
             git \
             ffmpeg \
             libsqlite3-dev \
+            libjemalloc2 \
          && rm -rf /var/lib/apt/lists/* \
          && apt-get clean
 
@@ -19,8 +20,11 @@ COPY        Gemfile.lock ./Gemfile.lock
 RUN         gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)" \
          && bundle config build.nokogiri --use-system-libraries
 
-ENV         RUBY_THREAD_MACHINE_STACK_SIZE 8388608
-ENV         RUBY_THREAD_VM_STACK_SIZE 8388608
+ENV         RUBY_THREAD_MACHINE_STACK_SIZE 8388608 \
+            RUBY_THREAD_VM_STACK_SIZE 8388608 \
+            LD_PRELOAD="libjemalloc.so.2" \
+            MALLOC_CONF="dirty_decay_ms:1000,narenas:2,background_thread:true" \
+            RUBY_YJIT_ENABLE=1
 
 
 # Build development gems
@@ -33,7 +37,7 @@ RUN         bundle config set --local without 'production' \
 
 
 # Download binaries in parallel
-FROM        ruby:3.2-bullseye as download
+FROM        ruby:3.3-bullseye as download
 LABEL       stage=build
 LABEL       project=avalon
 RUN         curl -L https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar xvz -C /usr/bin/
@@ -46,7 +50,7 @@ RUN      apt-get -y update && apt-get install -y ffmpeg
 
 
 # Base stage for building final images
-FROM        ruby:3.2-slim-bullseye as base
+FROM        ruby:3.3-slim-bullseye as base
 LABEL       stage=build
 LABEL       project=avalon
 RUN         echo "deb     http://ftp.us.debian.org/debian/    bullseye main contrib non-free"  >  /etc/apt/sources.list.d/bullseye.list \
@@ -86,6 +90,10 @@ RUN         apt-get update && \
 RUN         useradd -m -U app \
          && su -s /bin/bash -c "mkdir -p /home/app/avalon" app
 WORKDIR     /home/app/avalon
+
+ENV         LD_PRELOAD="libjemalloc.so.2" \
+            MALLOC_CONF="dirty_decay_ms:1000,narenas:2,background_thread:true" \
+            RUBY_YJIT_ENABLE=1
 
 
 # Build devevelopment image
@@ -151,13 +159,6 @@ USER        app
 ENV         RAILS_ENV=production
 
 # UMD Customization
-# Enable jemalloc for better memory management in production
-ENV         LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
-ENV         MALLOC_CONF="narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0,tcache:true"
-
-# Enable YJIT for improved performance
-ENV RUBY_YJIT_ENABLE=1
-
 # Puma configuration for production
 ENV PUMA_WORKERS=4
 ENV RAILS_MAX_THREADS=5
