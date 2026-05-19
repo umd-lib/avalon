@@ -52,8 +52,8 @@ GIT
 
 GIT
   remote: https://github.com/samvera/active_fedora.git
-  revision: 7f91e09e630f7e3c1eb3d355e5a016ae8af44778
-  ref: 7f91e09e630f7e3c1eb3d355e5a016ae8af44778
+  revision: e704ba225eb1c465d16363f10f0fb5999d34a1de
+  tag: v15.0.1
   specs:
     active-fedora (15.0.1)
       active-triples (>= 0.11.0, < 2.0.0)

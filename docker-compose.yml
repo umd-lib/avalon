@@ -6,7 +6,7 @@ volumes:
   solr:
   npms:
   # UMD Customization
-  # data:
+  data:
   work:
   # End UMD Customization
 
