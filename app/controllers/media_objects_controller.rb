@@ -1,32 +1,31 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
-require 'avalon/controller/controller_behavior'
 require 'avalon/intercom'
 
 class MediaObjectsController < ApplicationController
   include Rails::Pagination
-  include Avalon::Workflow::WorkflowControllerBehavior
-  include Avalon::Controller::ControllerBehavior
+  include WorkflowControllerBehavior
+  include DownloadBehavior
   include ConditionalPartials
   include NoidValidator
   include SecurityHelper
 
   before_action :authenticate_user!, except: [:show, :set_session_quality, :show_stream_details, :manifest]
-  before_action :load_resource, except: [:create, :destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist, :intercom_collections, :manifest, :move_preview, :edit, :update, :json_update]
-  load_and_authorize_resource except: [:create, :destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist, :intercom_collections, :manifest, :move_preview, :show_progress]
-  authorize_resource only: [:create]
+  before_action :load_resource, except: [:create, :destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist, :intercom_collections, :manifest, :move_preview, :update, :json_update]
+  load_and_authorize_resource except: [:create, :destroy, :update_status, :set_session_quality, :tree, :deliver_content, :confirm_remove, :show_stream_details, :add_to_playlist, :intercom_collections, :manifest, :move_preview, :show_progress, :edit]
+  authorize_resource only: [:create, :edit]
 
   before_action :inject_workflow_steps, only: [:edit, :update], unless: proc { request.format.json? }
   before_action :load_player_context, only: [:show]
@@ -109,22 +108,24 @@ class MediaObjectsController < ApplicationController
 
   # POST /media_objects/avalon:1/add_to_playlist
   def add_to_playlist
-    @media_object = SpeedyAF::Proxy::MediaObject.find(params[:id])
+    add_to_playlist_params = params.require(:post).permit(:masterfile_id, :playlist_id, :playlistitem_scope)
+    @media_object = add_to_playlist_params.present? ? SpeedyAF::Proxy::MediaObject.find(params[:id]) : SpeedyAF::Proxy::MediaObject.find(params[:id], load_reflections: true)
     authorize! :read, @media_object
     masterfile_id = params[:post][:masterfile_id]
     playlist_id = params[:post][:playlist_id]
     playlist = Playlist.find(playlist_id)
+    new_items = []
     if current_ability.cannot? :update, playlist
       render json: {message: "<p>You are not authorized to update this playlist.</p>", status: 403}, status: 403 and return
     end
     playlistitem_scope = params[:post][:playlistitem_scope] #'section', 'structure'
     # If a single masterfile_id wasn't in the request, then create playlist_items for all masterfiles
-    masterfile_ids = masterfile_id.present? ? [masterfile_id] : @media_object.section_ids
-    masterfile_ids.each do |mf_id|
-      mf = SpeedyAF::Proxy::MasterFile.find(mf_id)
-      if playlistitem_scope=='structure' && mf.has_structuralMetadata? && mf.structuralMetadata.xpath('//Span').present?
+    masterfiles = masterfile_id.present? ? [SpeedyAF::Proxy::MasterFile.find(masterfile_id)] : @media_object.sections
+    masterfiles.each do |mf|
+      sf = mf.has_structuralMetadata? ? mf.structuralMetadata : nil
+      if playlistitem_scope=='structure' && sf.present? && sf.xpath('//Span').present?
         #create individual items for spans within structure
-        mf.structuralMetadata.xpath('//Span').each do |s|
+        sf.xpath('//Span').each do |s|
           labels = [mf.embed_title]
           labels += s.xpath('ancestor::Div[\'label\']').collect{|a|a.attribute('label').value.strip}
           labels << s.attribute('label')
@@ -134,16 +135,16 @@ class MediaObjectsController < ApplicationController
           start_time = time_str_to_milliseconds(start_time.value) if start_time.present?
           end_time = time_str_to_milliseconds(end_time.value) if end_time.present?
           clip = AvalonClip.new(title: label, master_file: mf, start_time: start_time, end_time: end_time)
-          new_item = PlaylistItem.new(clip: clip, playlist: playlist)
-          playlist.items += [new_item]
+          new_items += [PlaylistItem.new(clip: clip, playlist: playlist)]
         end
       else
         #create a single item for the entire masterfile
         item_title = @media_object.section_ids.count > 1 ? mf.embed_title : @media_object.title
         clip = AvalonClip.new(title: item_title, master_file: mf)
-        playlist.items += [PlaylistItem.new(clip: clip, playlist: playlist)]
+        new_items += [PlaylistItem.new(clip: clip, playlist: playlist)]
       end
     end
+    playlist.items += new_items
     link = view_context.link_to('View Playlist', playlist_path(playlist), class: "btn btn-primary btn-sm")
     render json: {message: "<p>Playlist items created successfully.</p> #{link}", status: 200}
   end
@@ -240,7 +241,8 @@ class MediaObjectsController < ApplicationController
           break
         end
         if file_spec[:files].present?
-          if master_file.update_derivatives(file_spec[:files], false)
+          master_file.update_derivatives(file_spec[:files], false)
+          if master_file.save
             master_file.update_stills_from_offset!
             WaveformJob.perform_later(master_file.id)
           else
@@ -582,7 +584,7 @@ class MediaObjectsController < ApplicationController
   protected
 
   def load_resource
-    @media_object = SpeedyAF::Proxy::MediaObject.find(params[:id])
+    @media_object ||= SpeedyAF::Proxy::MediaObject.find(params[:id])
   end
 
   def master_file_presenters
@@ -602,9 +604,9 @@ class MediaObjectsController < ApplicationController
     set_active_file
     set_player_token
     @currentStreamInfo = if params[:id]
-                           @currentStream.nil? ? {} : secure_streams(@currentStream.stream_details, params[:id])
+                           @currentStream.nil? ? {} : secure_streams(@currentStream.stream_details, params[:id], media_object: @media_object)
                          else
-                           @currentStream.nil? ? {} : secure_streams(@currentStream.stream_details, @media_object.id)
+                           @currentStream.nil? ? {} : secure_streams(@currentStream.stream_details, @media_object.id, media_object: @media_object)
                          end
     @currentStreamInfo['t'] = view_context.parse_media_fragment(params[:t]) # add MediaFragment from params
     @currentStreamInfo['lti_share_link'] = view_context.lti_share_url_for(@currentStream)
@@ -635,16 +637,16 @@ class MediaObjectsController < ApplicationController
   # return a nil value that needs to be handled appropriately by the calling code
   # block
   def set_active_file
-    @currentStream ||= if params[:content]
-      begin
-        MasterFile.find(params[:content])
-      rescue ActiveFedora::ObjectNotFoundError
+    if params[:content]
+      @currentStream ||= SpeedyAF::Proxy::MasterFile.find(params[:content])
+      if @currentStream.nil?
         flash[:notice] = "That stream was not recognized. Defaulting to the first available stream for the resource"
-        redirect_to media_object_path(@media_object.id)
-        nil
+        redirect_to media_object_path(params[:id])
       end
     end
     if @currentStream.nil?
+      # @media_object isn't loaded yet so manually load here
+      load_resource
       @currentStream = @media_object.sections.first
     end
     return @currentStream

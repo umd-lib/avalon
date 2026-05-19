@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -45,8 +45,16 @@ RSpec.describe SearchBuilder do
 
       it "should add section transcript searching to the solr query" do
         subject.search_section_transcripts(solr_parameters)
-        expect(solr_parameters[:defType]).to eq "lucene"
-        expect(solr_parameters[:q]).to eq "({!edismax v=\"Example\"}) {!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:Example"
+        expect(solr_parameters[:q]).to eq "has_model_ssim:MediaObject AND (Example _query_:\"{!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:(Example)\")"
+      end
+
+      context "phrase searching" do
+        let(:solr_parameters) { { q: '"Example captions"' } }
+
+        it "should only match transcripts with the phrase" do
+          subject.search_section_transcripts(solr_parameters)
+          expect(solr_parameters[:q]).to eq "has_model_ssim:MediaObject AND (\\\"Example captions\\\" _query_:\"{!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:(\\\"Example captions\\\")\")"
+        end
       end
     end
   end

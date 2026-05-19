@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2025, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -34,6 +34,24 @@ import "./facet_filter_react_mount";
  * For some reason including the `embeds` directory in this `require.context` breaks
  * the player. Filtering out the directory allows everything to operate as intended.
  */
-var componentRequireContext = require.context("components", true, /^(?!embed)/)
-var ReactRailsUJS = require("react_ujs")
-ReactRailsUJS.useContext(componentRequireContext)
+
+import ReactOnRails from 'react-on-rails';
+
+import CollectionList from '../components/CollectionList';
+import CollectionCarousel from '../components/CollectionCarousel';
+import CollectionDetails from '../components/CollectionDetails';
+import Search from '../components/Search';
+import MediaObjectRamp from '../components/MediaObjectRamp';
+import ReactButtonContainer from '../components/ReactButtonContainer';
+import PlaylistRamp from '../components/PlaylistRamp';
+import '@github/auto-complete-element'
+
+ReactOnRails.register({
+  CollectionList,
+  CollectionCarousel,
+  CollectionDetails,
+  Search,
+  MediaObjectRamp,
+  ReactButtonContainer,
+  PlaylistRamp,
+});

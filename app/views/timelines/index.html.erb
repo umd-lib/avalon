@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -27,7 +27,7 @@ Unless required by applicable law or agreed to in writing, software distributed
           <div class="col-sm-6">
             <h1 class="page-title">Timelines <small>(<%= timelines.size %> total)</small></h1>
           </div>
-          <div class="<% if !timelines.empty? %>col-sm-6 text-right<% end %>">
+          <div class="<% if !timelines.empty? %>col-sm-6 text-end<% end %>">
             <div class="create-buttons">
               <% if Settings['variations'].present? %>
                 <%= form_tag(import_variations_timeline_timelines_path, method:"post", enctype:"multipart/form-data", style:"display:inline") do %>
@@ -42,7 +42,7 @@ Unless required by applicable law or agreed to in writing, software distributed
       <div>
         <% unless timelines.empty? %>
           <div class="tag_filter_container">
-            Filter: <select name="tag_filter" class="tag_filter form-control input-sm" style="width:auto">
+            Filter: <select name="tag_filter" class="tag_filter form-control input-sm" style="width:auto" aria-label="Filter">
               <option value="" selected="selected"></option>
               <% current_user.timeline_tags.each do |tag| %>
                 <option value="<%= tag %>"><%= tag %></option>
@@ -57,10 +57,10 @@ Unless required by applicable law or agreed to in writing, software distributed
                 <th>Visibility</th>
                 <th>Last Updated</th>
                 <th>Tags</th>
-                <th class="text-right" data-orderable="false">Actions</th>
+                <th class="text-end" data-orderable="false">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-testid="timeline-table-body">
             </tbody>
           </table>
           <div> </div>
@@ -77,11 +77,14 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% content_for :page_scripts do %>
   <script>
     $(document).ready( function () {
+      $('#Timelines').on('draw.dt', function () {
+          $('.dataTables_filter input[type="search"]').attr('data-testid', 'timeline-search-input');
+      });
       $('#Timelines').DataTable({
         processing: true,
         serverSide: true,
-        dom:'<"dataTableToolsTop"if><"dataTableBody"t><"dataTableToolsBottom"rlp>',
-        autoWidth:true,
+        dom: '<"dataTableToolsTop"if><"dataTableBody"t><"dataTableToolsBottom"rlp>',
+        autoWidth: true,
         ajax: {
           url: '/timelines/paged_index',
           type: 'POST'
@@ -95,9 +98,11 @@ Unless required by applicable law or agreed to in writing, software distributed
           null,
           null,
           null,
-          { className: "text-right" }
+          { className: "text-end" }
         ]
       }).on( 'draw', function () {
+        // hide any active popovers on table refresh
+        $('.popover.show').hide();
         window.apply_button_confirmation()
         window.add_copy_button_event()
         // move the tag filter into the datatables layout

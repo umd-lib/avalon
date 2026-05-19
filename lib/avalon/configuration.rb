@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -54,7 +54,7 @@ module Avalon
                    when :generic, :adobe
                      url.gsub(/(?:#{Regexp.escape(http_base)}|#{Regexp.escape(old_http_base)}\/)(?:audio-only\/)?(.*)(?:\.m3u8)/, '\1')
                    when :nginx
-                     url.gsub(/(?:#{Regexp.escape(http_base)}|#{Regexp.escape(old_http_base)}\/)(.*)(?:\/index\.m3u8)/, '\1')
+                     url.gsub(/(?:#{Regexp.escape(Settings.streaming.http_base)}\/)(.*(mp4|mp3))(?:\/index\.m3u8|$)/, '\1')
                    when :wowza
                      # Wowza HLS urls include the extension between the base and relative path.
                      # "http_base/extension:path/filename.extension/playlist.m3u8"
@@ -103,9 +103,28 @@ module Avalon
       end
     end
 
+    attr_writer :humanize_edtf
+    def humanize_edtf
+      @humanize_edtf ||= lambda do |date|
+        begin
+          return if date.blank?
+          return "unknown" if date == "unknown/unknown"
+          # `date_issued` and `date_created` return as String, so convert to Date/EDTF class before humanization
+          Date.edtf(date).humanize
+        rescue
+          nil
+        end
+      end
+    end
+
     # To be called as Avalon::Configuration.controlled_digital_lending_enabled?
     def controlled_digital_lending_enabled?
       !!Settings.controlled_digital_lending&.enable
+    end
+
+    # To be called as Avalon::Configuration.accessibility_request_link
+    def accessibility_request_link
+      Settings.email&.accessibility_request_link || ''
     end
 
     private

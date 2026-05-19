@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -85,11 +85,11 @@ class SupplementalFilesController < ApplicationController
       format.html { 
         # Redirect or proxy the content
         if Settings.supplemental_files.proxy
-          send_data @supplemental_file.file.download, filename: @supplemental_file.file.filename.to_s, type: @supplemental_file.file.content_type, disposition: 'attachment'
+          send_data @supplemental_file.file.download, filename: @supplemental_file.download_filename, type: @supplemental_file.file.content_type, disposition: "inline; filename=#{@supplemental_file.download_filename}"
         else
           # Rails 7.0 adds a config option to protect against "open redirects". We override
           # that here in case the active storage db is not local.
-          redirect_to rails_blob_path(@supplemental_file.file, disposition: "attachment"), allow_other_host: true
+          redirect_to rails_blob_path(@supplemental_file.file, disposition: "inline; filename=#{@supplemental_file.download_filename}"), allow_other_host: true
         end
       }
       format.json { render json: @supplemental_file.as_json }
@@ -134,7 +134,6 @@ class SupplementalFilesController < ApplicationController
 
   def destroy
     find_supplemental_file
-
     @object.supplemental_files -= [@supplemental_file]
     raise Avalon::SaveError, "An error occurred when deleting the supplemental file: #{@object.errors[:supplemental_files_json]}" unless @object.save
     # FIXME: also wrap this in a transaction
@@ -153,7 +152,7 @@ class SupplementalFilesController < ApplicationController
     file_content = @supplemental_file.file.download
     content = @supplemental_file.file.content_type == 'text/srt' ? SupplementalFile.convert_from_srt(file_content) : file_content
 
-    send_data content, filename: @supplemental_file.file.filename.to_s, type: 'text/vtt', disposition: 'attachment'
+    send_data content, filename: @supplemental_file.download_filename, type: 'text/vtt', disposition: "inline; filename=#{@supplemental_file.download_filename}"
   end
 
   private

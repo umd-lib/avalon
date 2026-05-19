@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -533,6 +533,28 @@ describe Admin::Collection do
         collection.save
       end
     end
+
+    describe "after_save if cdl_enabled has changed" do
+      context "from true to false" do
+        let!(:collection) { FactoryBot.create(:collection, cdl_enabled: true) }
+        it 'should call #return_checkouts' do
+          collection.cdl_enabled = false
+          expect(collection).to be_cdl_enabled_changed
+          expect(collection).to receive("return_checkouts")
+          collection.save
+        end
+      end
+
+      context "from false to true" do
+        let!(:collection) { FactoryBot.create(:collection, cdl_enabled: false) }
+        it 'should do nothing' do
+          collection.cdl_enabled = true
+          expect(collection).to be_cdl_enabled_changed
+          expect(collection).to_not receive("return_checkouts")
+          collection.save
+        end
+      end
+    end
   end
 
   describe "reindex_members" do
@@ -542,6 +564,14 @@ describe Admin::Collection do
     it 'should queue a reindex job for all member objects' do
       @collection.reindex_members {}
       expect(ReindexJob).to have_been_enqueued.with(@collection.media_object_ids)
+    end
+  end
+
+  describe "#return_checkouts" do
+    let(:collection) { FactoryBot.build(:collection) }
+    it "should enqueue a return checkouts job" do
+      collection.return_checkouts {}
+      expect(BulkActionJobs::ReturnCheckouts).to have_been_enqueued.with(collection.id)
     end
   end
 

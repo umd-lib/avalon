@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -51,9 +51,10 @@ Unless required by applicable law or agreed to in writing, software distributed
 <body data-mountpoint="<%=main_app.root_path%>" <%= request.fullpath.include?('login_popup') ? 'onunload=closePopup()' : nil %>>
   <%= render partial: 'shared/environment_banner' %>
   <div class="page-container">
+    <%# UMD Customization %>
     <div class="content-wrapper" style="padding-bottom: 60px;">
     <%# End UMD Customization %>
-      <a id="skip-to-content" class="sr-only sr-only-focusable" href="#iiif-media-player">Skip to main content</a>
+      <a id="skip-to-content" class="visually-hidden-focusable" href="<%= skip_to_content_href %>">Skip to main content</a>
       <%= render partial: 'shared/modal' %>
       <% if defined?(Samvera::Persona) %>
       <%= render partial: 'modules/become_message' %>
@@ -63,6 +64,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         <%= render :partial => 'modules/global_navigation' %>
       <% end %>
       <%# UMD Customization %>
+      <% main_id = "main-content" %>
       <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
       <% main_id = "content" if current_page?(main_app.root_path) %>
       <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= main_id %>">

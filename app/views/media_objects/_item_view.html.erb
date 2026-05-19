@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -41,37 +41,39 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="col-sm-12">
     <%= react_component("MediaObjectRamp",
       {
-        urls: { base_url: request.protocol + request.host_with_port, fullpath_url: request.fullpath },
-        sections_count: @media_object.sections.size,
-        title: { content: render('title') },
-        share: { canShare: (will_partial_list_render? :share), content: lending_enabled?(@media_object) ? (render('share') if can_stream) : render('share') },
-        timeline: { canCreate: (current_ability.can? :create, Timeline), content: lending_enabled?(@media_object) ? (render('timeline') if can_stream) : render('timeline') },
-        playlist: { canCreate: (current_ability.can? :create, Playlist), tab: render('add_to_playlist') },
-        cdl: { enabled: lending_enabled?(@media_object), can_stream: can_stream, embed: render('embed_checkout'), destroy: render('destroy_checkout') },
-        # UMD Customization
-        # Limit display of supplemental files in the "Files" tab to users
-        # who can actually download them (this excludes users with only a
-        # "download" access token)
-        has_files: (@media_object.supplemental_files.present? || @media_object.sections_with_files.present?) && (current_ability.can? :full_read, @media_object),
-        # End UMD Customization
-        has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
-        # UMD Customization
-        aeon_request: { 
-          itemTitle: (@media_object.title || ""),
-          itemDate: (@media_object.date_issued || ""),
-          location: (@media_object.collection&.name || ""),
-          callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
-          referenceNumber: (@media_object.permalink || ""),
-          aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23',
-          permitted: ! @media_object.is_streaming_reserve?
-        },
-        master_file_downloads: { 
-          canDownload: @master_file_download_allowed,
-          downloads: @master_file_downloads
-        },
-        umd_access_control: { playback_restricted: @playback_restricted, jim_hension_collection: in_jim_henson_collection?(@media_object) ? @media_object.collection.name : '' },
-        umd_metadata: { handleUrl: @media_object.permalink }
-        # End UMD Customization
+        props: {
+          urls: { base_url: request.protocol + request.host_with_port, fullpath_url: request.fullpath },
+          has_sections: @media_object.section_ids.present?,
+          title: { content: render('title') },
+          share: { canShare: (will_partial_list_render? :share), content: lending_enabled?(@media_object) ? (render('share') if can_stream) : render('share') },
+          timeline: { canCreate: (current_ability.can? :create, Timeline), content: lending_enabled?(@media_object) ? (render('timeline') if can_stream) : render('timeline') },
+          playlist: { canCreate: (current_ability.can? :create, Playlist), tab: render('add_to_playlist') },
+          cdl: { enabled: lending_enabled?(@media_object), can_stream: can_stream, embed: render('embed_checkout'), destroy: render('destroy_checkout') },
+          <%# UMD Customization %>
+          <%# Limit display of supplemental files in the "Files" tab to users %>
+          <%# who can actually download them (this excludes users with only a %>
+          <%# "download" access token) %>
+          has_files: (@media_object.supplemental_files.present? || @media_object.sections_with_files.present?) && (current_ability.can? :full_read, @media_object),
+          <%# End UMD Customization %>
+          has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
+          accessibility_text: Avalon::Configuration.accessibility_request_link.present? ? t('media_object.accessibility_request_text', :a11y_link => Avalon::Configuration.accessibility_request_link) : '',
+          <%# UMD Customization %>
+          aeon_request: { 
+            itemTitle: (@media_object.title || ""),
+            itemDate: (@media_object.date_issued || ""),
+            location: (@media_object.collection&.name || ""),
+            callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
+            referenceNumber: (@media_object.permalink || ""),
+            aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23',
+            permitted: ! @media_object.is_streaming_reserve?
+          },
+          master_file_downloads: { 
+            canDownload: @master_file_download_allowed,
+            downloads: @master_file_downloads
+          },
+          umd_access_control: { playback_restricted: @playback_restricted, jim_hension_collection: in_jim_henson_collection?(@media_object) ? @media_object.collection.name : '' },
+          umd_metadata: { handleUrl: @media_object.permalink }
+          <%# End UMD Customization %>
       }
     ) %>
   </div>
@@ -84,14 +86,16 @@ Unless required by applicable law or agreed to in writing, software distributed
     $(document).ready(function () {
       const mediaObjectId = <%= @media_object.id.to_json.html_safe %>;
       const sectionIds = <%= @media_object.section_ids.to_json.html_safe %>;
+      const sectionShareInfos = <%= @media_object.section_share_infos.to_json.html_safe %>;
       const transcriptSections = <%= @media_object.sections_with_files(tag: 'transcript').to_json.html_safe %>;
 
-      // Enable action buttons after derivative is loaded
-      setInterval(initActionButtons, 500);
-      function initActionButtons() {
+      // Enable action buttons and token refresh after derivative is loaded
+      setInterval(initPlayerListeners, 500);
+      function initPlayerListeners() {
         let player = document.getElementById('iiif-media-player');
         if (player) {
-          addActionButtonListeners(player, mediaObjectId, sectionIds);
+          addActionButtonListeners(player, mediaObjectId, sectionIds, sectionShareInfos);
+          initM3U8Reload(player, mediaObjectId, sectionIds, sectionShareInfos);
         }
       } 
 
@@ -159,14 +163,15 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       function transcriptCheck(canvasindex) {
         let sectionId = sectionIds[canvasindex];
-        let transcriptTab = document.evaluate('//a[text()="Transcripts"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        let detailTab = document.evaluate('//a[text()="Details"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
+        let transcriptButton = document.evaluate('//button[text()="Transcripts"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let transcriptTab = transcriptButton?.parentElement
+        let detailTab = document.evaluate('//button[text()="Details"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        
         if(!transcriptSections.includes(sectionId)) {
           // If transcript tab is the active tab when it is hidden, the tab goes away but the box still displays
           // the missing transcript file message. Force change over to a different tab to avoid this case.
           if(transcriptTab) {
-            if (transcriptTab.getAttribute('aria-selected') === "true") { detailTab.click(); }
+            if (transcriptButton.getAttribute('aria-selected') === "true") { detailTab.click(); }
             transcriptTab.style.display = 'none';
             transcriptTab.classList.add("disabled");
           }

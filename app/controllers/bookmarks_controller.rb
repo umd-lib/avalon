@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -33,9 +33,9 @@ class BookmarksController < CatalogController
 
   blacklight_config.add_show_tools_partial( :move, callback: :move_action, if: Proc.new { |context, config, options| context.user_can? :move } )
 
-  blacklight_config.add_show_tools_partial( :publish, callback: :status_action, modal: false, partial: 'formless_document_action', if: Proc.new { |context, config, options| context.user_can? :publish } )
+  blacklight_config.add_show_tools_partial( :publish, callback: :status_action, modal: false, component: FormlessDocumentActionComponent, if: Proc.new { |context, config, options| context.user_can? :publish } )
 
-  blacklight_config.add_show_tools_partial( :unpublish, callback: :status_action, modal: false, partial: 'formless_document_action', if: Proc.new { |context, config, options| context.user_can? :unpublish } )
+  blacklight_config.add_show_tools_partial( :unpublish, callback: :status_action, modal: false, component: FormlessDocumentActionComponent, if: Proc.new { |context, config, options| context.user_can? :unpublish } )
 
   blacklight_config.add_show_tools_partial( :delete, callback: :delete_action, if: Proc.new { |context, config, options| context.user_can? :delete } )
 
@@ -69,10 +69,10 @@ class BookmarksController < CatalogController
   end
 
   def verify_permissions
-    @response, @documents = action_documents
+    @response = action_documents
     @valid_user_actions = [:delete, :unpublish, :publish, :merge, :move, :update_access_control, :add_to_playlist]
     @valid_user_actions += [:intercom_push] if Settings.intercom.present?
-    @documents.each do |doc|
+    Array(@response).each do |doc|
       mo = SpeedyAF::Proxy::MediaObject.find(doc.id)
       @valid_user_actions.delete :delete if @valid_user_actions.include? :delete and cannot? :destroy, mo
       @valid_user_actions.delete :unpublish if @valid_user_actions.include? :unpublish and cannot? :unpublish, mo
@@ -281,5 +281,10 @@ class BookmarksController < CatalogController
       BulkActionJobs::Merge.perform_later target.id, subject_ids.sort
       flash[:success] = t("blacklight.merge.success", count: subject_ids.count, item_link: media_object_path(target), item_title: target.title || target.id).html_safe
     end
+  end
+
+  # Ensure that current_ability is included in the search context
+  def search_service_context
+    super.merge({ current_ability: current_ability })
   end
 end

@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -140,6 +140,7 @@ module BulkActionJobs
         media_object = MediaObject.find(id)
         supplemental_files = media_object.supplemental_files
         DeleteChildFiles.perform_now(supplemental_files, nil)
+        media_object.supplemental_files = []
 
         if media_object.destroy
           successes += [media_object]
@@ -274,6 +275,25 @@ module BulkActionJobs
       end
 
       [successes, errors]
+    end
+  end
+
+  class ReturnCheckouts < ActiveJob::Base
+    def perform(collection_id)
+      collection = Admin::Collection.find(collection_id)
+      Checkout.active_for_media_object(collection.media_object_ids).update_all(return_time: DateTime.current, updated_at: DateTime.current)
+    end
+  end
+
+  class RemoveManagers < ActiveJob::Base
+    def perform(user_ids)
+      collections = Admin::Collection.where("collection_managers_ssim: (#{user_ids.join(' OR ')})")
+      collections.each do |collection|
+        collection.managers = collection.managers - user_ids
+      rescue ArgumentError
+        logger.error("At least one manager is required: #{collection.id}")
+        next
+      end
     end
   end
 end

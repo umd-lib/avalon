@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -120,7 +120,7 @@ describe MasterFile do
     end
 
     it 'creates an encode' do
-      expect(master_file.encoder_class).to receive(:create).with("file://" + Addressable::URI.escape(master_file.file_location), { master_file_id: master_file.id, preset: master_file.workflow_name, headers: nil })
+      expect(master_file.encoder_class).to receive(:create).with("file://" + Addressable::URI.escape(master_file.file_location), { master_file_id: master_file.id, preset: master_file.workflow_name, headers: nil, extract_subtitles: true })
       master_file.process
     end
 
@@ -155,8 +155,8 @@ describe MasterFile do
         end
 
         it 'creates an encode' do
-	  expect(master_file.encoder_class).to receive(:create).with("file://" + Rails.root.join(high_file).to_path, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name })
-	  master_file.process(files)
+      	  expect(master_file.encoder_class).to receive(:create).with("file://" + Rails.root.join(high_file).to_path, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name, extract_subtitles: true })
+          master_file.process(files)
         end
       end
 
@@ -165,8 +165,8 @@ describe MasterFile do
         let(:outputs_hash) { [{ label: 'high', url: input_url }] }
 
         it 'creates an encode' do
-          expect(master_file.encoder_class).to receive(:create).with(input_url, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name })
-	  master_file.process
+          expect(master_file.encoder_class).to receive(:create).with(input_url, { outputs: outputs_hash, master_file_id: master_file.id, preset: master_file.workflow_name, extract_subtitles: true })
+          master_file.process
         end
       end
     end
@@ -309,6 +309,7 @@ describe MasterFile do
           master_file.setContent(derivative_hash)
           expect(master_file.file_location).to eq(filename_high)
           expect(master_file.file_size).to eq("199160")
+          expect(master_file.original_filename).to eq("videoshort.high.mp4")
         end
       end
       describe "quality-high does not exist" do
@@ -317,6 +318,7 @@ describe MasterFile do
           master_file.setContent(derivative_hash.except("quality-high"))
           expect(master_file.file_location).to eq(filename_medium)
           expect(master_file.file_size).to eq("199160")
+          expect(master_file.original_filename).to eq("videoshort.medium.mp4")
         end
       end
 
@@ -359,6 +361,12 @@ describe MasterFile do
         Settings.encoding.working_file_path = media_path
         subject.setContent(upload, dropbox_dir: collection.dropbox_absolute_path)
         expect(File.fnmatch("#{media_path}/*/#{original}", subject.working_file_path.first)).to be true
+      end
+
+      it "should set the original filename" do
+        Settings.encoding.working_file_path = nil
+        subject.setContent(upload, file_name: original, dropbox_dir: collection.dropbox_absolute_path)
+        expect(subject.original_filename).to eq("videoshort.mp4")
       end
 
       context "when file with same name already exists in the collection's dropbox" do
@@ -416,6 +424,12 @@ describe MasterFile do
         subject.setContent(File.new(dropbox_file_path), dropbox_dir: collection.dropbox_absolute_path)
         expect(File.fnmatch("#{media_path}/*/#{original}", subject.working_file_path.first)).to be true
       end
+
+      it "should set the original filename" do
+        Settings.encoding.working_file_path = nil
+        subject.setContent(File.new(dropbox_file_path), file_name: original, dropbox_dir: collection.dropbox_absolute_path)
+        expect(subject.original_filename).to eq("videoshort.mp4")
+      end
     end
 
     context "google drive" do
@@ -423,16 +437,52 @@ describe MasterFile do
       let(:file_name) { "sample.mp4" }
       let(:file_size) { 12345 }
       let(:auth_header) { {"Authorization"=>"Bearer ya29.a0AfH6SMC6vSj4D6po1aDxAr6JmY92azh3lxevSuPKxf9QPPSKmMzqbZvI7B3oIACqqMVono1P0XD2F1Jl_rkayoI6JGz-P2cpg44-55oJFcWychAvUliWeRKf1cifMo9JF10YmXxhIfrG5mu7Ahy9FZpudN92p2JhvTI"} }
+      let(:fixture)    { File.expand_path('../../fixtures/videoshort.mp4',__FILE__) }
+      let(:tempfile)   { Tempfile.new('foo') }
+      let(:media_path) { File.expand_path("../../master_files-#{SecureRandom.uuid}",__FILE__)}
+      let(:dropbox_path) { File.expand_path("../../collection-#{SecureRandom.uuid}",__FILE__)}
+      let(:upload)     { ActionDispatch::Http::UploadedFile.new :tempfile => tempfile, :filename => original, :type => 'video/mp4' }
+      let!(:media_object) { FactoryBot.create(:media_object, sections: [subject]) }
+      let(:collection) { Admin::Collection.new }
 
       subject { FactoryBot.create(:master_file) }
 
-      it "should set the right properties" do
+      before(:each) do
         allow(subject).to receive(:reloadTechnicalMetadata!).and_return(nil)
-        subject.setContent(file, file_name: file_name, file_size: file_size, auth_header: auth_header)
-        expect(subject.file_location).to eq(file.to_s)
+        @old_media_path = Settings.encoding.working_file_path
+        FileUtils.mkdir_p media_path
+        FileUtils.cp fixture, tempfile
+        allow_any_instance_of(FileLocator).to receive(:local_location).and_return(tempfile.path)
+        allow_any_instance_of(File).to receive(:size).and_return(file_size)
+        allow(media_object).to receive(:collection).and_return(collection)
+        FileUtils.mkdir_p dropbox_path
+        allow(collection).to receive(:dropbox_absolute_path).and_return(File.absolute_path(dropbox_path))
+      end
+
+      after(:each) do
+        Settings.encoding.working_file_path = @old_media_path
+        File.unlink subject.file_location
+        FileUtils.rm_rf media_path
+        FileUtils.rm_rf dropbox_path
+      end
+
+      it "should move an uploaded file into the root of the collection's dropbox" do
+        Settings.encoding.working_file_path = nil
+        subject.setContent(file, file_name: file_name, file_size: file_size, auth_header: auth_header, dropbox_dir: collection.dropbox_absolute_path)
+        expect(subject.file_location).to eq(File.realpath(File.join(collection.dropbox_absolute_path, file_name)))
+      end
+
+      it "should copy an uploaded file to the media path" do
+        Settings.encoding.working_file_path = media_path
+        subject.setContent(file, file_name: file_name, file_size: file_size, auth_header: auth_header, dropbox_dir: collection.dropbox_absolute_path)
+        expect(File.fnmatch("#{media_path}/*/#{file_name}", subject.working_file_path.first)).to be true
+      end
+
+      it "should set the right properties" do
+        subject.setContent(file, file_name: file_name, file_size: file_size, auth_header: auth_header, dropbox_dir: collection.dropbox_absolute_path)
         expect(subject.file_size).to eq(file_size)
-        expect(subject.title).to eq(file_name)
-        expect(subject.instance_variable_get(:@auth_header)).to eq(auth_header)
+        expect(subject.instance_variable_get(:@auth_header)).to be_nil
+        expect(subject.original_filename).to eq(file_name)
       end
     end
   end
@@ -782,18 +832,18 @@ describe MasterFile do
     let(:master_file) { FactoryBot.create(:master_file) }
     let(:streams) do
       [{:format=>"video",
-        :mimetype=>nil,
+        :mimetype=>"application/x-mpegURL",
         :quality=>"auto",
         :url=>"http://test.host/master_files/#{master_file.id}/auto.m3u8"},
       {:bitrate=>4163842,
         :format=>"video",
-        :mimetype=>nil,
+        :mimetype=>"application/x-mpegURL",
         :quality=>"high",
         :url=>
          "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4.m3u8"},
       {:bitrate=>4163842,
         :format=>"video",
-        :mimetype=>nil,
+        :mimetype=>"application/x-mpegURL",
         :quality=>"medium",
         :url=>
          "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4.m3u8"}]
@@ -830,11 +880,13 @@ describe MasterFile do
 
     before do
       allow(master_file).to receive(:update_derivatives)
+      allow(master_file).to receive(:add_supplemental_files)
       allow(master_file).to receive(:run_hook)
     end
 
     it 'calls update_derivatives' do
       expect(master_file).to receive(:update_derivatives).with(array_including(hash_including(label: 'quality-high')))
+      expect(master_file).to receive(:save)
       expect(master_file).to receive(:run_hook).with(:after_transcoding)
       master_file.update_progress_on_success!(encode_succeeded)
     end
@@ -846,6 +898,18 @@ describe MasterFile do
     it 'should set the digitized date' do
       master_file.update_progress_on_success!(encode_succeeded)
       expect(master_file.date_digitized).to_not be_empty
+    end
+
+    context 'with embedded captions' do
+      let(:encode_succeeded) { FactoryBot.build(:encode, :embedded_captions) }
+
+      it 'calls add_supplemental_files' do
+        expect(master_file).to receive(:update_derivatives).with(array_including(hash_including(label: 'quality-high')))
+        expect(master_file).to receive(:add_supplemental_files).with(array_including("gid://avalon/SupplementalFile/1"))
+        expect(master_file).to receive(:save)
+        expect(master_file).to receive(:run_hook).with(:after_transcoding)
+        master_file.update_progress_on_success!(encode_succeeded)
+      end
     end
   end
 
@@ -872,6 +936,15 @@ describe MasterFile do
         expect(master_file_with_derivative.reload.derivative_ids).not_to include(existing_derivative.id)
         expect(master_file_with_derivative.reload.derivative_ids).not_to be_empty
       end
+    end
+  end
+
+  describe 'add_supplemental_files' do
+    let(:master_file) { FactoryBot.create(:master_file) }
+    let(:caption_file) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag, parent_id: master_file.id) }
+
+    it 'adds the supplemental file to the master file record' do
+      expect { master_file.add_supplemental_files([caption_file.to_global_id.to_s]) }.to change { master_file.supplemental_files.count }.by(1)
     end
   end
 
@@ -938,6 +1011,36 @@ describe MasterFile do
     it 'enqueues indexing of parent media object' do
       master_file.update_index
       expect(MediaObjectIndexingJob).to have_been_enqueued.with(master_file.media_object.id)
+    end
+  end
+
+  describe '#share_info' do
+    let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
+    subject(:share_info) { master_file.share_info }
+
+    it 'is a hash of sharing urls and embed code' do
+      expect(share_info[:lti_share_link]).to eq "http://test.host/users/auth/lti/callback?target_id=#{master_file.id}"
+      expect(share_info[:link_back_url]).to eq "http://test.host/media_objects/#{master_file.media_object.id}/section/#{master_file.id}"
+      expect(share_info[:embed_code]).to include "http://test.host/master_files/#{master_file.id}/embed"
+    end
+
+    context 'with permalinks' do
+      let(:master_file) { FactoryBot.create(:master_file, :with_media_object, permalink: 'https://permalink.host/path/id') }
+
+      it 'uses permalinks' do
+        expect(share_info[:link_back_url]).to eq 'https://permalink.host/path/id'
+        expect(share_info[:embed_code]).to include "https://permalink.host/path/id?urlappend=%2Fembed"
+      end
+    end
+
+    context 'with LTI disabled' do
+      before do
+        allow(Avalon::Authentication).to receive(:lti_configured?).and_return(false)
+      end
+
+      it 'displays an notice for the lti_share_link' do
+        expect(share_info[:lti_share_link]).to eq I18n.t('share.empty_lti_share_url')
+      end
     end
   end
 end

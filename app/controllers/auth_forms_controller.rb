@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -43,7 +43,7 @@ class AuthFormsController < ApplicationController
       form = doc.at_xpath('//form')
       form.xpath('label|input').to_a.in_groups_of(2).each do |label, input|
         input['class'] = 'form-control'
-        label.replace('<div class="form-group"/>').first.add_child(label).add_next_sibling(input)
+        label.replace('<div class="mb-3"/>').first.add_child(label).add_next_sibling(input)
       end
       form.xpath('button').each { |btn| btn['class'] = 'btn btn-primary' }
       %{<div class="omniauth-form container">#{form.to_html}</div>}

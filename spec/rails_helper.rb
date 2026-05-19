@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -17,7 +17,6 @@ ENV['RAILS_ENV'] = 'test'
 
 if ENV['COVERAGE'] || ENV['CI']
   require 'simplecov'
-  require 'codeclimate-test-reporter'
 
   SimpleCov.start('rails') do
     add_filter '/spec'
@@ -50,6 +49,8 @@ require 'webdrivers'
 require_relative 'services/mock_umd_ip_manager'
 # End UMD Customization
 
+require "view_component/test_helpers"
+require "view_component/system_test_helpers"
 # require 'equivalent-xml/rspec_matchers'
 # require 'fakefs/safe'
 # require 'fileutils'
@@ -106,6 +107,10 @@ Shoulda::Matchers.configure do |config|
 end
 
 RSpec.configure do |config|
+  # Ensure that if we are running js tests, we are using latest webpack assets
+  # This will use the defaults of :js and :server_rendering meta tags
+  ReactOnRails::TestHelper.configure_rspec_to_compile_assets(config)
+  
   include Noid::Rails::RSpec
 
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
@@ -204,6 +209,9 @@ RSpec.configure do |config|
   # LIBAVALON-208 - include time helpers
   config.include ActiveSupport::Testing::TimeHelpers
   # End UMD Customization
+
+  config.include ViewComponent::TestHelpers, type: :component
+  config.include ViewComponent::SystemTestHelpers, type: :component
 end
 
 FactoryBot::SyntaxRunner.class_eval do

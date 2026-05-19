@@ -1,4 +1,4 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -85,5 +85,9 @@ module MediaObjectBehavior
   def current_checkout(user_id)
     checkouts = Checkout.active_for_media_object(id)
     checkouts.select{ |ch| ch.user_id == user_id  }.first
+  end
+
+  def section_share_infos
+    @share_infos ||= sections.collect { |section| section.share_info }
   end
 end

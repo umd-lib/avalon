@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -62,9 +62,10 @@ describe IiifManifestPresenter do
     it 'provides metadata' do
       allow_any_instance_of(IiifManifestPresenter).to receive(:lending_enabled).and_return(false)
 
-      ['Title', 'Publication date', 'Creation date', 'Main contributor', 'Summary', 'Contributor', 'Publisher', 'Genre', 'Subject', 
-       'Time period', 'Location', 'Collection', 'Unit', 'Language', 'Rights Statement', 'Terms of Use', 'Physical Description', 'Series',
-       'Related Item', 'Notes', 'Table of Contents', 'Local Note', 'Other Identifier', 'Access Restrictions', 'Bibliographic ID'
+      [
+        'Title', 'Alternative title', 'Publication date', 'Creation date', 'Main contributor', 'Summary', 'Contributor', 'Publisher', 'Genre', 'Subject',
+        'Time period', 'Geographic Subject', 'Collection', 'Unit', 'Language', 'Rights Statement', 'Terms of Use', 'Physical Description', 'Series',
+        'Related Item', 'Notes', 'Table of Contents', 'Local Note', 'Other Identifier', 'Access Restrictions', 'Bibliographic ID'
       ].each do |field|
         expect(subject).to include(field)
       end
@@ -76,7 +77,6 @@ describe IiifManifestPresenter do
         FactoryBot.build(:fully_searchable_media_object).tap do |mo|
           mo.other_identifier += mo.other_identifier
           mo.other_identifier += [mo.bibliographic_id]
-          mo
         end
       end
 
@@ -84,8 +84,9 @@ describe IiifManifestPresenter do
         allow_any_instance_of(IiifManifestPresenter).to receive(:lending_enabled).and_return(false)
         expect(subject['Bibliographic ID'].first).to include media_object.bibliographic_id[:id]
         expect(subject['Other Identifier'].size).to eq 1
-        expect(subject['Other Identifier'].first).not_to include media_object.bibliographic_id[:id]
-        expect(subject['Other Identifier'].first).to include media_object.other_identifier.first[:id]
+        other_id = subject['Other Identifier'].first.match(/.+: (.+)/)[1]
+        expect(other_id).not_to eq media_object.bibliographic_id[:id]
+        expect(other_id).to eq media_object.other_identifier.first[:id]
       end
     end
 
@@ -93,9 +94,10 @@ describe IiifManifestPresenter do
       it 'provides metadata' do
         allow_any_instance_of(IiifManifestPresenter).to receive(:lending_enabled).and_return(true)
 
-        ['Title', 'Publication date', 'Creation date', 'Main contributor', 'Summary', 'Contributor', 'Publisher', 'Genre', 'Subject',
-         'Time period', 'Location', 'Collection', 'Unit', 'Language', 'Rights Statement', 'Terms of Use', 'Physical Description', 'Series',
-         'Related Item', 'Notes', 'Table of Contents', 'Local Note', 'Other Identifier', 'Access Restrictions', 'Bibliographic ID', 'Lending Period'
+        [
+          'Title', 'Publication date', 'Creation date', 'Main contributor', 'Summary', 'Contributor', 'Publisher', 'Genre', 'Subject',
+          'Time period', 'Geographic Subject', 'Collection', 'Unit', 'Language', 'Rights Statement', 'Terms of Use', 'Physical Description', 'Series',
+          'Related Item', 'Notes', 'Table of Contents', 'Local Note', 'Other Identifier', 'Access Restrictions', 'Bibliographic ID', 'Lending Period'
         ].each do |field|
           expect(subject).to include(field)
         end
@@ -112,11 +114,38 @@ describe IiifManifestPresenter do
 
     context 'values with search links' do
       it 'includes appropriate link tags' do
-        search_url = Rails.application.routes.url_helpers.blacklight_url.gsub('/','\/')
+        search_url = Rails.application.routes.url_helpers.blacklight_url.gsub('/', '\/')
         ['Subject'].each do |field|
           subject[field].each do |value|
-            expect(value).to match /^<a href="#{search_url}\?f%5B.+%5D%5B%5D=.*">.*<\/a>$/
+            expect(value).to match(/^<a href="#{search_url}\?f%5B.+%5D%5B%5D=.*">.*<\/a>$/)
           end
+        end
+      end
+    end
+
+    context 'date handling' do
+      let(:media_object) { FactoryBot.build(:media_object, date_issued: '2025-07-22', date_created: '2025-07-01') }
+
+      it 'returns human readable date' do
+        expect(subject['Publication date'].first).to eq 'July 22, 2025'
+        expect(subject['Creation date'].first).to eq 'July 1, 2025'
+      end
+
+      context 'unknown/unknown' do
+        let(:media_object) { FactoryBot.build(:media_object, date_issued: 'unknown/unknown', date_created: 'unknown/unknown') }
+
+        it 'returns "unknown"' do
+          expect(subject['Publication date'].first).to eq 'unknown'
+          expect(subject['Creation date'].first).to eq 'unknown'
+        end
+      end
+
+      context 'invalid date' do
+        let(:media_object) { FactoryBot.build(:media_object, date_issued: 'not_a date', date_created: false) }
+
+        it 'returns nil' do
+          expect(subject['Publication date']).to be_nil
+          expect(subject['Creation date']).to be_nil
         end
       end
     end

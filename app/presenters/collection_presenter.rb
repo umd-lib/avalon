@@ -1,4 +1,4 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -56,7 +56,7 @@ class CollectionPresenter
     view_context.link_to label, document["website_url_ssi"] if document["website_url_ssi"].present?
   end
 
-  def as_json(_)
+  def as_json(*)
     {
       id: id,
       name: name,

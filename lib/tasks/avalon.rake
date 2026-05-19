@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -72,7 +72,7 @@ namespace :avalon do
   # UMD Customization
   def parse_duration(str)
     unless str =~ /\A(\d+)\.(days?|weeks?|hours?|minutes?|seconds?)\z/
-      raise ArgumentError, "Invalid format: #{str.inspect}"
+      raise ArgumentError, "Invalid format: \#{str.inspect}"
     end
 
     amount = $1.to_i
@@ -81,6 +81,17 @@ namespace :avalon do
     amount.public_send(unit)
   end
   # End UMD Customization
+
+  desc 'clean out orphaned checkout records'
+  task checkout_record_cleanup: :environment do
+    orphans = Checkout.all.select { |co| !MediaObject.exists?(co.media_object_id) }
+    orphans.destroy_all
+  end
+
+  desc 'clean out expired stream tokens'
+  task stream_token_cleanup: :environment do
+    CleanupStreamTokenJob.perform_now
+  end
 
   namespace :services do
     services = ["jetty", "felix", "delayed_job"]

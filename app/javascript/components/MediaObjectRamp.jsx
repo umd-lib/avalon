@@ -35,9 +35,9 @@ import "@samvera/ramp/dist/ramp.css";
 import { Col, Row, Tab, Tabs } from 'react-bootstrap';
 import './Ramp.scss';
 
-const Ramp = ({
+const MediaObjectRamp = ({
   urls,
-  sections_count,
+  has_sections,
   title,
   share,
   timeline,
@@ -49,8 +49,10 @@ const Ramp = ({
   aeon_request,
   master_file_downloads,
   umd_access_control,
-  umd_metadata
+  umd_metadata,
   // End UMD Customization
+  accessibility_text = '',
+  transcript_tab_title = 'Transcripts',
 }) => {
   const [manifestUrl, setManifestUrl] = React.useState('');
   const [startCanvasId, setStartCanvasId] = React.useState();
@@ -91,23 +93,27 @@ const Ramp = ({
     setManifestUrl(url);
   }, []);
 
+  const a11yWithOnlyShare = React.useMemo(() => {
+    return accessibility_text && !(timeline.canCreate && playlist.canCreate);
+  }, [accessibility_text, timeline.canCreate, playlist.canCreate]);
+
   return (
     <IIIFPlayer manifestUrl={manifestUrl}
       customErrorMessage='This page encountered an error. Please refresh or contact an administrator.'
       startCanvasId={startCanvasId}
       startCanvasTime={startCanvasTime}>
       <Row className="ramp--all-components ramp--itemview">
-        <Col sm={12} md={9}>
+        <Col sm={12} md={12} xl={8}>
           {(cdl.enabled && !cdl.can_stream)
             ? (<React.Fragment>
-                <div dangerouslySetInnerHTML={{ __html: cdl.embed }} />
-                <div className="ramp--rails-title">
-                  {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
-                </div>
-              </React.Fragment>
-              )
+              <div dangerouslySetInnerHTML={{ __html: cdl.embed }} />
+              <div className="ramp--rails-title">
+                {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
+              </div>
+            </React.Fragment>
+            )
             : (<React.Fragment>
-              {sections_count > 0 &&
+              {has_sections &&
                 <React.Fragment>
                   {/* UMD Customization */}
                   {umd_access_control.playback_restricted ?
@@ -118,45 +124,48 @@ const Ramp = ({
                   <div className="ramp--rails-title">
                     {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
                   </div>
-                  <div className="ramp--rails-content">
-                    <Col className="ramp-button-group-1">
+                  <div className={`ramp--rails-content ${a11yWithOnlyShare ? 'only-share' : ''}`}>
+                    <Col className="ramp-button-group-1" sm={accessibility_text ? 6 : 12} xs={a11yWithOnlyShare ? 4 : 12}>
                       {timeline.canCreate &&
                         <button
                           id="timelineBtn"
-                          className="btn btn-outline mr-1 text-nowrap"
+                          className="btn btn-outline me-1 text-nowrap"
                           type="button"
-                          data-toggle="modal"
-                          data-target="#timelineModal"
+                          data-bs-toggle="modal"
+                          data-bs-target="#timelineModal"
                           aria-expanded="false"
                           aria-controls="timelineModal"
                           disabled={true}
+                          data-testid="media-object-create-timeline-btn"
                         >
                           Create Timeline
                         </button>
                       }
                       {share.canShare &&
                         <button
-                          className="btn btn-outline mr-1 text-nowrap"
+                          className="btn btn-outline me-1 text-nowrap"
                           type="button"
-                          data-toggle="collapse"
-                          data-target="#shareResourcePanel"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#shareResourcePanel"
                           aria-expanded="false"
                           aria-controls="shareResourcePanel"
                           id="shareBtn"
+                          data-testid="media-object-share-btn"
                         >
                           <i className="fa fa-share-alt"></i>
                           Share
                         </button>
                       }
                       {playlist.canCreate &&
-                        <button className="btn btn-outline text-nowrap mr-1"
+                        <button className="btn btn-outline text-nowrap me-1"
                           id="addToPlaylistBtn"
                           type="button"
-                          data-toggle="collapse"
-                          data-target="#addToPlaylistPanel"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#addToPlaylistPanel"
                           aria-expanded="false"
                           aria-controls="addToPlaylistPanel"
                           disabled={true}
+                          data-testid="media-object-add-to-playlist-btn"
                         >
                           {/* Static SVG image in /app/assets/images/add_to_playlist_icon.svg */}
                           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
@@ -167,6 +176,11 @@ const Ramp = ({
                         </button>
                       }
                     </Col>
+                    {accessibility_text &&
+                      <Col className='accessibility-request text-end' sm={6} xs={a11yWithOnlyShare ? 8 : 12}>
+                        <span dangerouslySetInnerHTML={{ __html: accessibility_text }} />
+                      </Col>
+                    }
                   </div>
                   <Row className="mx-0">
                     <Col>
@@ -190,7 +204,7 @@ const Ramp = ({
             )
           }
         </Col>
-        <Col sm={12} md={3} className="ramp--tabs-panel">
+        <Col sm={12} md={12} xl={4} className="ramp--tabs-panel">
           {cdl.enabled && <div dangerouslySetInnerHTML={{ __html: cdl.destroy }} />}
             {/* UMD Customization */}
             {/* Request from Special collections button and Copy Handle Button */}
@@ -205,14 +219,14 @@ const Ramp = ({
             </div>
             {/* End UMD Customization */}
           <Tabs>
-            <Tab eventKey="details" title="Details">
+            <Tab eventKey="details" title="Details" >
               <MetadataDisplay showHeading={false} displayTitle={false} />
               {/* UMD Customization */}
               <UmdMetadataDisplay handleUrl={umd_metadata.handleUrl} />
               {/* End UMD Customization */}
             </Tab>
-            {(cdl.can_stream && sections_count != 0 && has_transcripts) &&
-              <Tab eventKey="transcripts" title="Transcripts" className="ramp--transcripts_tab">
+            {(cdl.can_stream && has_sections && has_transcripts) &&
+              <Tab eventKey="transcripts" title={transcript_tab_title} className="ramp--transcripts_tab">
                 <Transcript
                   playerID="iiif-media-player"
                   manifestUrl={manifestUrl}
@@ -239,4 +253,4 @@ const Ramp = ({
   );
 };
 
-export default Ramp;
+export default MediaObjectRamp;

@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -22,7 +22,9 @@ class Ability
                          :marker_permissions,
                          :encode_dashboard_permissions,
                          :timeline_permissions,
-                         :checkout_permissions]
+                         :checkout_permissions,
+                         :administrative_permissions,
+                         :repository_read_only_permissions]
 
   # Override to add handling of SpeedyAF proxy objects
   def edit_permissions
@@ -105,7 +107,7 @@ class Ability
         can :create, MediaObject
       end
 
-      if @user_groups.include? "manager"
+      if is_manager?
         can :create, Admin::Collection
       end
     end
@@ -170,7 +172,7 @@ class Ability
           is_member_of?(collection)
         end
 
-        unless (is_member_of_any_collection? or @user_groups.include? 'manager')
+        unless has_administrative_access?
           cannot :read, [Admin::Collection, SpeedyAF::Proxy::Admin::Collection]
         end
 
@@ -333,8 +335,29 @@ class Ability
     end
   end
 
+  def administrative_permissions
+    if has_administrative_access?
+      can :discover_unpublished, MediaObject
+      can :read, :administrative_facets
+    end
+  end
+
+  def repository_read_only_permissions
+    if Settings.repository_read_only_mode
+      cannot [:create, :edit, :update, :destroy, :update_access_control, :unpublish, :intercom_push], [MediaObject, SpeedyAF::Proxy::MediaObject]
+      cannot [:create, :edit, :update, :destroy], [MasterFile, SpeedyAF::Proxy::MasterFile]
+      cannot [:create, :edit, :update, :destroy], [Derivative, SpeedyAF::Proxy::Derivative]
+      cannot [:create, :edit, :update, :destroy, :update_unit, :update_access_control, :update_managers, :update_editors, :update_depositors], [Admin::Collection, SpeedyAF::Proxy::Admin::Collection, Admin::CollectionPresenter]
+      cannot [:create, :edit, :update, :destroy], SpeedyAF::Base
+    end
+  end
+
   def is_administrator?
     @user_groups.include?("administrator")
+  end
+
+  def is_manager?
+    @user_groups.include?("manager")
   end
 
   def is_member_of?(collection)
@@ -416,4 +439,7 @@ class Ability
     @json_api_login
   end
 
+  def has_administrative_access?
+    is_administrator? || is_manager? || is_member_of_any_collection?
+  end
 end

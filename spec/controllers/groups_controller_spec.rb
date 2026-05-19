@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -155,16 +155,31 @@ describe Admin::GroupsController do
         expect(flash[:error]).to be_nil
       end
 
-      it "should not remove users from the manager group if they are sole managers of a collection" do
-        login_as('group_manager')
-        request.env["HTTP_REFERER"] = '/admin/groups/manager/edit'
+      context 'manager group' do
+        it "should not remove users from the group if they are sole managers of a collection" do
+          login_as('group_manager')
+          request.env["HTTP_REFERER"] = '/admin/groups/manager/edit'
 
-        collection = FactoryBot.create(:collection)
-        manager_name = collection.managers.first
-        put 'update_users', params: { id: 'manager', user_ids: [manager_name] }
+          collection = FactoryBot.create(:collection)
+          manager_name = collection.managers.first
+          put 'update_users', params: { id: 'manager', user_ids: [manager_name] }
 
-        expect(Admin::Group.find('manager').users).to include(manager_name)
-        expect(flash[:error]).not_to be_nil
+          expect(Admin::Group.find('manager').users).to include(manager_name)
+          expect(flash[:error]).not_to be_nil
+        end
+
+        it 'should enqueue BulkActionJobs::RemoveManagers' do
+          login_as('group_manager')
+          request.env['HTTP_REFERER'] = '/admin/groups/manager/edit'
+
+          users = FactoryBot.create_list(:manager, 2)
+          collection = FactoryBot.create(:collection, managers: users.map(&:user_key))
+          manager_name = collection.managers.first
+
+          expect {
+            put 'update_users', params: { id: 'manager', user_ids: [manager_name] }
+          }.to have_enqueued_job(BulkActionJobs::RemoveManagers).with([manager_name])
+        end
       end
 
       ['administrator','group_manager'].each do |g|

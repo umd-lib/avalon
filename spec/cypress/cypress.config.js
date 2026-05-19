@@ -1,25 +1,40 @@
-const { defineConfig } = require("cypress");
+const { defineConfig } = require('cypress');
 const path = require('path');
 const fs = require('fs');
 
+// Determine which env file to load
+const environmentName = process.env.CYPRESS_ENV || 'dev';
+const envFilename = `cypress.env.${environmentName}.json`;
+const envPath = path.resolve(__dirname, envFilename);
+let envSettings = {};
+if (fs.existsSync(envPath)) {
+  envSettings = require(envPath);
+}
+// PROJECT_ROOT in each env file controls where specs, fixtures,etc
+const projectRoot = envSettings.PROJECT_ROOT || '';
+
 module.exports = defineConfig({
- 
-  downloadsFolder: "spec/cypress/downloads",
-  fixturesFolder: "spec/cypress/fixtures",
-  screenshotsFolder: "spec/cypress/screenshots",
-  videosFolder: "spec/cypress/videos",
-  browser: process.env.BROWSER || 'electron', //
+  downloadsFolder: path.resolve(__dirname, projectRoot, 'downloads'),
+  fixturesFolder: path.resolve(__dirname, projectRoot, 'fixtures'),
+  screenshotsFolder: path.resolve(__dirname, projectRoot, 'screenshots'),
+  videosFolder: path.resolve(__dirname, projectRoot, 'videos'),
+  browser: process.env.BROWSER || 'electron',
+
   e2e: {
+    defaultCommandTimeout: 100000, //timeout
+    pageLoadTimeout: 100000,
+    viewportWidth: 1366,
+    viewportHeight: 768,
+
     setupNodeEvents(on, config) {
-      
-      // implement node event listeners here
+      //node env variables
       const environmentName = process.env.CYPRESS_ENV || 'dev';
       const environmentFilename = `cypress.env.${environmentName}.json`;
       const environmentPath = path.resolve(__dirname, environmentFilename);
-
       console.log('Environment name: %s', environmentName);
       console.log('Environment path: %s', environmentPath);
 
+      require('@bahmutov/cy-grep/src/plugin')(config);
       if (fs.existsSync(environmentPath)) {
         console.log('Loading %s', environmentFilename);
         const settings = require(environmentPath);
@@ -40,14 +55,24 @@ module.exports = defineConfig({
 
         console.log('Loaded settings for environment %s', environmentName);
       } else {
-        console.error(`Environment config file ${environmentFilename} not found`);
+        console.error(
+          `Environment config file ${environmentFilename} not found`
+        );
+      }
+      if (process.env.grepTags) {
+        config.env.grepTags = process.env.grepTags;
       }
       return config;
     },
 
-    supportFile: "spec/cypress/support/e2e.js",
-    specPattern: "spec/cypress/integration/**/*.js"
+    // Derive support file & spec pattern from projectRoot
+    supportFile: path.resolve(__dirname, projectRoot, 'support', 'e2e.js'),
+    specPattern: path.resolve(
+      __dirname,
+      projectRoot,
+      'integration',
+      '**',
+      '*.js'
+    ),
   },
-
 });
- 

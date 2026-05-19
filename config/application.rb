@@ -10,7 +10,7 @@ Bundler.require(*Rails.groups)
 
 module Avalon
   # UMD Customization
-  VERSION = '8.0.0-umd-0'
+  VERSION = '8.1.1-umd-0'
   # End UMD Customization
 
   class Application < Rails::Application
@@ -21,7 +21,7 @@ module Avalon
     end
 
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 7.2
+    config.load_defaults 8.0
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration should go into files in config/initializers
@@ -32,8 +32,14 @@ module Avalon
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     # config.autoload_lib(ignore: %w[assets avalon capistrano tasks])
 
-    # Set Time.zone default to the specified zone and make Active Record auto-convert to this zone.
-    # Run "rake -D time" for a list of tasks for finding time zone names. Default is UTC.
+    # Configuration for the application, engines, and railties goes here.
+    #
+    # These settings can be overridden in specific environments using the files
+    # in config/environments, which are processed later.
+    #
+    # config.time_zone = "Central Time (US & Canada)"
+    # config.eager_load_paths << Rails.root.join("extras")
+
     # UMD Customization
     config.time_zone = 'America/New_York'
     # End UMD Customization

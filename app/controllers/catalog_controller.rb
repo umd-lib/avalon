@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -28,7 +28,12 @@ class CatalogController < ApplicationController
   before_action :set_facet_contains, only: :facet
   # End UMD Customization
 
+  helper_method :main_content_classes
+  helper_method :sidebar_classes
+  helper_method :render_document_class
+
   configure_blacklight do |config|
+    config.show.route = { controller: "media_objects" }
 
     # Default component configuration
     config.add_results_document_tool(:bookmark, partial: 'bookmark_control', if: :render_bookmarks_control?)
@@ -54,6 +59,14 @@ class CatalogController < ApplicationController
       qt: 'search',
       rows: 10
     }
+
+    # Component overrides for Avalon specific customizations
+    config.index.document_component = IndexMediaObjectComponent
+    config.index.title_component = IndexHeaderMediaObjectComponent
+    config.index.metadata_component = IndexMetadataMediaObjectComponent
+    config.index.thumbnail_component = ThumbnailMediaObjectComponent
+    config.view.atom.summary_component = IndexAtomComponent
+    config.index.facet_group_component = FacetGroupComponent
 
     # solr field configuration for search results/index views
     config.index.title_field = 'title_tesi'
@@ -84,29 +97,31 @@ class CatalogController < ApplicationController
     # :show may be set to false if you don't want the facet to be drawn in the
     # facet bar
     config.add_facet_field 'avalon_resource_type_ssim', label: 'Format', limit: 5, collapse: false, helper_method: :titleize
-    config.add_facet_field 'creator_ssim', label: 'Main contributor', limit: 5
-    config.add_facet_field 'date_sim', label: 'Date', limit: 5
-    config.add_facet_field 'genre_ssim', label: 'Genres', limit: 5
-    config.add_facet_field 'series_ssim', label: 'Series', limit: 5
-    config.add_facet_field 'collection_ssim', label: 'Collection', limit: 5
-    config.add_facet_field 'unit_ssim', label: 'Unit', limit: 5
-    config.add_facet_field 'language_ssim', label: 'Language', limit: 5
+    config.add_facet_field 'creator_ssim', label: 'Main contributor', limit: 5, suggest: true
+    config.add_facet_field 'date_sim', label: 'Date', limit: 5, suggest: true
+    config.add_facet_field 'genre_ssim', label: 'Genres', limit: 5, suggest: true
+    config.add_facet_field 'series_ssim', label: 'Series', limit: 5, suggest: true
+    config.add_facet_field 'collection_ssim', label: 'Collection', limit: 5, suggest: true
+    config.add_facet_field 'unit_ssim', label: 'Unit', limit: 5, suggest: true
+    config.add_facet_field 'language_ssim', label: 'Language', limit: 5, suggest: true
     config.add_facet_field 'rights_statement_ssi', label: 'Rights Statement', limit: 5, helper_method: :rights_statement_facet_display, solr_params: { "facet.contains" => "http"}
 
     # Hide these facets if not a Collection Manager
+    config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow"
+    config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, suggest: true, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow"
+    config.add_facet_field 'read_access_group_ssim', label: 'Item access', if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow", query: {
+      public: { label: "Public", fq: "has_model_ssim:MediaObject AND read_access_group_ssim:#{Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC}" },
+      restricted: { label: "Authenticated", fq: "has_model_ssim:MediaObject AND read_access_group_ssim:#{Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED}" },
+      private: { label: "Private", fq: "has_model_ssim:MediaObject AND NOT read_access_group_ssim:#{Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC} AND NOT read_access_group_ssim:#{Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED}" }
+    }
+    config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, suggest: true, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow", helper_method: :vgroup_display
     # UMD Customization
-    current_user_is_manager = Proc.new {|context, _config, _opts| Ability.new(context.current_user, context.user_session).can? :create, MediaObject}
-    config.add_facet_field 'workflow_published_sim', label: 'Published', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'avalon_uploader_ssi', label: 'Created by', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'read_access_group_ssim', label: 'Access Control', limit: 5, if: current_user_is_manager, group: "workflow"
-    # Suppress display of External Group facet (the field is still indexed and can be searched)
-    # config.add_facet_field 'read_access_virtual_group_ssim', label: 'External Group', limit: 5, if: current_user_is_manager, group: "workflow", helper_method: :vgroup_display
-    config.add_facet_field 'course_title_ssim', label: 'Course Name', limit: 5, if: current_user_is_manager, group:  "workflow", solr_params: { 'facet.contains.ignoreCase' => true }
-    config.add_facet_field 'date_digitized_ssim', label: 'Date Digitized', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'date_ingested_ssim', label: 'Date Ingested', limit: 5, if: current_user_is_manager, group: "workflow"
-    config.add_facet_field 'has_captions_bsi', label: 'Has Captions', if: current_user_is_manager, group: "workflow", helper_method: :display_has_caption_or_transcript
-    config.add_facet_field 'has_transcripts_bsi', label: 'Has Transcripts', if: current_user_is_manager, group: "workflow", helper_method: :display_has_caption_or_transcript
+    config.add_facet_field 'course_title_ssim', label: 'Course Name', limit: 5, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow", solr_params: { 'facet.contains.ignoreCase' => true }
     # End UMD Customization
+    config.add_facet_field 'date_digitized_ssim', label: 'Date Digitized', limit: 5, suggest: true, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow"
+    config.add_facet_field 'date_ingested_ssim', label: 'Date Ingested', limit: 5, suggest: true, if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow"
+    config.add_facet_field 'has_captions_bsi', label: 'Has Captions', if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow", helper_method: :display_has_caption_or_transcript
+    config.add_facet_field 'has_transcripts_bsi', label: 'Has Transcripts', if: Proc.new {|context, config, opts| context.current_ability.can?(:read, :administrative_facets)}, group: "workflow", helper_method: :display_has_caption_or_transcript
 
     config.add_facet_field 'subject_ssim', label: 'Subject', if: false
 
@@ -121,10 +136,12 @@ class CatalogController < ApplicationController
     # solr fields to be displayed in the index (search results) view
     #   The ordering of the field names is the order of the display
     config.add_index_field 'title_tesi', label: 'Title', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
-    config.add_index_field 'date_issued_ssi', label: 'Date', if: Proc.new {|_context, _field_config, document| document[:date_issued_ssi].present? }
-    config.add_index_field 'date_created_ssi', label: 'Date', if: Proc.new {|_context, _field_config, document| document[:date_created_ssi].present? && document[:date_issued_ssi].blank? }
+    # TODO: Add helper_method for alternative title display after #6301 is resolved
+    config.add_index_field 'alternative_title_ssim', label: 'Alternative title', helper_method: :alternative_title_index_display
+    config.add_index_field 'date_issued_ssi', label: 'Date', if: Proc.new {|_context, _field_config, document| document[:date_issued_ssi].present? }, helper_method: :humanized_date_index_display
+    config.add_index_field 'date_created_ssi', label: 'Date', if: Proc.new {|_context, _field_config, document| document[:date_created_ssi].present? && document[:date_issued_ssi].blank? }, helper_method: :humanized_date_index_display
     config.add_index_field 'creator_ssim', label: 'Main contributors', helper_method: :contributor_index_display
-    config.add_index_field 'abstract_ssi', label: 'Summary', helper_method: :description_index_display
+    config.add_index_field 'abstract_ssi', label: 'Summary', helper_method: :description_index_display, if: Proc.new {|_context, _field_config, document| document[:abstract_ssi].present? }
     config.add_index_field 'duration_ssi', label: 'Duration', if: Proc.new {|context, _field_config, _document| context.request.format == :json }
     config.add_index_field 'section_id_ssim', label: 'Sections', if: Proc.new {|context, _field_config, _document| context.request.format == :json }, helper_method: :section_id_json_index_display
 
@@ -136,7 +153,7 @@ class CatalogController < ApplicationController
     config.add_show_field 'language_ssim', label: 'Language'
     config.add_show_field 'date_issued_ssi', label: 'Date'
     config.add_show_field 'abstract_ssim', label: 'Abstract'
-    config.add_show_field 'location_ssim', label: 'Locations'
+    config.add_show_field 'geographic_subject_ssim', label: 'Geographic Subjects'
     config.add_show_field 'contributor_ssim', label: 'Contributors'
     config.add_show_field 'publisher_ssim', label: 'Publisher'
     config.add_show_field 'genre_ssim', label: 'Genre'
@@ -236,5 +253,36 @@ class CatalogController < ApplicationController
       blacklight_config.facet_fields[params[:id]].solr_params['facet.contains'] = params[:contains] if params[:contains].present?
     end
     # End UMD Customization
+
+    # Override of blacklight helper to add row class
+    def render_document_class(document)
+      # HACK I'm not sure why CatalogController needs to reference these helpers through helpers, but BookmarksController doesn't
+      types = if respond_to? :document_presenter
+                document_presenter(document).display_type
+              else
+                helpers.document_presenter(document).display_type
+              end
+      return if types.blank?
+
+      classes = Array(types).compact.map do |t|
+        if respond_to? :document_class_prefix
+          "#{document_class_prefix}#{t.try(:parameterize) || t}"
+        else
+          "#{helpers.document_class_prefix}#{t.try(:parameterize) || t}"
+        end
+      end
+      classes << "row"
+      classes.join(' ')
+    end
+
+    # Override of blacklight for classes used for main content of Blacklight page
+    def main_content_classes
+      'col-sm-12 col-md-8'
+    end
+
+    # Override of blacklight for classes used for sidebar content of Blacklight page
+    def sidebar_classes
+      'page-sidebar col-sm-12 col-md-4'
+    end
 
 end

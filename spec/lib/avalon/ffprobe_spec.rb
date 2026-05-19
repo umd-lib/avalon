@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -21,6 +21,7 @@ describe Avalon::FFprobe do
   let(:video_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'videoshort.mp4').to_s) }
   let(:audioless_video_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'videoshort_no_audio.mp4').to_s) }
   let(:audio_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'jazz-performance.mp4').to_s) }
+  let(:audio_with_cover_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'meow.mp3').to_s) }
   let(:image_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'collection_poster.png').to_s) }
   let(:text_file) { FileLocator.new(Rails.root.join('spec', 'fixtures', 'chunk_test.txt').to_s) }
 
@@ -45,6 +46,14 @@ describe Avalon::FFprobe do
 
     context "with an audio file" do
       let(:test_file) { audio_file }
+
+      it 'returns false' do
+        expect(subject.video?).to be false
+      end
+    end
+
+    context "with an audio file containing album art" do
+      let(:test_file) { audio_with_cover_file }
 
       it 'returns false' do
         expect(subject.video?).to be false
@@ -81,6 +90,14 @@ describe Avalon::FFprobe do
 
     context "with an audio file" do
       let(:test_file) { audio_file }
+
+      it 'returns true' do
+        expect(subject.audio?).to be true
+      end
+    end
+
+    context "with an audio file containing album art" do
+      let(:test_file) { audio_with_cover_file }
 
       it 'returns true' do
         expect(subject.audio?).to be true

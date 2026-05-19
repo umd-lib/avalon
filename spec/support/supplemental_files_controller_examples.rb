@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -142,7 +142,7 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
 
     it "returns the supplemental file content" do
       get :show, params: { class_id => object.id, id: supplemental_file.id }, session: valid_session
-      expect(response).to redirect_to Rails.application.routes.url_helpers.rails_blob_path(supplemental_file.file, disposition: "attachment")
+      expect(response).to redirect_to Rails.application.routes.url_helpers.rails_blob_path(supplemental_file.file, disposition: "inline; filename=#{supplemental_file.download_filename}")
     end
 
     context '.json' do
@@ -390,12 +390,13 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
         request.headers['Content-Type'] = 'application/json'
       end
       context "with valid metadata params" do
-        let(:valid_update_attributes) { { label: 'new label', type: 'transcript', machine_generated: true }.to_json }
+        let(:valid_update_attributes) { { label: 'new label', type: 'transcript', machine_generated: true, language: 'French' }.to_json }
         it "updates the SupplementalFile metadata for #{object_class}" do
           expect {
             put :update, params: { class_id => object.id, id: supplemental_file.id, metadata: valid_update_attributes, format: :json }, session: valid_session
           }.to change { object.reload.supplemental_files.first.label }.from('label').to('new label')
            .and change { object.reload.supplemental_files.first.tags }.from([]).to(['transcript', 'machine_generated'])
+           .and change { object.reload.supplemental_files.first.language }.from('eng').to('fre')
 
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq({ "id": supplemental_file.id }.to_json)
@@ -507,8 +508,8 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
             # so we only test against the MasterFile case.
             if object.is_a?(MasterFile)
               expect{
-                put :update, params: { class_id => object.id, id: supplemental_file.id, supplemental_file:valid_update_attributes, format: :html}, session: valid_session
-              }.to change { object.media_object.to_solr(include_child_fields: true)['has_transcripts_bsi'] }.from(true).to(false)
+                put :update, params: { class_id => object.id, id: supplemental_file.id, supplemental_file: valid_update_attributes, format: :html}, session: valid_session
+              }.to change { object.reload.media_object.to_solr(include_child_fields: true)['has_transcripts_bsi'] }.from(true).to(false)
             end
           end
         end
@@ -654,7 +655,7 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
         if object.is_a?(MasterFile)
           expect{
             delete :destroy, params: { class_id => object.id, id: supplemental_file.id, format: :html}, session: valid_session
-          }.to change { object.media_object.to_solr(include_child_fields: true)['has_transcripts_bsi'] }.from(true).to(false)
+          }.to change { object.reload.media_object.to_solr(include_child_fields: true)['has_transcripts_bsi'] }.from(true).to(false)
         end
       end
     end

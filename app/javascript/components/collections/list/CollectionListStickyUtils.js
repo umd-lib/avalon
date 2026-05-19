@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2025, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -28,8 +28,8 @@ const CollectionListStickyUtils = ({
     <section className="row stickyUtils collection-list-sticky-utils">
       <div className="col-sm-6">
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="q" className="sr-only">
+          <div className="mb-3">
+            <label htmlFor="q" className="visually-hidden">
               search for
             </label>
             <input
@@ -42,12 +42,13 @@ const CollectionListStickyUtils = ({
               // End UMD Customization
               placeholder="Search collections..."
               autoFocus="autofocus"
+              data-testid="collection-search-collection-input"
             />
           </div>
         </form>
       </div>
       <div className="col-sm-6">
-        <div className="text-right">
+        <div className="text-end">
           <span className="collection-list-view-toggle-label">View by:</span>
           <div className="btn-group btn-group-toggle">
             <label
@@ -56,7 +57,7 @@ const CollectionListStickyUtils = ({
               }
               onClick={() => handleSortChange('unit')}
             >
-              <input type="radio" value="unit" /> Unit
+              <input type="radio" class="btn-check" value="unit" /> Unit
             </label>
             <label
               className={
@@ -64,7 +65,7 @@ const CollectionListStickyUtils = ({
               }
               onClick={() => handleSortChange('az')}
             >
-              <input type="radio" value="az" /> A-Z
+              <input type="radio" class="btn-check" value="az" /> A-Z
             </label>
           </div>
         </div>

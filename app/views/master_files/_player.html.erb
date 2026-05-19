@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -16,9 +16,13 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <%= react_component("EmbeddedRamp",
   {
-    urls: { base_url: request.protocol+request.host_with_port, fullpath_url: request.fullpath },
-    media_object_id: @master_file.media_object_id,
-    is_video: @master_file.is_video?,
-    allow_view_in_repo: (user_session.nil? || user_session[:full_login])
+    props: {
+      urls: { base_url: request.protocol+request.host_with_port, fullpath_url: request.fullpath },
+      media_object_id: @master_file.media_object_id,
+      is_video: @master_file.is_video?,
+      # UMD Customization
+      allow_view_in_repo: (user_session.nil? || user_session[:full_login])
+      # End UMD Customization
+    }
   }
 ) %>

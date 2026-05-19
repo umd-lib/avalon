@@ -18,5 +18,6 @@ Rails.application.config.assets.precompile += %w( custom.css )
 # End UMD Customization
 
 # MediaElement 4 files
-Rails.application.config.assets.precompile += %w( select2.min.js select2.min.css )
-
+# autocomplete and pop_help need to be explicitly precompiled for inclusion in update_access_control.html.erb
+# Possibly this is only necessary in dev and test envs.
+Rails.application.config.assets.precompile += %w(select2.min.js select2.min.css autocomplete.js pop_help.js)

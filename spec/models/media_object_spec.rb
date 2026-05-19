@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -521,6 +521,7 @@ describe MediaObject do
   describe '#destroy' do
     let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
     let(:master_file) { media_object.sections.first }
+    let!(:checkouts) { FactoryBot.create_list(:checkout, 3, media_object_id: media_object.id) }
 
     before do
       allow(master_file).to receive(:stop_processing!)
@@ -539,6 +540,18 @@ describe MediaObject do
       end
       expect { media_object.destroy }.to change { MasterFile.count }.from(2).to(0)
       expect(MediaObject.exists?(media_object.id)).to be_falsey
+    end
+
+    context 'with deleted sections' do
+      it 'destroys existing sections' do
+        media_object.reload
+        media_object.instance_variable_set(:@section_ids, [master_file.id, "deleted-id"])
+        expect { media_object.destroy }.to change { MasterFile.exists?(master_file) }.from(true).to(false)
+      end
+    end
+
+    it 'destroys related checkouts' do
+      expect { media_object.destroy }.to change { Checkout.where(media_object_id: media_object.id).count }.from(3).to(0)
     end
   end
 
@@ -771,6 +784,9 @@ describe MediaObject do
       it 'should override the title' do
         expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.title }.to "245 A : B F G K N P S"
       end
+      it 'should override the alternative title' do
+        expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.alternative_title }.to ["246"]
+      end
       it 'should override langauge' do
         expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.language }.to [{:code=>"eng", :text=>"English"}, {:code=>"fre", :text=>"French"}, {:code=>"ger", :text=>"German"}]
       end
@@ -813,11 +829,13 @@ describe MediaObject do
   describe '#section_labels' do
     before do
       mf = FactoryBot.create(:master_file, :with_structure, title: 'Test Label', media_object: media_object)
+      mf2 = FactoryBot.create(:master_file, media_object: media_object)
       media_object.reload
     end
     it 'should return correct list of labels' do
       expect(media_object.section_labels.first).to eq 'CD 1'
       expect(media_object.section_labels).to include 'Test Label'
+      expect(media_object.section_labels).to include 'video.mp4'
     end
   end
 
@@ -1257,6 +1275,14 @@ describe MediaObject do
       it 'returns an ordered list of master file objects' do
         expect(media_object.sections).to eq [section, section2]
       end
+
+      context 'in safe_load mode' do
+        it 'returns only sections that exist in both solr and fedora' do
+          media_object.reload
+          media_object.instance_variable_set(:@section_ids, [section.id, 'non-existant-id', section2.id])
+          expect(media_object.sections(safe_load: true)).to eq [section, section2]
+        end
+      end
     end
 
     describe 'sections=' do
@@ -1330,6 +1356,14 @@ describe MediaObject do
         expect(media_object.sections).to eq []
         expect(media_object.section_ids).to eq []
       end
+    end
+  end
+
+  describe '#section_share_infos' do
+    let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
+
+    it 'is an array of hashes' do
+      expect(media_object.section_share_infos).to contain_exactly({lti_share_link: be_a(String), link_back_url: be_a(String), embed_code: be_a(String)})
     end
   end
 end

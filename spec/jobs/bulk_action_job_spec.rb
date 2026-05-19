@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -165,6 +165,55 @@ describe BulkActionJobs::ApplyCollectionAccessControl do
         expect(solr_doc["read_access_person_ssim"]).to contain_exactly("mo_user", "co_user")
         expect(solr_doc["read_access_group_ssim"]).to contain_exactly("mo_group", "co_group", "registered")
       end
+    end
+  end
+end
+
+describe BulkActionJobs::ReturnCheckouts do
+  let(:collection_1) { FactoryBot.create(:collection, items: 2) }
+  let(:collection_2) { FactoryBot.create(:collection, items: 1) }
+  let!(:checkout_1) { FactoryBot.create(:checkout, media_object_id: collection_1.media_object_ids[0]) }
+  let!(:checkout_2) { FactoryBot.create(:checkout, media_object_id: collection_1.media_object_ids[1]) }
+  let!(:checkout_3) { FactoryBot.create(:checkout, media_object_id: collection_2.media_object_ids[0]) }
+
+  it 'returns checkouts for the input collection' do
+    # byebug
+    BulkActionJobs::ReturnCheckouts.perform_now(collection_1.id)
+    checkout_1.reload
+    checkout_2.reload
+    expect(checkout_1.return_time).to be < DateTime.current.to_time
+    expect(checkout_2.return_time).to be < DateTime.current.to_time
+  end
+
+  it 'does not return checkouts for other collections' do
+    BulkActionJobs::ReturnCheckouts.perform_now(collection_1.id)
+    checkout_3.reload
+    expect(checkout_3.return_time).to be >= DateTime.current.to_time
+  end
+end
+
+describe BulkActionJobs::RemoveManagers do
+  let(:users) { FactoryBot.create_list(:manager, 2) }
+  let(:admin) { FactoryBot.create(:admin) }
+  let!(:collection1) { FactoryBot.create(:collection, managers: users.map(&:user_key)) }
+  let!(:collection2) { FactoryBot.create(:collection, managers: users.map(&:user_key) + [admin.user_key]) }
+
+  it 'removes provided users from collection management' do
+    BulkActionJobs::RemoveManagers.perform_now([users.first.user_key, admin.user_key])
+    collection1.reload
+    collection2.reload
+    expect(collection1.managers).to eq([users[1].user_key])
+    expect(collection2.managers).to eq([users[1].user_key])
+  end
+
+  context 'sole manager' do
+    let!(:collection2) { FactoryBot.create(:collection, managers: [users.first.user_key]) }
+
+    it 'does not remove the manager' do
+      expect(Rails.logger).to receive(:error).with("At least one manager is required: #{collection2.id}")
+      BulkActionJobs::RemoveManagers.perform_now([users.first.user_key])
+      collection2.reload
+      expect(collection2.managers).to eq([users.first.user_key])
     end
   end
 end

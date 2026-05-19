@@ -1,18 +1,22 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
+require 'active_model'
+
 class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
+  extend ActiveModel::Translation
+
   SINGULAR_FIELDS = [:title, :statement_of_responsibility, :date_created, :date_issued, :copyright_date, :abstract, :terms_of_use, :rights_statement]
   HASH_FIELDS = [:note, :other_identifier, :related_item_url]
 
@@ -44,7 +48,11 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
     end
     # Convert empty strings to nil
     @attrs.transform_values! { |value| value == "" ? nil : value }
+    @errors = ActiveModel::Errors.new(self)
   end
+
+  attr_accessor :name
+  attr_accessor :errors
 
   def to_model
     self
@@ -66,26 +74,12 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
     [id]
   end
 
-  # @return [SupplementalFile]
-  def supplemental_files(tag: '*')
-    return [] if supplemental_files_json.blank?
-    files = JSON.parse(supplemental_files_json).collect { |file_gid| GlobalID::Locator.locate(file_gid) }
-    case tag
-    when '*'
-      files
-    when nil
-      files.select { |file| file.tags.empty? }
-    else
-      files.select { |file| Array(tag).all? { |t| file.tags.include?(t) } }
-    end
-  end
-
   def sections
     return [] unless section_ids.present?
     query = "id:" + section_ids.join(" id:")
     @sections ||= SpeedyAF::Proxy::MasterFile.where(query,
                                                     order: -> { section_ids },
-                                                    load_reflections: true)
+                                                    load_reflections: [:derivatives, :structuralMetadata, :media_object])
   end
 
   def collection
@@ -150,12 +144,20 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
     sections.select { |master_file| master_file.supplemental_files(tag: tag).present? }.map(&:id)
   end
 
+  def sections_with_rendering_files?(tags)
+    tags.any? { |t| sections_with_files(tag: t).present? }
+  end
+
   def permalink_with_query(query_vars = {})
     val = permalink
     if val && query_vars.present?
       val = "#{val}?#{query_vars.to_query}"
     end
     val ? val.to_s : nil
+  end
+
+  def workflow
+    WorkflowDatastream.find("#{id}/workflow")
   end
 
   protected

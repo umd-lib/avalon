@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -18,8 +18,8 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= bootstrap_form_for object do |form| %>
   <input id="step" name="step" type="hidden" value="access-control" />
   <input id="donot_advance" name="donot_advance" type="hidden" value="true" />
-  <div class="form-group">
-    <div class="form-row">
+  <div class="mb-3">
+    <div class="row">
       <% if is_leasable %>
         <div class="col-5">
       <% else %>
@@ -31,12 +31,14 @@ Unless required by applicable law or agreed to in writing, software distributed
               options_from_collection_for_select(*dropdown_values),
               { include_blank: true, disabled: input_disabled, class: "form-control"} %>
           <% elsif defined?(autocomplete_model) && autocomplete_model.present? %>
-            <%= hidden_field_tag "add_#{access_object}" %>
-            <%= text_field_tag "add_#{access_object}_display", nil,
-              class: "typeahead from-model form-control",
-              style: "width: 100%;",
-              data: { model: autocomplete_model, target: "add_#{access_object}" },
-              disabled: input_disabled %>
+            <%# This div is necessary for proper rendering of the typeahead dropdown 
+              without screwing up styling in the rest of the form %>
+            <div style='display: flex;'>
+              <%= render partial: 'modules/autocomplete_input', locals: { field_name: "add_#{access_object}",
+                                                                          model: autocomplete_model,
+                                                                          id: object.id,
+                                                                          data: { testid: "media-object-#{access_object}" } } %>
+            </div>
           <% else %>
             <%= text_field_tag "add_#{access_object}", nil,
               class: "form-control",
@@ -58,8 +60,8 @@ Unless required by applicable law or agreed to in writing, software distributed
           </div>
         <% end %>
         <div class="col-1">
-          <%= button_tag "Add", name: "submit_add_#{access_object}", type: "submit",
-            class: "btn btn-primary", style: 'margin-top:2.4rem', disabled: input_disabled, value: "Add" %>
+          <%= button_tag "Add",name: "submit_add_#{access_object}", type: "submit",
+            class: "btn btn-primary", style: 'margin-top:2.4rem', disabled: input_disabled, value: "Add", "data-testid": "submit-add-#{access_object}" %>
         </div>
       </div>
     </div>
@@ -71,7 +73,7 @@ Unless required by applicable law or agreed to in writing, software distributed
         <% if members.present? %>
         <% members.each do |member_object| %>
         <tr>
-          <td class='access_list_label'>
+          <td class='access_list_label' data-testid="<%= 'collection-access-label-' + access_object %>">
             <%= label_tag do %>
             <% if defined?(display_helper) && display_helper.present? %>
             <%= self.send(display_helper, member_object) %>
@@ -89,11 +91,11 @@ Unless required by applicable law or agreed to in writing, software distributed
             <% else %>
             <% remove_object = member_object %>
             <% end %>
-
-            <%= link_to "×",
+            <%= link_to "",
                 polymorphic_path(object, "remove_#{access_object}".to_sym => remove_object, step: @active_step, donot_advance: true),
                 method: "put",
-                class: "btn btn-sm close remove" %>
+                class: "btn btn-sm btn-close remove",
+                data: { testid: "collection-access-remove-#{access_object}" } %>
             <%# End UMD Customization %>
           </td>
           <% end %>
@@ -117,10 +119,10 @@ Unless required by applicable law or agreed to in writing, software distributed
           </td>
           <% if !input_disabled %>
           <td class='access_list_remove'>
-            <%= link_to "×",
+            <%= link_to "",
                 polymorphic_path(object, "remove_lease".to_sym => lease_object, step: @active_step, donot_advance: true),
                 method: "put",
-                class: "btn btn-sm close remove" %>
+                class: "btn btn-sm btn-close remove" %>
           </td>
           <% end %>
         </tr>
