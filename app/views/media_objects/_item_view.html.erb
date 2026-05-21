@@ -49,15 +49,15 @@ Unless required by applicable law or agreed to in writing, software distributed
           timeline: { canCreate: (current_ability.can? :create, Timeline), content: lending_enabled?(@media_object) ? (render('timeline') if can_stream) : render('timeline') },
           playlist: { canCreate: (current_ability.can? :create, Playlist), tab: render('add_to_playlist') },
           cdl: { enabled: lending_enabled?(@media_object), can_stream: can_stream, embed: render('embed_checkout'), destroy: render('destroy_checkout') },
-          <%# UMD Customization %>
-          <%# Limit display of supplemental files in the "Files" tab to users %>
-          <%# who can actually download them (this excludes users with only a %>
-          <%# "download" access token) %>
+          # UMD Customization
+          # Limit display of supplemental files in the "Files" tab to users
+          # who can actually download them (this excludes users with only a
+          # "download" access token)
           has_files: (@media_object.supplemental_files.present? || @media_object.sections_with_files.present?) && (current_ability.can? :full_read, @media_object),
-          <%# End UMD Customization %>
+          # End UMD Customization
           has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
           accessibility_text: Avalon::Configuration.accessibility_request_link.present? ? t('media_object.accessibility_request_text', :a11y_link => Avalon::Configuration.accessibility_request_link) : '',
-          <%# UMD Customization %>
+          # UMD Customization
           aeon_request: { 
             itemTitle: (@media_object.title || ""),
             itemDate: (@media_object.date_issued || ""),
@@ -73,7 +73,8 @@ Unless required by applicable law or agreed to in writing, software distributed
           },
           umd_access_control: { playback_restricted: @playback_restricted, jim_hension_collection: in_jim_henson_collection?(@media_object) ? @media_object.collection.name : '' },
           umd_metadata: { handleUrl: @media_object.permalink }
-          <%# End UMD Customization %>
+          # End UMD Customization
+        }
       }
     ) %>
   </div>

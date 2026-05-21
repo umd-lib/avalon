@@ -1,9 +1,9 @@
+<%# UMD Customization %>
 <h1 class="top-content-title"><%= t('blacklight.search.search_results_header') %></h1>
 
-<% @page_title = t('blacklight.search.page_title.title', :constraints => render_search_to_page_title(params), :application_name => application_name) %>
+<% @page_title = t('blacklight.search.page_title.title', :constraints => render_search_to_page_title(search_state), :application_name => application_name) %>
 
 <% content_for(:head) do -%>
-  <%= render_opensearch_response_metadata %>
   <%= rss_feed_link_tag %>
   <%= atom_feed_link_tag %>
   <%= json_api_link_tag %>
@@ -16,9 +16,10 @@
 <%- if @response.empty? %>
   <%= render "zero_results" %>
 <%- elsif render_grouped_response? %>
-  <%= render_grouped_document_index %>
+  <%= render 'group' %>
 <%- else %>
-  <%= render_document_index %>
+  <%= render_document_index @response.documents %>
 <%- end %>
 
 <%= render 'results_pagination' %>
+<%# End UMD Customization %>
