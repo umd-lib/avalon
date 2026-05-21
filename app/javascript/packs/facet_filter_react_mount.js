@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // Watch for new content being inserted into the modal
   const observer = new MutationObserver((mutationsList) => {
     mutationsList.forEach((mutation) => {
-      if (mutation.addedNodes.length > 0 && window.ReactRailsUJS) {
-        window.ReactRailsUJS.mountComponents(modalContainer);
+      if (mutation.addedNodes.length > 0 && typeof ReactOnRails !== 'undefined') {
+        ReactOnRails.reactOnRailsPageLoaded();
       }
     });
   });

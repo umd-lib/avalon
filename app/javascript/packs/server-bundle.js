@@ -26,6 +26,9 @@ import Search from '../components/Search';
 import MediaObjectRamp from '../components/MediaObjectRamp';
 import ReactButtonContainer from '../components/ReactButtonContainer';
 import PlaylistRamp from '../components/PlaylistRamp';
+// UMD Customization
+import UMDFacetFilter from '../components/UMDFacetFilter';
+// End UMD Customization
 
 ReactOnRails.register({
   CollectionList,
@@ -36,4 +39,7 @@ ReactOnRails.register({
   MediaObjectRamp,
   ReactButtonContainer,
   PlaylistRamp,
+  // UMD Customization
+  UMDFacetFilter,
+  // End UMD Customization
 });

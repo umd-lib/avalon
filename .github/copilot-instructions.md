@@ -4,9 +4,9 @@
 
 This is **Avalon Media System**, an open-source Rails application for managing large collections of digital audio and video, originally developed by Indiana University Libraries. This repository is the **University of Maryland (UMD) fork** (`umd-lib/avalon`), which extends upstream `avalonmediasystem/avalon` with institutional customizations.
 
-- **Primary language:** Ruby (Rails 7.0.x)
-- **Frontend:** CoffeeScript, ES6/JSX (React via `react-rails` + Shakapacker), Bootstrap 4
-- **Persistence:** Fedora Commons (via ActiveFedora), Apache Solr (via Blacklight), SQLite/PostgreSQL/MySQL, Redis
+- **Primary language:** Ruby (Rails 8.0.x), Ruby 3.4
+- **Frontend:** CoffeeScript, ES6/JSX (React via `react_on_rails` v14 + Shakapacker), Bootstrap 5
+- **Persistence:** Fedora 6 OCFL (via ActiveFedora), Apache Solr (via Blacklight 8), SQLite/PostgreSQL/MySQL, Redis
 - **Background jobs:** Sidekiq 6 with `sidekiq-cron` and `sidekiq-limit_fetch`
 - **Auth:** Devise + OmniAuth; UMD uses SAML via CAS (`omniauth-saml`)
 - **Storage:** Local filesystem or AWS S3; CloudFront signing for streaming
@@ -43,7 +43,7 @@ avalon/
 |   +-- DockerDevelopmentEnvironment.md
 |   +-- AvalonTestPlan.md
 +-- Gemfile
-+-- Dockerfile           # Multi-stage production build (ruby:3.2-bullseye)
++-- Dockerfile           # Multi-stage production build (ruby:3.4-bookworm)
 +-- Dockerfile.dev
 +-- docker-compose.yml
 ```
@@ -229,13 +229,14 @@ All jobs inherit from `ApplicationJob` (ActiveJob). Queues are defined in `confi
 ### Two Asset Pipelines (coexist)
 
 1. **Sprockets** (`app/assets/javascripts/`) - Legacy CoffeeScript and `.es6` files. Do not add new features here; prefer Shakapacker.
-2. **Shakapacker** (`app/javascript/`) - Modern React/ES modules bundled by Webpack. Entry points in `packs/`. Rendered via `react-rails` `react_component` helper in ERB.
+2. **Shakapacker** (`app/javascript/`) - Modern React/ES modules bundled by Webpack. Entry points in `packs/`. Rendered via `react_on_rails` `react_component` helper in ERB.
 
 ### React Components
 
 - All components live in `app/javascript/components/`.
 - UMD-specific components are prefixed with `Umd` (e.g., `UmdRestrictedPlayback.jsx`) or `UMD` (e.g., `UMDFacetFilter.jsx`).
 - Props are passed from ERB: `<%= react_component('MyComponent', { prop: value }) %>`
+- **Every new component must be registered** in both `app/javascript/packs/application.js` and `app/javascript/packs/server-bundle.js` via `ReactOnRails.register({ MyComponent })`.
 - Use **functional components with hooks** (`useState`, `useRef`). Class components are legacy.
 - **PropTypes validation is required** for all component props.
 - Component-scoped styles go in a sibling `.scss` file (e.g., `Ramp.scss` alongside `MediaObjectRamp.jsx`).
@@ -279,9 +280,9 @@ docker-compose up avalon worker
 
 ```bash
 # Dev:     docker.lib.umd.edu/avalon:latest
-# RC:      docker.lib.umd.edu/avalon:7.1-umd-0-rc2
-# Release: docker.lib.umd.edu/avalon:7.1-umd-0
-# Hotfix:  docker.lib.umd.edu/avalon:7.1-umd-0.1
+# RC:      docker.lib.umd.edu/avalon:8.1.1-umd-0-rc2
+# Release: docker.lib.umd.edu/avalon:8.1.1-umd-0
+# Hotfix:  docker.lib.umd.edu/avalon:8.1.1-umd-0.1
 docker build -t IMAGE_TAG .
 docker push IMAGE_TAG
 ```
@@ -394,7 +395,7 @@ Render from ERB: `<%= react_component('UmdMyFeature', { title: @media_object.tit
 
 3. **`psych` pinned below 4** - Required for Ruby 3.x YAML compatibility. Do not upgrade.
 
-4. **`sass` version pinned** - `gem 'sass', '3.4.22'` is the last known-good version. Do not upgrade.
+4. **`sass` replaced by `sassc-rails`** - The old `gem 'sass', '3.4.22'` pin is gone; the app now uses `sassc-rails`. Do not add back the standalone `sass` gem.
 
 5. **`section_list` migration guard** - `MediaObject#section_ids` lazy-migrates from `ordered_master_file_ids` to a JSON-stored `section_list`. Do not remove the `self.section_list.nil?` guard.
 
@@ -407,3 +408,5 @@ Render from ERB: `<%= react_component('UmdMyFeature', { title: @media_object.tit
 9. **CI is disabled** - `Jenkinsfile` is renamed `Jenkinsfile.disabled` and GitHub webhooks to Jenkins are disabled. Run tests manually before opening a PR.
 
 10. **Solr configset name** - The Solr configset is named `avalon`. Collection admin is managed by `SolrCollectionAdmin` and `SolrCollectionCreator` service objects.
+
+11. **`<%# %>` ERB comments inside `<%= %>` expressions** - ERB comment tags (`<%# UMD Customization %>`) cannot be nested inside `<%= ... %>` expressions (e.g., inside a hash passed to `react_component`). They break out of the enclosing expression and cause a Ruby syntax error. Use plain Ruby `# UMD Customization` comments instead when inside an expression.
