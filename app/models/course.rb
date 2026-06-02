@@ -1,4 +1,4 @@
-# Copyright 2011-2025, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -17,7 +17,7 @@ class Course < ActiveRecord::Base
 
   def self.autocomplete(query, _id = nil)
     # UMD Customization
-    self.where("LOWER(label) LIKE :q OR LOWER(title) LIKE :q", q: "%#{query.downcase}%").collect { |course|
+    self.where("LOWER(label) LIKE :q OR LOWER(title) LIKE :q", q: "%#{query.downcase}%").limit(10).collect { |course|
       { id: course.context_id, display: "#{course.id}: #{course.title}" }
     }
     # End UMD Customization

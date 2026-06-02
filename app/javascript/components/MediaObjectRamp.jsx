@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *
@@ -14,7 +14,12 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import {
   Transcript,
   IIIFPlayer,
@@ -54,11 +59,11 @@ const MediaObjectRamp = ({
   accessibility_text = '',
   transcript_tab_title = 'Transcripts',
 }) => {
-  const [manifestUrl, setManifestUrl] = React.useState('');
-  const [startCanvasId, setStartCanvasId] = React.useState();
-  const [startCanvasTime, setStartCanvasTime] = React.useState();
+  const [manifestUrl, setManifestUrl] = useState('');
+  const [startCanvasId, setStartCanvasId] = useState();
+  const [startCanvasTime, setStartCanvasTime] = useState();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const { base_url, fullpath_url } = urls;
     // UMD Customization
     // Access tokens are included in the URL passed to this method,
@@ -93,7 +98,7 @@ const MediaObjectRamp = ({
     setManifestUrl(url);
   }, []);
 
-  const a11yWithOnlyShare = React.useMemo(() => {
+  const a11yWithOnlyShare = useMemo(() => {
     return accessibility_text && !(timeline.canCreate && playlist.canCreate);
   }, [accessibility_text, timeline.canCreate, playlist.canCreate]);
 
@@ -105,20 +110,20 @@ const MediaObjectRamp = ({
       <Row className="ramp--all-components ramp--itemview">
         <Col sm={12} md={12} xl={8}>
           {(cdl.enabled && !cdl.can_stream)
-            ? (<React.Fragment>
+            ? (<Fragment>
               <div dangerouslySetInnerHTML={{ __html: cdl.embed }} />
               <div className="ramp--rails-title">
                 {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
               </div>
-            </React.Fragment>
+            </Fragment>
             )
-            : (<React.Fragment>
+            : (<Fragment>
               {has_sections &&
-                <React.Fragment>
+                <Fragment>
                   {/* UMD Customization */}
                   {umd_access_control.playback_restricted ?
                     <UmdRestrictedPlayback jim_hension_collection={umd_access_control.jim_hension_collection} />
-                    : <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} />
+                    : <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} resumeCache={{ enable: true }} />
                   }
                   {/* End UMD Customization */}
                   <div className="ramp--rails-title">
@@ -198,9 +203,9 @@ const MediaObjectRamp = ({
                     </Col>
                   </Row>
                   <StructuredNavigation showAllSectionsButton={true} />
-                </React.Fragment>
+                </Fragment>
               }
-            </React.Fragment>
+            </Fragment>
             )
           }
         </Col>
@@ -219,14 +224,14 @@ const MediaObjectRamp = ({
             </div>
             {/* End UMD Customization */}
           <Tabs>
-            <Tab eventKey="details" title="Details" >
+            <Tab eventKey="details" title="Details" tabAttrs={{ 'data-testid': 'media-object-tab-details' }}>
               <MetadataDisplay showHeading={false} displayTitle={false} />
               {/* UMD Customization */}
               <UmdMetadataDisplay handleUrl={umd_metadata.handleUrl} />
               {/* End UMD Customization */}
             </Tab>
             {(cdl.can_stream && has_sections && has_transcripts) &&
-              <Tab eventKey="transcripts" title={transcript_tab_title} className="ramp--transcripts_tab">
+              <Tab eventKey="transcripts" title={transcript_tab_title} className="ramp--transcripts_tab" tabAttrs={{ 'data-testid': 'media-object-tab-transcripts' }}>
                 <Transcript
                   playerID="iiif-media-player"
                   manifestUrl={manifestUrl}
@@ -236,7 +241,7 @@ const MediaObjectRamp = ({
             {/* UMD Customization */}
             {/* Include master files in "Files" tab */}
             {(has_files || master_file_downloads.canDownload) &&
-              <Tab eventKey="files" title="Files">
+              <Tab eventKey="files" title="Files" tabAttrs={{ 'data-testid': 'media-object-tab-files' }}>
                 {master_file_downloads.canDownload &&
                   <UmdMasterFiles masterFiles={master_file_downloads} />
                 }

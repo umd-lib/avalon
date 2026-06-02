@@ -10,7 +10,7 @@ Bundler.require(*Rails.groups)
 
 module Avalon
   # UMD Customization
-  VERSION = '8.1.1-umd-0'
+  VERSION = '8.2.0-umd-0'
   # End UMD Customization
 
   class Application < Rails::Application
@@ -57,6 +57,18 @@ module Avalon
     # We have a number of serializers in place that have not previously had a :coder defined.
     # Setting our global default to the old default :coder should maintain compatibility.
     config.active_record.default_column_serializer = YAML
+
+    # Set active record encryption. Currently only used on user API tokens.
+    config.active_record.encryption.primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
+    config.active_record.encryption.deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]
+    config.active_record.encryption.key_derivation_salt = ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"]
+
+    # Conditionally enable these for migration
+    # ```ApiToken.all.each { |t| t.encrypt }```
+    if ENV['ACTIVE_RECORD_ENCRYPTION_MIGRATION'] == 'true'
+      config.active_record.encryption.support_unencrypted_data = true
+      config.active_record.encryption.extend_queries = true
+    end
 
     # Rails recommends having this set to false, especially in zeitwerk mode. However, that
     # currently causes issues with the Samvera gems (hydra-head, Blacklight)
