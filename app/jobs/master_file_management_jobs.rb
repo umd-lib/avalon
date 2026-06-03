@@ -30,7 +30,6 @@ module MasterFileManagementJobs
     # End UMD Customization
 
     def perform(id, newpath)
-    def perform(id, newpath)
       Rails.logger.debug "Moving masterfile to #{newpath}"
 
       masterfile = MasterFile.find(id)
