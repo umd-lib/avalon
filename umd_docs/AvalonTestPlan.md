@@ -216,98 +216,30 @@ Verify the contents of a "robots.txt" file is displayed.
 
 Verify that a "sitemap" file is returned.
 
-### 8) SFTP Access **(Optional)**
+### 8) Item Deletion
 
-**Note:** This step cannot be tested in the local development environment, or
-in the Kubernetes "sandbox" namespace.
+8.1) Go back to the item detail page of the item added in the previous steps.
 
-----
-
-This step requires an SSH public key registered with the Archelon
-instance running in the Kubernetes namespace. To check the list of registered
-keys use the "/public_keys" Archelon endpoint. For example in the "test"
-namespace, the URL would be:
-
-<https://archelon-test.lib.umd.edu/public_keys>
-
-This step is optional, and can be skipped without affecting the later steps.
-
-----
-
-8.1) Log in to the Avalon SFTP server:
-
-| Kubernetes Namespace | URL                      | Port |
-| -------------------- | ------------------------ | ---- |
-| test                 | sftp.av-test.lib.umd.edu | 31128 |
-| qa                   | sftp.av-qa.lib.umd.edu   | 31107 |
-| prod                 | sftp.av.lib.umd.edu      | 31107 |
-
-For example, for the "test" namespace:
-
-```zsh
-$ sftp -P 31128 app@sftp.av-test.lib.umd.edu
-```
-
-----
-
-**Note:** If you have trouble logging in, see the "Avalon Batch Upload"
-Confluence page (<https://umd-dit.atlassian.net/wiki/spaces/LIB/pages/21432547>)
-more information.
-
-----
-
-8.2) On the SFTP server, switch to the "dropbox" directory:
-
-```bash
-sftp$ cd dropbox
-```
-
-8.3) List the contents of the directory:
-
-```bash
-sftp$ ls
-```
-
-and verify that there is an "SSDR_Test_Collection" directory.
-
-8.4) Log out from the SFTP server:
-
-```bash
-sftp$ exit
-```
-
-----
-
-**Note:** For more information about batch uploads, including information
-about how to perform an actual upload, see the "Avalon Batch Upload" Confluence
-page.
-
-----
-
-### 9) Item Deletion
-
-9.1) Go back to the item detail page of the item added in the previous steps.
-
-9.2) On the item detail page, left-click the "Edit" button. The
+8.2) On the item detail page, left-click the "Edit" button. The
 "Edit Media Object > Access Control" page will be displayed.
 
-9.3) On the "Edit Media Object > Access Control" page, left-click the
+8.3) On the "Edit Media Object > Access Control" page, left-click the
 "Delete this item" button at the bottom of the left sidebar. A confirmation
 page will be displayed.
 
-9.4) On the confirmation page, left-click the "Yes, I am sure" button. The
+8.4) On the confirmation page, left-click the "Yes, I am sure" button. The
 Avalon home page will be displayed with a notification indicating that the
 media object was deleted.
 
-### 10) Collection Deletion
+### 9) Collection Deletion
 
-10.1) From the navigation bar, select "Manage | Manage Content" from the
+9.1) From the navigation bar, select "Manage | Manage Content" from the
 navigation bar. The "My Collections" page will be displayed.
 
-10.2) On the "My Collections" page, find the "SSDR Test Collection" entry in the
+9.2) On the "My Collections" page, find the "SSDR Test Collection" entry in the
 list and left-click the "Delete" button. A confirmation
 page will be displayed.
 
-10.3) On the confirmation page, left-click the "Yes, I am sure" button. The
+9.3) On the confirmation page, left-click the "Yes, I am sure" button. The
 "My Collections"" page will be displayed. Verify that the "SSDR Test Collection"
 no longer appears in the list of collections.
