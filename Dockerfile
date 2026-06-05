@@ -65,7 +65,6 @@ RUN         echo "deb     http://ftp.us.debian.org/debian/    bookworm main cont
          && cat /etc/apt/sources.list.d/nodesource.list \
          && cat /etc/apt/sources.list.d/yarn.list
 
-# UMD Customization - include libjemalloc2
 RUN         apt-get update && \
             apt-get -y dist-upgrade && \
             apt-get install -y --no-install-recommends --allow-unauthenticated \
@@ -85,7 +84,6 @@ RUN         apt-get update && \
             libjemalloc2 \
          && apt-get -y install mediainfo \
          && ln -s /usr/bin/lsof /usr/sbin/
-# End UMD Customization
 
 RUN         useradd -m -U app \
          && su -s /bin/bash -c "mkdir -p /home/app/avalon" app

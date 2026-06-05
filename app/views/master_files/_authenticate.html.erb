@@ -15,9 +15,11 @@ Unless required by applicable law or agreed to in writing, software distributed
 %>
       <% if @master_file.is_video? %>
         <%=t('auth.embedded_video').html_safe%>
+        <%# UMD Customization %>
         <%= link_to t('auth.sign_in'), user_saml_omniauth_authorize_path, :method => "post", :class=>"btn" %>
       <% else %>
         <%=t('auth.embedded_audio').html_safe%> <%= link_to t('auth.sign_in'), user_saml_omniauth_authorize_path, :method => "post", :class=>"btn" %>
+        <%# End UMD Customization %>
       <% end %>
 
 <% content_for :page_scripts do %>

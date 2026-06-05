@@ -41,10 +41,12 @@ Unless required by applicable law or agreed to in writing, software distributed
       <div>
         <h3 class="sub-headline"><strong>Unit:</strong> <%= @doc_presenter.unit %></h3>
         <p class="lead document-description"></p>
+        <%# UMD Customization %>
         <% if @doc_presenter.is_course_reserves? %>
           <%= link_to 'Show Course Reserves', course_reserves_collection_path(@doc_presenter.id), class: 'btn btn-primary' %>
         <% end %>
-                <%= react_component("CollectionDetails", 
+        <%# End UMD Customization %>
+        <%= react_component("CollectionDetails", 
           {
             props: { 
               content: @doc_presenter.description,

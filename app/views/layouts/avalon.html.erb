@@ -58,10 +58,10 @@ Unless required by applicable law or agreed to in writing, software distributed
       <%= render partial: 'modules/become_message' %>
       <% end %>
       <%= render 'modules/header' %>
+      <%# UMD Customization %>
       <% if controller.action_name != "course_reserves" %>
         <%= render :partial => 'modules/global_navigation' %>
       <% end %>
-      <%# UMD Customization %>
       <% main_id = "main-content" %>
       <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
       <% main_id = "content" if current_page?(main_app.root_path) %>
@@ -84,9 +84,11 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       </main>
     </div>
+    <%# UMD Customization %>
     <% if controller.action_name != "course_reserves" %>
       <%= render 'modules/footer' %>
     <% end %>
+    <%# End UMD Customization %>
   </div>
 
   <% if request.fullpath.include?('login_popup') %>

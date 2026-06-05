@@ -77,7 +77,9 @@ class CollectionPresenter
     }
   end
 
+  # UMD Customization
   def is_course_reserves?
     self.unit == Settings.streaming_reserves.unit_name
   end
+  # End UMD Customization
 end

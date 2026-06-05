@@ -22,7 +22,9 @@ Unless required by applicable law or agreed to in writing, software distributed
         <%# End UMD Customization %>
       </div>
 
+      <%# UMD Customization %>
       <% if !current_page?(main_app.root_path) && controller.action_name != "course_reserves" %>
+      <%# End UMD Customization %>
         <div class="header-search">
           <%= render :partial=>'modules/avalon_search_form' %>
         </div>

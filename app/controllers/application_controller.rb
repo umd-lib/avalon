@@ -217,9 +217,9 @@ class ApplicationController < ActionController::Base
     # UMD Customization
     access_token = request.query_parameters[:access_token]
     session_opts = session_opts.merge(access_token: access_token) if access_token
-    # End UMD Customization
 
     @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.ip))
+    # End UMD Customization
   end
 
   rescue_from CanCan::AccessDenied do |exception|

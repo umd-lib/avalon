@@ -257,7 +257,9 @@ class Admin::Collection < ActiveFedora::Base
   # End UMD Customization
 
   def default_virtual_read_groups
-    self.default_read_groups.to_a - represented_default_visibility - default_local_read_groups - default_ip_read_groups - default_umd_ip_manager_read_groups
+    # UMD Customization
+    self.default_read_groups.to_a - represented_default_visibility - default_local_read_groups - default_ip_read_groups
+    # End UMD Customization
   end
 
   def default_visibility=(value)
