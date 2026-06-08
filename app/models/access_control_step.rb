@@ -124,27 +124,6 @@ class AccessControlStep < BasicStep
       end
     end
 
-    media_object.save!
-
-    #Setup these values in the context because the edit partial is being rendered without running the controller's #edit (VOV-2978)
-    media_object.reload
-    context[:users] = media_object.read_users
-    context[:groups] = media_object.read_groups
-    context[:virtual_groups] = media_object.virtual_read_groups
-    context[:ip_groups] = media_object.ip_read_groups
-    # UMD Customization
-    context[:umd_ip_manager_groups] = media_object.umd_ip_manager_read_groups
-    # End UMD Customization
-    context[:group_leases] = media_object.leases('local')
-    context[:user_leases] = media_object.leases('user')
-    context[:virtual_leases] = media_object.leases('external')
-    context[:ip_leases] = media_object.leases('ip')
-    context[:addable_groups] = Admin::Group.non_system_groups.reject { |g| context[:groups].include? g.name }
-    context[:addable_courses] = Course.all.reject { |c| context[:virtual_groups].include? c.context_id }
-    # UMD Customization
-    context[:addable_umd_ip_manager_groups] = UmdIpManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
-    # End UMD Customization
-    context[:lending_period] = media_object.lending_period
     context
   end
 
