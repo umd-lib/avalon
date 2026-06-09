@@ -156,13 +156,14 @@ Before merging, verify Ruby 4 and Rails 8.0.4.1+ compatibility:
 
 ---
 
-## Phase 1 — Merge v8.2
+## Phase 1 — Merge v8.2 ✅ COMPLETED
+
+> **Status:** Upstream v8.2 merged into `feature/LIBAVALON-532` (merged into `8.2-upgrade`).
+> Sub-sections below are retained as a record of what was changed.
 
 ```bash
-git checkout release/8.2.0-umd-0   # or create from 8.1.1-umd-0
-git merge upstream/v8.2 --no-ff -m "Merge upstream Avalon v8.2 into release/8.2.0-umd-0"
-# Resolve conflicts — see guidance below
-git add -A && git commit
+# Branch used: feature/LIBAVALON-532 (merged into 8.2-upgrade)
+git merge v8.2 --no-ff -m "Merge tag 'v8.2' changes."
 ```
 
 ### 1.1 Dockerfile — Ruby 4 + Node 24
@@ -270,7 +271,11 @@ directory is replaced by a single `app/javascript/application.js` entry point.
 
 **Key structural change:**
 - **Old (shakapacker):** `app/javascript/packs/application.js` + `app/javascript/packs/server-bundle.js`
-- **New (jsbundling):** `app/javascript/application.js` (single entry point)
+- **New (jsbundling):** `app/javascript/application.js` (client entry point) + `app/javascript/server-bundle.js` (SSR bundle, moved from `packs/` to `app/javascript/`)
+
+> **Note:** `packs/` directory was deleted entirely. `server-bundle.js` was moved up one level
+> to `app/javascript/server-bundle.js` (not deleted). `config/initializers/react_on_rails.rb`
+> continues to reference `"server-bundle.js"` — no change needed there.
 
 **Verify all UMD components are registered in the new `app/javascript/application.js`:**
 
