@@ -93,3 +93,7 @@ yarn-debug.log*
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
+
+# UMD Customization
+ocfl-home
+# End UMD Customization

@@ -16,7 +16,7 @@ networks:
 
 services:
   db: &db-avalon
-    image: postgres:14-alpine
+    image: postgres:17-alpine
     volumes:
       - database:/data
     environment:
@@ -31,7 +31,7 @@ services:
     volumes: []
 
   fedora: &fedora
-    image: fcrepo/fcrepo:6.5.1-tomcat9
+    image: fcrepo/fcrepo:7-tomcat10
     # UMD Customization - local OCFL storage from F4→F6 migration
     environment:
       - >-
@@ -39,7 +39,7 @@ services:
        -Dfcrepo.storage=ocfl-fs
        -Dfcrepo.home=/fcrepo-home
     volumes:
-      - ./fedora-data/fcrepo6_export/data:/fcrepo-home/data
+      - ./ocfl-home:/fcrepo-home
     # End UMD Customization
     networks:
       internal:
@@ -110,7 +110,7 @@ services:
 
   avalon: &avalon
     # UMD Customization
-    image: docker.lib.umd.edu/avalon:8.1.1-umd-0
+    image: docker.lib.umd.edu/avalon:8.2-umd-0
     # End UMD Customization
     build:
       context: .
@@ -298,7 +298,7 @@ services:
 
   worker:
     <<: *avalon
-    command: dumb-init -- bash -c "bundle install && bundle exec sidekiq -C config/sidekiq.yml"
+    command: dumb-init -- bash -c "/home/app/avalon/script/worker_entrypoint.sh"
     ports: []
 
   worker-staging:
@@ -308,41 +308,41 @@ services:
     ports: []
 
   # UMD Customization
-  minio:
-    image: minio/minio
-    command: minio server /data --console-address ":9090"
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
-    volumes:
-      - data:/data
-    ports:
-      - 9000:9000
-      - 9090:9090
-    networks:
-      internal:
-      external:
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
+  # minio:
+  #   image: minio/minio
+  #   command: minio server /data --console-address ":9090"
+  #   environment:
+  #     MINIO_ROOT_USER: minio
+  #     MINIO_ROOT_PASSWORD: minio123
+  #   volumes:
+  #     - data:/data
+  #   ports:
+  #     - 9000:9000
+  #     - 9090:9090
+  #   networks:
+  #     internal:
+  #     external:
+  #   healthcheck:
+  #     test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+  #     interval: 30s
+  #     timeout: 20s
+  #     retries: 3
 
-  createbuckets:
-    image: minio/mc
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 minio minio123;
-      /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
-      /usr/bin/mc anonymous set download myminio/supplementalfiles;
-      exit 0;
-      "
-    networks:
-      internal:+
-    # End UMD Customization
+  # createbuckets:
+  #   image: minio/mc
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #   entrypoint: >
+  #     /bin/sh -c "
+  #     /usr/bin/mc alias set myminio http://minio:9000 minio minio123;
+  #     /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
+  #     /usr/bin/mc anonymous set download myminio/supplementalfiles;
+  #     exit 0;
+  #     "
+  #   networks:
+  #     internal:+
+  # End UMD Customization
 
   cypress:
     network_mode: host
