@@ -248,7 +248,7 @@ class Admin::Collection < ActiveFedora::Base
 
    # UMD Customization
   def is_course_reserves?
-    self.unit == Settings.streaming_reserves.unit_name
+    self.unit&.name == Settings.streaming_reserves.unit_name
   end
 
   def default_umd_ip_manager_read_groups

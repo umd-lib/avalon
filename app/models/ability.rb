@@ -471,7 +471,8 @@ class Ability
   def is_course_reserves_manager?
     course_reserves_collection = self.class.course_reserves_collection
     Rails.logger.debug "Checking Course Reserves Collection: #{course_reserves_collection&.managers&.inspect} for user #{@user.username}"
-    @user.in?(course_reserves_collection&.managers || [])
+    return false unless course_reserves_collection
+    is_manager_of?(course_reserves_collection)
   end
 
   def is_course_reserves_member?
@@ -481,7 +482,7 @@ class Ability
   end
 
   def self.course_reserves_collection
-    @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
+    @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection.unit&.name == Settings.streaming_reserves.unit_name }
   end
 
   def self.clear_course_reserves_collection_cache

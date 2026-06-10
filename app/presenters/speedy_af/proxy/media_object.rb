@@ -89,7 +89,7 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
 
   # UMD Customization
   def is_streaming_reserve?
-    collection&.unit == Settings.streaming_reserves.unit_name
+    collection&.unit&.name == Settings.streaming_reserves.unit_name
   end
   # End UMD Customization
 

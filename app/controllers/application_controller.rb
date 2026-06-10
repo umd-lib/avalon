@@ -124,7 +124,7 @@ class ApplicationController < ActionController::Base
       end
 
       logger.debug "Redirecting to Course Reserve Page for #{params['context_id']}"
-      collection = Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
+      collection = Admin::Collection.all.find { |collection| collection&.unit&.name == Settings.streaming_reserves.unit_name }
 
       "/collections/#{collection.id}/course_reserves?course_id=#{params['context_id']}"
     else

@@ -845,11 +845,13 @@ describe Admin::Collection do
       it 'clears the cache when unit changes to streaming reserves' do
         # Allow during initial creation
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
+        let!(:default_unit) { FactoryBot.create(:unit, name: 'Default Unit') }
+        regular_collection = FactoryBot.create(:collection, unit: :default_unit)
         
         # Expect when changing to course reserves unit
         expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        regular_collection.unit = Settings.streaming_reserves.unit_name
+        let!(:cs_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
+        regular_collection.unit = cs_unit
         regular_collection.save!
       end
     end

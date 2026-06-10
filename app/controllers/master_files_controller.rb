@@ -90,7 +90,7 @@ class MasterFilesController < ApplicationController
       begin
         case location
         when /^s3:/
-          redirect_to FileLocator::S3File.new(location).download_url
+          redirect_to FileLocator::S3File.new(location).download_url, allow_other_host: true
         else
           send_file location, filename: File.basename(location), disposition: 'attachment'
         end
