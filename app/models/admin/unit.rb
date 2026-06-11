@@ -173,6 +173,12 @@ class Admin::Unit < ActiveFedora::Base
     self.default_read_groups.to_a - default_local_read_groups - default_ip_read_groups
   end
 
+  # UMD Customization
+  def default_umd_ip_manager_read_groups
+    self.default_read_groups.select {|g| UmdIpManager::Group.valid_prefixed_key?(g) }
+  end
+  # End UMD Customization
+
   def reindex_members
     yield
     ReindexJob.perform_later(self.collection_ids)
