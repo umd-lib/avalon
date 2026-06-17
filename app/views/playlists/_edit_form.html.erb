@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -27,7 +27,7 @@ Unless required by applicable law or agreed to in writing, software distributed
       <div class="col-sm-6">
         <h3>Playlist Items</h3>
       </div>
-      <div class="col-sm-6 form-group text-right manage-playlist-item">
+      <div class="col-sm-6 mb-3 text-end manage-playlist-item">
         <% if @playlists.present? %>
           <%= hidden_field_tag "new_playlist_id", @playlist.id, form:"edit_playlist_#{@playlist.id}" %>
           <%= hidden_field_tag "action_type", '', form:"edit_playlist_#{@playlist.id}" %>
@@ -39,7 +39,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
           <div class="dropdown" >
             <%= button_tag( { type: 'button', class: "move_to btn btn-outline btn-sm dropdown-toggle",
-              data: { toggle: "dropdown"}, disabled:'disabled' } ) do %>
+              data: { 'bs-toggle': "dropdown"}, disabled:'disabled' } ) do %>
               <span class="filter-option">Move to... </span>
             <% end # button_tag %>
             <ul class="dropdown-menu dropdown-menu-right">
@@ -54,7 +54,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
           <div class="dropdown">
             <%= button_tag( { type: 'button', class: "copy_to btn btn-outline btn-sm dropdown-toggle",
-              data: { toggle: "dropdown"}, disabled:'disabled' } ) do %>
+              data: { 'bs-toggle': "dropdown"}, disabled:'disabled' } ) do %>
               <span class="filter-option">Copy to... </span>
             <% end # button_tag %>
             <ul class="dropdown-menu dropdown-menu-right">
@@ -69,7 +69,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
         <% end # playlists.present?%>
         <%= f.submit "Delete Selected", id: 'delete_selected_playlist_items', class: 'btn btn-danger btn-confirmation btn-sm',
-          form:"edit_playlist_#{@playlist.id}", data: { placement: 'bottom' }, disabled:'disabled', sanitize: false %>
+          form:"edit_playlist_#{@playlist.id}", data: { placement: 'bottom', testid: 'playlist-delete-selected-btn', confirm: 'Are you sure?' }, disabled:'disabled', sanitize: false %>
       </div>
     </div>
     <% end #form_for update_multiple %>
@@ -77,38 +77,41 @@ Unless required by applicable law or agreed to in writing, software distributed
     <%= form_for(@playlist, html: { id: 'playlist_sort_form', class: 'playlist_actions' }) do |fs| %>
     <div class="dd" data-playlist_id="<%= @playlist.id %>">
       <ol id="items" class="dd-list" style="list-style: none">
+        <% clips = @playlist.clips_with_section_proxies %>
         <% @playlist.items.each_with_index do |i, index| %>
+          <% clip = clips[index] %>
         <li class="container dd-item" data-id="<%= i.id %>">
           <div class="row">
             <div class="col-sm-2">
               <span class="fa fa-arrows-v float-left dd-handle"></span>
-              <%= text_field_tag "playlist[items_attributes[#{index}[position]]]", i.position, class: 'form-control position-input', form: 'playlist_sort_form' %>
+              <%= text_field_tag "playlist[items_attributes[#{index}[position]]]", i.position, class: 'form-control position-input', form: 'playlist_sort_form', 'aria-label': 'Playlist item position' %>
               <%= hidden_field_tag "playlist[items_attributes[#{index}[id]]]", i.id, form: 'playlist_sort_form' %>
             </div>
-            <% if can? :read, i.clip.master_file %>
+            <% if can? :read, clip.master_file %>
               <div class="col-sm-8 title" style="margin-top:5px">
-                <%= link_to i.clip.title, i.clip.mediafragment_uri, id: "playlist_item_title_label_#{i.id}" %>
+                <%= link_to clip.title, clip.mediafragment_uri, id: "playlist_item_title_label_#{i.id}" %>
               </div>
               <div class="col-sm-2 text-right" style="margin-top:5px">
-                <button id="playlist_item_edit_button" class="btn btn-sm fa fa-edit" <%= i.clip.master_file.nil? ? 'disabled' : '' %>
-                  data-toggle="collapse" href="#playlist_item_edit_<%= i.id %>" aria-expanded="false" type="button">
+                <button id="playlist_item_edit_button" class="btn btn-sm edit-details-icon-btn" <%= clip.master_file.nil? ? 'disabled' : '' %>
+                  data-bs-toggle="collapse" href="#playlist_item_edit_<%= i.id %>" aria-expanded="false" type="button" aria-label="Edit playlist item <%= index + 1 %>">
+                  <i class="fa fa-edit"></i>
                 </button>
                 <label>
-                  <%= check_box_tag 'clip_ids[]', i.id, false, form:"edit_playlist_#{@playlist.id}", class:"playlist_item_select" %>
+                  <%= check_box_tag 'clip_ids[]', i.id, false, form:"edit_playlist_#{@playlist.id}", class:"playlist_item_select" , data: { testid: "playlist-item-checkbox" }   %>
                   Select
                 </label>
               </div>
             <% else %>
               <div class="col-sm-9 title" style="margin-top:5px">
-                <% if i.clip.master_file.nil? %>
+                <% if clip.master_file.nil? %>
                   <i class="fa fa-times-circle" title="The source for this item has been deleted"></i>
                   <span class="playlist_item_denied">[deleted item]</span>
                 <% else %>
                   <i class="fa fa-lock" title="You don't have permission to view this item"></i>
-                  <span class="playlist_item_denied">[inaccessible item] <%= i.clip.master_file.media_object.id %></span>
+                  <span class="playlist_item_denied">[inaccessible item] <%= clip.master_file.media_object_id %></span>
                 <% end %>
               </div>
-              <div class="col-sm-1 form-check text-right">
+              <div class="col-sm-1 form-check text-end">
                 <label>
                   <%= check_box_tag 'clip_ids[]', i.id, false, form:"edit_playlist_#{@playlist.id}", class:"playlist_item_select" %>
                   Select
@@ -120,38 +123,38 @@ Unless required by applicable law or agreed to in writing, software distributed
             <div class="col-sm-9 offset-2 playlist_item_edit">
               <%= bootstrap_form_for i, remote: true, html: { id: "playlist_item_form_#{i.id}", class: "playlist_item_edit_form" }, format: 'json' do |pif| %>
                 <%= hidden_field_tag "playlist_id", @playlist.id, form: "playlist_item_form_#{i.id}" %>
-                <div class="form-group form-row">
+                <div class="mb-3 row">
                   <%= pif.label :title, class: 'col-sm-2 col-form-label' %>
                   <div class="col-sm-10">
-                    <%= text_field_tag :title, i.title, class: 'form-control', id: "avalon_clip_title_#{i.id}", form:"playlist_item_form_#{i.id}" %>
+                    <%= text_field_tag :title, i.title, class: 'form-control', id: "avalon_clip_title_#{i.id}", form:"playlist_item_form_#{i.id}", aria: { label: 'Playlist item title' } %>
                     <span style='display:none' class='title_original' data-value="<%= i.title %>"></span>
                   </div>
                 </div>
-                <div class="form-group form-row">
+                <div class="mb-3 row">
                   <div class="col-sm-2" style="text-align:right;margin-top:2pt"><%= pif.label :start_time, class: 'col-form-label' %></div>
                   <div class="col-sm-4">
-                    <%= text_field_tag :start_time, pretty_time(i.start_time), class: 'form-control', id: "avalon_clip_start_time_#{i.id}", form:"playlist_item_form_#{i.id}" %>
+                    <%= text_field_tag :start_time, pretty_time(i.start_time), class: 'form-control', id: "avalon_clip_start_time_#{i.id}", form:"playlist_item_form_#{i.id}", aria: { label: 'Playlist item start time' } %>
                     <span style='display:none' class='start_time_original' data-value="<%= pretty_time(i.start_time) %>"></span>
                   </div>
                   <div class="col-sm-2" style="text-align:right;margin-top:2pt">
                     <%= pif.label :end_time, class: 'col-form-label' %>
                   </div>
                   <div class="col-sm-4">
-                    <%= text_field_tag :end_time, pretty_time(i.end_time), class: 'form-control', id: "avalon_clip_end_time_#{i.id}", form:"playlist_item_form_#{i.id}" %>
+                    <%= text_field_tag :end_time, pretty_time(i.end_time), class: 'form-control', id: "avalon_clip_end_time_#{i.id}", form:"playlist_item_form_#{i.id}", aria: { label: 'Playlist item end time' } %>
                     <span style='display:none' class='end_time_original' data-value="<%= pretty_time(i.end_time) %>"></span>
                   </div>
                 </div>
-                <div class="form-group form-row">
+                <div class="mb-3 row">
                   <%= pif.label :comment, class: 'col-sm-2 col-form-label' %>
                   <div class="col-sm-10">
-                    <%= text_area_tag :comment, i.comment, class: 'form-control', id: "avalon_clip_comment_#{i.id}", form:"playlist_item_form_#{i.id}" %>
+                    <%= text_area_tag :comment, i.comment, class: 'form-control', id: "avalon_clip_comment_#{i.id}", form:"playlist_item_form_#{i.id}", aria: { label: 'Playlist item comment' } %>
                     <span style='display:none' class='comment_original' data-value="<%= i.comment %>"></span>
                   </div>
                 </div>
-                <div class="form-group form-row">
+                <div class="mb-3 row">
                   <div class="col-sm-3 offset-2">
                     <button class='btn btn-sm btn-primary playlist_item_form_submit' data-id="<%= i.id %>" form="playlist_item_form_<%= i.id %>">Save Item</button>
-                    <span id="playlist_item_edit_cancel_<%= i.id %>" class="btn btn-outline btn-sm playlist_item_edit_cancel" data-id="<%= i.id %>" data-target="playlist_item_edit_<%= i.id %>">Cancel</span>
+                    <button id="playlist_item_edit_cancel_<%= i.id %>" type="button" class="btn btn-outline btn-sm playlist_item_edit_cancel" data-id="<%= i.id %>" data-bs-toggle="collapse" data-bs-target="#playlist_item_edit_<%= i.id %>">Cancel</button>
                   </div>
                   <div class="col-sm-7" id="playlist_item_edit_alert_<%= i.id %>"></div>
                 </div>
@@ -161,6 +164,11 @@ Unless required by applicable law or agreed to in writing, software distributed
         </li>
         <% end #playlist.items.each %>
       </ol>
+      <div class="playlist-loading-overlay">
+        <div class="playlist-items-loader">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
     </div>
     <%= fs.submit class: 'btn btn-primary btn-sm', value: 'Save Changes', form: 'playlist_sort_form', style: 'visibility:hidden' %>
     <% end #form_for playlist_sort_form %>
@@ -171,105 +179,175 @@ Unless required by applicable law or agreed to in writing, software distributed
   <script>
 
     function toggleState(ele, text, state) {
-      ele.html(text);
-      ele.prop('disabled', state);
+      ele.innerHTML = text;
+      ele.setAttribute('disabled', state);
     }
     
-    // Handle move selected items to new playlist
-    $('.move_to_playlist, .copy_to_playlist').click(function(event) {
-      event.preventDefault();
-      $('#new_playlist_id').val($(this).data('id'));
-      $('#action_type').val(event.target.getAttribute('class'));
-      $('#'+$(this).attr('form')).submit();
-    });
-
-    // Handle playlist edit cancel
-    $('#playlist_edit_cancel').click(function(event) {
-      $('#playlist_form #playlist_title').val('<%= j @playlist.title %>');
-      $('#playlist_form #playlist_comment').val('<%= j @playlist.comment %>');
-
-      <% if @playlist.visibility==Playlist::PRIVATE %>
-        $('#playlist_form #playlist_visibility_private').prop('checked', true);
-      <% elsif @playlist.visibility==Playlist::PUBLIC %>
-        $('#playlist_form #playlist_visibility_public').prop('checked', true);
-      <% else %>
-        $('#playlist_form #playlist_visibility_private-with-token').prop('checked', true);
-      <% end %>
-    });
-
-    // Handle select all checkbox (enable/disable move and delete buttons)
-    $('#select_all').click(function(event) {
-      $('input:checkbox').prop('checked', $(this).prop('checked'))
-      $('#edit_playlist_<%= @playlist.id %> :submit').prop('disabled', !$(this).prop('checked') );
-      $('.copy_to, .move_to').prop('disabled', !$(this).prop('checked') )
-    });
-
-    // Handle selection of playlist item (enable/disable move and delete buttons)
-    $('.playlist_item_select').click(function(event) {
-      $('#edit_playlist_<%= @playlist.id %> :submit').prop('disabled',  $( ".playlist_item_select:checked" ).length < 1  );
-      $('.copy_to, .move_to').prop('disabled', $( ".playlist_item_select:checked" ).length < 1 );
-      $('#select_all').prop('checked', $( ".playlist_item_select:checked" ).length == <%= @playlist.items.length %> );
-    });
-
-    // Handle playlist item edit form submission
-    $('.playlist_item_form_submit').click(function(event) {
-      event.preventDefault();
-      var $button = $(this);
-      toggleState($button, 'Saving...', true);
-      var $form = $(this).closest('form');
-      var id = $(this).data('id');
-      return $.ajax({
-        url: '/playlist_items/' + id + '.json',
-        type: 'PATCH',
-        data: {
-          playlist_id: $('#playlist_id').val(),
-          playlist_item: {
-            title: $('#avalon_clip_title_'+id).val(),
-            comment: $('#avalon_clip_comment_'+id).val(),
-            start_time: $('#avalon_clip_start_time_'+id).val(),
-            end_time: $('#avalon_clip_end_time_'+id).val(),
-          }
-        },
-        success: function(response) {
-          // alert success
-          var alert = "<div class='alert alert-success' style='padding:0 10px; margin-bottom: 0;'>";
-          alert += "<button type='button' class='close' data-dismiss='alert'>&times;</button>";
-          alert += "<span>"+response.message+"</span></div>";
-	        $('#playlist_item_edit_alert_'+id).html(alert);
-          // update original values with those newly saved in case of future cancel
-          $form.find('.title_original').data('value',$('#avalon_clip_title_'+id).val());
-          $form.find('.comment_original').data('value',$('#avalon_clip_comment_'+id).val());
-          $form.find('.start_time_original').data('value',$('#avalon_clip_start_time_'+id).val());
-          $form.find('.end_time_original').data('value',$('#avalon_clip_end_time_'+id).val());
-          $('#playlist_item_title_label_'+id).html($('#avalon_clip_title_'+id).val());
-          setTimeout(function() {
-            toggleState($button, 'Save Item', false)
-          }, 500);
-        },
-        error: function(response) {
-          // alert failure
-          var alert = "<div class='alert alert-danger' style='padding:0 10px; margin-bottom: 0;'>";
-          alert += "<button type='button' class='close' data-dismiss='alert'>&times;</button>";
-          alert += "<span>"+response.responseJSON.message+"</span></div>";
-	        $('#playlist_item_edit_alert_'+id).html(alert);
-          setTimeout(function() {
-            toggleState($button, 'Save Item', false)
-          }, 500);
-        }
+    document.addEventListener('DOMContentLoaded', function() {
+      // Handle move selected items to new playlist
+      const moveAndCopyLinks = queryAll('.move_to_playlist, .copy_to_playlist');
+      moveAndCopyLinks.forEach(function(link) {
+        link.addEventListener('click', function(event) {
+          event.preventDefault();
+          const newPlaylistIdField = getById('new_playlist_id');
+          const actionTypeField = getById('action_type');
+          newPlaylistIdField.value = this.dataset.id;
+          actionTypeField.value = event.target.getAttribute('class');
+          const formId = this.getAttribute('form');
+          getById(formId).submit();
+        });
       });
-    });
 
-    // Cancel playlist item editing
-    $('.playlist_item_edit_cancel').click(function(event){
-      var $form = $(this).closest('form');
-      var id = $(this).data('id');
-      // reset form to original values
-      $('#avalon_clip_title_'+id).val($form.find('.title_original').data('value'));
-      $('#avalon_clip_comment_'+id).val($form.find('.comment_original').data('value'));
-      $('#avalon_clip_start_time_'+id).val($form.find('.start_time_original').data('value'));
-      $('#avalon_clip_end_time_'+id).val($form.find('.end_time_original').data('value'));
-      $('#playlist_item_edit_alert_'+id).html('');
-      $('#'+$(this).data('target')).removeClass('show');
+      // Handle playlist edit cancel
+      const editCancelButton = getById('playlist_edit_cancel');
+      if (editCancelButton) {
+        editCancelButton.addEventListener('click', function(e) {
+          const playlistForm = getById('playlist_form');
+          const playlistTitle = query('#playlist_title', playlistForm);
+          playlistTitle.value = '<%= j @playlist.title %>';
+          const playlistComment = query('#playlist_comment', playlistForm);
+          playlistComment.value = '<%= j @playlist.comment %>';
+
+          <% if @playlist.visibility==Playlist::PRIVATE %>
+            query('#playlist_visibility_private', playlistForm).checked = true;
+          <% elsif @playlist.visibility==Playlist::PUBLIC %>
+            query('#playlist_visibility_public', playlistForm).checked = true;
+          <% else %>
+            query('#playlist_visibility_private-with-token', playlistForm).checked = true;
+          <% end %>
+        });
+      }
+
+      // Handle select all checkbox (enable/disable move and delete buttons)
+      const selectAllCheckbox = getById('select_all');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('click', function(event) {
+          const isChecked = this.checked;
+          const allCheckboxes = queryAll('input[type="checkbox"]');
+          allCheckboxes.forEach(checkbox => checkbox.checked = isChecked);
+
+          const editPlaylistForm = getById('edit_playlist_<%= @playlist.id %>');
+          const submitButtons = queryAll('input[type="submit"], button[type="submit"]', editPlaylistForm);
+          submitButtons.forEach(btn => btn.disabled = !isChecked);
+
+          const moveAndCopyButtons = queryAll('.copy_to, .move_to');
+          moveAndCopyButtons.forEach(btn => btn.disabled = !isChecked);
+        });
+      }
+
+      // Handle selection of playlist item (enable/disable move and delete buttons)
+      const playlistItemCheckboxes = queryAll('.playlist_item_select');
+      playlistItemCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('click', function(event) {
+          const checkedItems = queryAll('.playlist_item_select:checked');
+          const hasCheckedItems = checkedItems.length > 0;
+
+          const editPlaylistForm = getById('edit_playlist_<%= @playlist.id %>');
+          const submitButtons = queryAll('input[type="submit"], button[type="submit"]', editPlaylistForm);
+          submitButtons.forEach(btn => btn.disabled = !hasCheckedItems);
+
+          const moveAndCopyButtons = queryAll('.copy_to, .move_to');
+          moveAndCopyButtons.forEach(btn => btn.disabled = !hasCheckedItems);
+
+          const selectAll = getById('select_all');
+          if (selectAll) {
+            selectAll.checked = checkedItems.length === <%= @playlist.items.length %>;
+          }
+        });
+      });
+
+      // Handle playlist item edit form submission
+      const playlistItemFormSubmitButtons = queryAll('.playlist_item_form_submit');
+      playlistItemFormSubmitButtons.forEach(function(button) {
+        button.addEventListener('click', function(event) {
+          event.preventDefault();
+          toggleState(button, 'Saving...', true);
+          const form = this.closest('form');
+          const id = this.dataset.id;
+
+          const playlistIdField = getById('playlist_id');
+          const requestData = {
+            playlist_id: playlistIdField.value,
+            playlist_item: {
+              title: getById('avalon_clip_title_' + id).value,
+              comment: getById('avalon_clip_comment_' + id).value,
+              start_time: getById('avalon_clip_start_time_' + id).value,
+              end_time: getById('avalon_clip_end_time_' + id).value,
+            }
+          };
+
+          fetch('/playlist_items/' + id + '.json', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': query('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify(requestData)
+          })
+          .then(response => response.json())
+          .then(function(response) {
+            // alert success
+            let alert = "<div class='alert alert-success' style='padding:0 10px; margin-bottom: 0;'>";
+            alert += "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>";
+            alert += "<span>" + response.message + "</span></div>";
+            getById('playlist_item_edit_alert_' + id).innerHTML = alert;
+
+            // update original values with those newly saved in case of future cancel
+            const titleValue = getById('avalon_clip_title_' + id).value;
+            const commentValue = getById('avalon_clip_comment_' + id).value;
+            const startTimeValue = getById('avalon_clip_start_time_' + id).value;
+            const endTimeValue = getById('avalon_clip_end_time_' + id).value;
+
+            query('.title_original', form).dataset.value = titleValue;
+            query('.comment_original', form).dataset.value = commentValue;
+            query('.start_time_original', form).dataset.value = startTimeValue;
+            query('.end_time_original', form).dataset.value = endTimeValue;
+
+            getById('playlist_item_title_label_' + id).innerHTML = titleValue;
+
+            setTimeout(function() {
+              toggleState(button, 'Save Item', false);
+            }, 500);
+          })
+          .catch(function(error) {
+            // alert failure
+            let alert = "<div class='alert alert-danger' style='padding:0 10px; margin-bottom: 0;'>";
+            alert += "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>";
+            alert += "<span>" + (error.message || 'An error occurred') + "</span></div>";
+            getById('playlist_item_edit_alert_' + id).innerHTML = alert;
+
+            setTimeout(function() {
+              toggleState(button, 'Save Item', false);
+            }, 500);
+          });
+        });
+      });
+
+      // Cancel playlist item editing
+      const playlistItemEditCancelButtons = queryAll('.playlist_item_edit_cancel');
+      playlistItemEditCancelButtons.forEach(function(button) {
+        button.addEventListener('click', function(event) {
+          const form = this.closest('form');
+          const id = this.dataset.id;
+
+          // reset form to original values
+          const titleOriginal = query('.title_original', form);
+          const commentOriginal = query('.comment_original', form);
+          const startTimeOriginal = query('.start_time_original', form);
+          const endTimeOriginal = query('.end_time_original', form);
+
+          getById('avalon_clip_title_' + id).value = titleOriginal.dataset.value;
+          getById('avalon_clip_comment_' + id).value = commentOriginal.dataset.value;
+          getById('avalon_clip_start_time_' + id).value = startTimeOriginal.dataset.value;
+          getById('avalon_clip_end_time_' + id).value = endTimeOriginal.dataset.value;
+          getById('playlist_item_edit_alert_' + id).innerHTML = '';
+
+          const targetElement = getById(this.dataset.target);
+          if (targetElement) {
+            targetElement.classList.remove('show');
+          }
+        });
+      });
     });
   </script>
 

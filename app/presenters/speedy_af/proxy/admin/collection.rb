@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -25,10 +25,24 @@ class SpeedyAF::Proxy::Admin::Collection < SpeedyAF::Base
     # Handle this case here until a better fix can be found for multiple solr fields which don't have a model property
     @attrs[:read_users] = solr_document["read_access_person_ssim"] || []
     @attrs[:edit_users] = solr_document["edit_access_person_ssim"] || []
+    @attrs[:default_read_users] = solr_document["inheritable_read_access_person_ssim"] || []
+    @attrs[:default_read_groups] = solr_document["inheritable_read_access_group_ssim"] || []
   end
 
   def to_model
     self
+  end
+
+  def unit
+    @unit ||= SpeedyAF::Proxy::Admin::Unit.find(unit_id)
+  end
+
+  def dropbox
+    Avalon::Dropbox.new( dropbox_absolute_path, self )
+  end
+
+  def dropbox_absolute_path( name = nil )
+    File.join(Settings.dropbox.path, name || dropbox_directory_name)
   end
 
   def persisted?

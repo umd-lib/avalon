@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -28,51 +28,64 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="col-sm-12">
     <%= render 'workflow_progress' %>
   </div>
-  <div class="col-sm-12 mb-2">
-    <%= render 'administrative_links' %>
-    <% if current_ability.can? :edit, @media_object %>
-      <% if lending_enabled?(@media_object) %>
-        <%= render 'thumbnail' if can_stream %>
-      <% else %>
-        <%= render 'thumbnail' %>
+  <div class="col-sm-12 mb-2 d-flex justify-content-between align-items-center">
+    <div>
+      <%= render 'administrative_links' %>
+      <% if current_ability.can? :edit, @media_object %>
+        <% if lending_enabled?(@media_object) %>
+          <%= render 'thumbnail' if can_stream %>
+        <% else %>
+          <%= render 'thumbnail' %>
+        <% end %>
       <% end %>
+    </div>
+    <% if Settings.accessibility_compliance.enforce && can?(:override_accessibility, @media_object) %>
+      <div class="form-check d-inline-block ms-2 align-middle">
+        <input class="form-check-input" type="checkbox" id="accessibility_exempt_toggle"
+            <%= @media_object.accessibility_exempt? ? 'checked' : '' %>
+              data-url="<%= update_status_media_object_path(@media_object) %>"
+              data-error-message="<%= I18n.t('media_object.accessibility_exempt.save_error') %>">
+        <label class="form-check-label" for="accessibility_exempt_toggle"><%= I18n.t('media_object.accessibility_exempt.message') %> </label>
+      </div>
     <% end %>
   </div>
   <div class="col-sm-12">
     <%= react_component("MediaObjectRamp",
       {
-        urls: { base_url: request.protocol + request.host_with_port, fullpath_url: request.fullpath },
-        sections_count: @media_object.sections.size,
-        has_structure: @media_object.sections.any?{ |mf| mf.has_structuralMetadata? },
-        title: { content: render('title') },
-        share: { canShare: (will_partial_list_render? :share), content: lending_enabled?(@media_object) ? (render('share') if can_stream) : render('share') },
-        timeline: { canCreate: (current_ability.can? :create, Timeline), content: lending_enabled?(@media_object) ? (render('timeline') if can_stream) : render('timeline') },
-        playlist: { canCreate: (current_ability.can? :create, Playlist), tab: render('add_to_playlist') },
-        cdl: { enabled: lending_enabled?(@media_object), can_stream: can_stream, embed: render('embed_checkout'), destroy: render('destroy_checkout') },
-        # UMD Customization
-        # Limit display of supplemental files in the "Files" tab to users
-        # who can actually download them (this excludes users with only a
-        # "download" access token)
-        has_files: (@media_object.supplemental_files.present? || @media_object.sections_with_files.present?) && (current_ability.can? :full_read, @media_object),
-        # End UMD Customization
-        has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
-        # UMD Customization
-        aeon_request: { 
-          itemTitle: (@media_object.title || ""),
-          itemDate: (@media_object.date_issued || ""),
-          location: (@media_object.collection&.name || ""),
-          callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
-          referenceNumber: (@media_object.permalink || ""),
-          aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23',
-          permitted: ! @media_object.is_streaming_reserve?
-        },
-        master_file_downloads: { 
-          canDownload: @master_file_download_allowed,
-          downloads: @master_file_downloads
-        },
-        umd_access_control: { playback_restricted: @playback_restricted, jim_hension_collection: in_jim_henson_collection?(@media_object) ? @media_object.collection.name : '' },
-        umd_metadata: { handleUrl: @media_object.permalink }
-        # End UMD Customization
+        props: {
+          urls: { base_url: request.protocol + request.host_with_port, fullpath_url: request.fullpath },
+          has_sections: @media_object.section_ids.present?,
+          title: { content: render('title') },
+          share: { canShare: (will_partial_list_render? :share), content: lending_enabled?(@media_object) ? (render('share') if can_stream) : render('share') },
+          timeline: { canCreate: (current_ability.can? :create, Timeline), content: lending_enabled?(@media_object) ? (render('timeline') if can_stream) : render('timeline') },
+          playlist: { canCreate: (current_ability.can? :create, Playlist), tab: render('add_to_playlist') },
+          cdl: { enabled: lending_enabled?(@media_object), can_stream: can_stream, embed: render('embed_checkout'), destroy: render('destroy_checkout') },
+          # UMD Customization
+          # Limit display of supplemental files in the "Files" tab to users
+          # who can actually download them (this excludes users with only a
+          # "download" access token)
+          has_files: (@media_object.supplemental_files.present? || @media_object.sections_with_files.present?) && (current_ability.can? :full_read, @media_object),
+          # End UMD Customization
+          has_transcripts: @media_object.sections_with_files(tag: 'transcript').present?,
+          accessibility_text: Avalon::Configuration.accessibility_request_link.present? ? t('media_object.accessibility_request_text', :a11y_link => Avalon::Configuration.accessibility_request_link) : '',
+          # UMD Customization
+          aeon_request: { 
+            itemTitle: (@media_object.title || ""),
+            itemDate: (@media_object.date_issued || ""),
+            location: (@media_object.collection&.name || ""),
+            callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
+            referenceNumber: (@media_object.permalink || ""),
+            aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23',
+            permitted: ! @media_object.is_streaming_reserve?
+          },
+          master_file_downloads: { 
+            canDownload: @master_file_download_allowed,
+            downloads: @master_file_downloads
+          },
+          umd_access_control: { playback_restricted: @playback_restricted, jim_hension_collection: in_jim_henson_collection?(@media_object) ? @media_object.collection.name : '' },
+          umd_metadata: { handleUrl: @media_object.permalink }
+          # End UMD Customization
+        }
       }
     ) %>
   </div>
@@ -82,17 +95,19 @@ Unless required by applicable law or agreed to in writing, software distributed
   <script>
     // When viewing video on smaller devices scroll to page content to fully
     // display the video player
-    $(document).ready(function () {
+    document.addEventListener('DOMContentLoaded', function () {
       const mediaObjectId = <%= @media_object.id.to_json.html_safe %>;
       const sectionIds = <%= @media_object.section_ids.to_json.html_safe %>;
+      const sectionShareInfos = <%= @media_object.section_share_infos.to_json.html_safe %>;
       const transcriptSections = <%= @media_object.sections_with_files(tag: 'transcript').to_json.html_safe %>;
 
-      // Enable action buttons after derivative is loaded
-      setInterval(initActionButtons, 500);
-      function initActionButtons() {
-        let player = document.getElementById('iiif-media-player');
+      // Enable action buttons and token refresh after derivative is loaded
+      setInterval(initPlayerListeners, 500);
+      function initPlayerListeners() {
+        let player = getById('iiif-media-player');
         if (player) {
-          addActionButtonListeners(player, mediaObjectId, sectionIds);
+          addActionButtonListeners(player, mediaObjectId, sectionIds, sectionShareInfos);
+          initM3U8Reload(player, mediaObjectId, sectionIds, sectionShareInfos);
         }
       } 
 
@@ -104,9 +119,10 @@ Unless required by applicable law or agreed to in writing, software distributed
           const screenHeight = screen.height;
           const playerHeight = player[0].style.height.replace(/[^-\d\.]/g, '');
           if(screenHeight - playerHeight < 200) {
-            $('html, body').animate({
-                scrollTop: $('#user-util-collapse').offset().top
-            }, 1000);
+            const userUtilCollapse = getById('user-util-collapse');
+            if (userUtilCollapse) {
+              userUtilCollapse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           }
           clearInterval(scrollInterval);
         }
@@ -114,7 +130,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       let timeCheck = setInterval(initTranscriptCheck, 500);
       function initTranscriptCheck() {
-        let player = document.getElementById('iiif-media-player');
+        let player = getById('iiif-media-player');
         if(player) {
           addPlayerEventListeners(player, () => {
             clearInterval(timeCheck);
@@ -136,38 +152,39 @@ Unless required by applicable law or agreed to in writing, software distributed
         Set tabbed nav column height based on the content
       */
       function setColumnHeights() {
-        let activeTab = $('.tab-pane.active.show');
-        let tabsPanel = $('.ramp--tabs-panel');
+        let activeTab = query('.tab-pane.active.show');
+        let tabsPanel = query('.ramp--tabs-panel');
         // When the active tab is transcripts, check the transcript content height to
         // check there is overflowing content to set the column height. This is handled
         // seperately because the height check in the else block doesn't identify this since
         // since this content is set dynamically based on user selection in dropdown menu. 
-        if(activeTab.hasClass('ramp--transcripts_tab')) {
-          let transcriptContent = $('.transcript_content');
-          if(transcriptContent[0].scrollHeight > transcriptContent[0].clientHeight) {
-            activeTab[0].style.height = 'unset';
+        if(activeTab.classList.contains('ramp--transcripts_tab')) {
+          let transcriptContent = query('.transcript_content');
+          if(transcriptContent && transcriptContent.scrollHeight > transcriptContent.clientHeight) {
+            activeTab.style.height = 'unset';
           }
         } else {
           // Compare the active tab's scrollHeight and tab panel's height to identify overflowing content.
           // And set tab height to either 'unset' or 'fit-content' accordingly.
-          if (activeTab[0].scrollHeight > tabsPanel[0].clientHeight) {
-            activeTab[0].style.height = 'unset';
+          if (activeTab.scrollHeight > tabsPanel.clientHeight) {
+            activeTab.style.height = 'unset';
           } else {
-            activeTab[0].style.height = 'fit-content';
+            activeTab.style.height = 'fit-content';
           }
         }
       }
 
       function transcriptCheck(canvasindex) {
         let sectionId = sectionIds[canvasindex];
-        let transcriptTab = document.evaluate('//a[text()="Transcripts"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        let detailTab = document.evaluate('//a[text()="Details"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let transcriptButton = document.evaluate('//button[text()="Transcripts"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let transcriptTab = transcriptButton?.parentElement
+        let detailTab = document.evaluate('//button[text()="Details"]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
         if(!transcriptSections.includes(sectionId)) {
           // If transcript tab is the active tab when it is hidden, the tab goes away but the box still displays
           // the missing transcript file message. Force change over to a different tab to avoid this case.
           if(transcriptTab) {
-            if (transcriptTab.getAttribute('aria-selected') === "true") { detailTab.click(); }
+            if (transcriptButton.getAttribute('aria-selected') === "true") { detailTab.click(); }
             transcriptTab.style.display = 'none';
             transcriptTab.classList.add("disabled");
           }

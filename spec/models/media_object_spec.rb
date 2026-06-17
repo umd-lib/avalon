@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -16,6 +16,8 @@ require 'rails_helper'
 require 'cancan/matchers'
 
 describe MediaObject do
+  include ActiveJob::TestHelper
+
   let(:media_object) { FactoryBot.create(:media_object) }
 
   it 'assigns a noid id' do
@@ -129,6 +131,15 @@ describe MediaObject do
         expect(media_object.valid?).to be_falsey
         expect(media_object.errors[:note]).not_to be_empty
       end
+      it 'should index acquisition notes separately' do
+        # FactoryBot.build does not save the item so create_date is nil, which causes an issue
+        # with the accessibility check
+        allow(media_object).to receive(:create_date).and_return(DateTime.now)
+        media_object.descMetadata.note = ['Donor']
+        media_object.descMetadata.note.type = ['acquisition']
+        expect(media_object.valid?).to be_truthy
+        expect(media_object.to_solr['donor_ssim']).to include('Donor')
+      end
     end
   end
 
@@ -144,108 +155,170 @@ describe MediaObject do
     let (:collection) { media_object.collection.reload }
 
     context 'when manager' do
-      subject{ ability}
-      let(:ability){ Ability.new(User.where(Devise.authentication_keys.first => collection.managers.first).first) }
+      let(:ability) { Ability.new(User.where(Devise.authentication_keys.first => collection.managers.first).first) }
 
-      it{ is_expected.to be_able_to(:create, MediaObject) }
-      it{ is_expected.to be_able_to(:read, media_object) }
-      it{ is_expected.to be_able_to(:update, media_object) }
-      it{ is_expected.to be_able_to(:destroy, media_object) }
-      it{ is_expected.to be_able_to(:inspect, media_object) }
+      it "should be able to perform all actions" do
+        expect(ability).to be_able_to(:create, MediaObject)
+        expect(ability).to be_able_to(:read, media_object)
+        expect(ability).to be_able_to(:update, media_object)
+        expect(ability).to be_able_to(:destroy, media_object)
+        expect(ability).to be_able_to(:inspect, media_object)
+      end
+
       it "should be able to destroy and unpublish published item" do
         media_object.publish! "someone"
-        expect(subject).to be_able_to(:destroy, media_object)
-        expect(subject).to be_able_to(:unpublish, media_object)
+        expect(ability).to be_able_to(:destroy, media_object)
+        expect(ability).to be_able_to(:unpublish, media_object)
       end
 
       context 'and logged in through LTI' do
         let(:ability){ Ability.new(User.where(Devise.authentication_keys.first => collection.managers.first).first, {full_login: false, virtual_groups: [Faker::Lorem.word]}) }
 
-        it{ is_expected.not_to be_able_to(:share, MediaObject) }
-        it{ is_expected.not_to be_able_to(:update, media_object) }
-        it{ is_expected.not_to be_able_to(:destroy, media_object) }
+        it "can read but cannot modify the item" do
+          expect(ability).to be_able_to(:read, media_object)
+          expect(ability).not_to be_able_to(:share, MediaObject)
+          expect(ability).not_to be_able_to(:update, media_object)
+          expect(ability).not_to be_able_to(:destroy, media_object)
+        end
+      end
+
+      context 'inherited from unit' do
+        let(:ability){ Ability.new(User.where(Devise.authentication_keys.first => collection.inherited_managers.first).first) }
+
+        it "should be able to perform all actions" do
+          expect(ability).to be_able_to(:create, MediaObject)
+          expect(ability).to be_able_to(:read, media_object)
+          expect(ability).to be_able_to(:update, media_object)
+          expect(ability).to be_able_to(:destroy, media_object)
+          expect(ability).to be_able_to(:inspect, media_object)
+        end
+
+        it "should be able to destroy and unpublish published item" do
+          media_object.publish! "someone"
+          expect(ability).to be_able_to(:destroy, media_object)
+          expect(ability).to be_able_to(:unpublish, media_object)
+        end
       end
     end
 
     context 'when editor' do
-      subject{ ability}
-      let(:ability){ Ability.new(User.where(Devise.authentication_keys.first => collection.editors.first).first) }
+      let(:ability) { Ability.new(User.where(Devise.authentication_keys.first => collection.editors.first).first) }
 
-      it{ is_expected.to be_able_to(:create, MediaObject) }
-      it{ is_expected.to be_able_to(:read, media_object) }
-      it{ is_expected.to be_able_to(:update, media_object) }
-      it{ is_expected.to be_able_to(:destroy, media_object) }
-      it{ is_expected.to be_able_to(:update_access_control, media_object) }
+      it "should be able to perform actions on unpublished item" do
+        expect(ability).to be_able_to(:create, MediaObject)
+        expect(ability).to be_able_to(:read, media_object)
+        expect(ability).to be_able_to(:update, media_object)
+        expect(ability).to be_able_to(:destroy, media_object)
+        expect(ability).to be_able_to(:update_access_control, media_object)
+      end
+
       it "should not be able to destroy and unpublish published item" do
         # UMD Customization
         pending('UMD LIBAVALON-178')
         # End UMD Customization
         media_object.publish! "someone"
-        expect(subject).not_to be_able_to(:destroy, media_object)
-        expect(subject).not_to be_able_to(:update, media_object)
-        expect(subject).not_to be_able_to(:update_access_control, media_object)
-        expect(subject).not_to be_able_to(:unpublish, media_object)
+        expect(ability).not_to be_able_to(:destroy, media_object)
+        expect(ability).not_to be_able_to(:update, media_object)
+        expect(ability).not_to be_able_to(:update_access_control, media_object)
+        expect(ability).not_to be_able_to(:unpublish, media_object)
+      end
+
+      context 'inherited from unit' do
+        let(:ability) { Ability.new(User.where(Devise.authentication_keys.first => collection.inherited_editors.first).first) }
+
+        it "should be able to perform actions on unpublished item" do
+          expect(ability).to be_able_to(:create, MediaObject)
+          expect(ability).to be_able_to(:read, media_object)
+          expect(ability).to be_able_to(:update, media_object)
+          expect(ability).to be_able_to(:destroy, media_object)
+          expect(ability).to be_able_to(:update_access_control, media_object)
+        end
+
+        it "should not be able to destroy and unpublish published item" do
+          media_object.publish! "someone"
+          expect(ability).not_to be_able_to(:destroy, media_object)
+          expect(ability).not_to be_able_to(:update, media_object)
+          expect(ability).not_to be_able_to(:update_access_control, media_object)
+          expect(ability).not_to be_able_to(:unpublish, media_object)
+        end
       end
     end
 
     context 'when depositor' do
-      subject{ ability }
-      let(:ability){ Ability.new(User.where(Devise.authentication_keys.first => collection.depositors.first).first) }
+      let(:ability) { Ability.new(User.where(Devise.authentication_keys.first => collection.depositors.first).first) }
 
-      it{ is_expected.to be_able_to(:create, MediaObject) }
-      it{ is_expected.to be_able_to(:read, media_object) }
-      it{ is_expected.to be_able_to(:update, media_object) }
-      it{ is_expected.to be_able_to(:destroy, media_object) }
+      it "should be able to perform limited actions on unpublished item" do
+        expect(ability).to be_able_to(:create, MediaObject)
+        expect(ability).to be_able_to(:read, media_object)
+        expect(ability).to be_able_to(:update, media_object)
+        expect(ability).to be_able_to(:destroy, media_object)
+        expect(ability).not_to be_able_to(:update_access_control, media_object)
+      end
+
       it "should not be able to destroy and unpublish published item" do
         media_object.publish! "someone"
-        expect(subject).not_to be_able_to(:destroy, media_object)
-        expect(subject).not_to be_able_to(:unpublish, media_object)
+        expect(ability).not_to be_able_to(:destroy, media_object)
+        expect(ability).not_to be_able_to(:unpublish, media_object)
       end
-      it{ is_expected.not_to be_able_to(:update_access_control, media_object) }
+
+      context 'inherited from unit' do
+        let(:ability) { Ability.new(User.where(Devise.authentication_keys.first => collection.inherited_depositors.first).first) }
+
+        it "should be able to perform limited actions on unpublished item" do
+          expect(ability).to be_able_to(:create, MediaObject)
+          expect(ability).to be_able_to(:read, media_object)
+          expect(ability).to be_able_to(:update, media_object)
+          expect(ability).to be_able_to(:destroy, media_object)
+          expect(ability).not_to be_able_to(:update_access_control, media_object)
+        end
+
+        it "should not be able to destroy and unpublish published item" do
+          media_object.publish! "someone"
+          expect(ability).not_to be_able_to(:destroy, media_object)
+          expect(ability).not_to be_able_to(:unpublish, media_object)
+        end
+      end
     end
 
     context 'when end-user' do
-      subject{ ability }
-      let(:ability){ Ability.new(user) }
-      let(:user){FactoryBot.create(:user)}
-      before do
-        media_object.save!
+      let(:ability) { Ability.new(user) }
+      let(:user) { FactoryBot.create(:user) }
+
+      it "should be able to share" do
+        expect(ability).to be_able_to(:share, MediaObject)
       end
 
-      it{ is_expected.to be_able_to(:share, MediaObject) }
       it "should not be able to read unauthorized, published MediaObject" do
         # UMD Customization
         pending('UMD LIBAVALON-178')
         # End UMD Customization
         media_object.publish! "random"
-        media_object.reload
-        expect(subject.can?(:read, media_object)).to be false
+        expect(ability).not_to be_able_to(:read, media_object)
       end
 
       it "should not be able to read authorized, unpublished MediaObject" do
         media_object.read_users += [user.user_key]
         expect(media_object).not_to be_published
-        expect(subject.can?(:read, media_object)).to be false
+        expect(ability).not_to be_able_to(:read, media_object)
       end
 
       it "should be able to read authorized, published MediaObject" do
         media_object.read_users += [user.user_key]
         media_object.publish! "random"
-        media_object.reload
-        expect(subject.can?(:read, media_object)).to be true
+        expect(ability).to be_able_to(:read, media_object)
       end
     end
 
     context 'when lti user' do
-      subject{ ability }
-      let(:user){ FactoryBot.create(:user_lti) }
-      let(:ability){ Ability.new(user, {full_login: false, virtual_groups: [Faker::Lorem.word]}) }
+      let(:user) { FactoryBot.create(:user_lti) }
+      let(:ability) { Ability.new(user, {full_login: false, virtual_groups: [Faker::Lorem.word]}) }
 
-      it{ is_expected.not_to be_able_to(:share, MediaObject) }
+      it "should be able to share" do
+        expect(ability).not_to be_able_to(:share, MediaObject)
+      end
     end
 
     context 'when ip address' do
-      subject{ ability }
       let(:user) { FactoryBot.create(:user) }
       let(:ip_addr) { Faker::Internet.ip_v4_address }
       let(:ability) { Ability.new(user, {remote_ip: ip_addr}) }
@@ -259,20 +332,20 @@ describe MediaObject do
         # End UMD Customization
         media_object.read_groups += [Faker::Internet.ip_v4_address]
         media_object.publish! "random"
-        media_object.reload
-        expect(subject.can?(:read, media_object)).to be_falsey
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        expect(ability).not_to be_able_to(:read, media_object)
       end
       it 'should be able to read single-ip authorized, published MediaObject' do
         media_object.read_groups += [ip_addr]
         media_object.publish! "random"
-        media_object.reload
-        expect(subject.can?(:read, media_object)).to be_truthy
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        expect(ability).to be_able_to(:read, media_object)
       end
       it 'should be able to read ip-range authorized, published MediaObject' do
         media_object.read_groups += ["#{ip_addr}/30"]
         media_object.publish! "random"
-        media_object.reload
-        expect(subject.can?(:read, media_object)).to be_truthy
+        perform_enqueued_jobs(only: MediaObjectIndexingJob)
+        expect(ability).to be_able_to(:read, media_object)
       end
     end
   end
@@ -516,6 +589,7 @@ describe MediaObject do
   describe '#destroy' do
     let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
     let(:master_file) { media_object.sections.first }
+    let!(:checkouts) { FactoryBot.create_list(:checkout, 3, media_object_id: media_object.id) }
 
     before do
       allow(master_file).to receive(:stop_processing!)
@@ -534,6 +608,18 @@ describe MediaObject do
       end
       expect { media_object.destroy }.to change { MasterFile.count }.from(2).to(0)
       expect(MediaObject.exists?(media_object.id)).to be_falsey
+    end
+
+    context 'with deleted sections' do
+      it 'destroys existing sections' do
+        media_object.reload
+        media_object.instance_variable_set(:@section_ids, [master_file.id, "deleted-id"])
+        expect { media_object.destroy }.to change { MasterFile.exists?(master_file) }.from(true).to(false)
+      end
+    end
+
+    it 'destroys related checkouts' do
+      expect { media_object.destroy }.to change { Checkout.where(media_object_id: media_object.id).count }.from(3).to(0)
     end
   end
 
@@ -571,6 +657,7 @@ describe MediaObject do
 
   describe '#publish!' do
     describe 'facet' do
+      before { allow(Settings.accessibility_compliance).to receive(:enforce).and_return(false) }
       it 'publishes' do
         media_object.publish!('adam@adam.com')
         expect(media_object.to_solr["workflow_published_sim"]).to eq('Published')
@@ -592,6 +679,12 @@ describe MediaObject do
           allow_any_instance_of(MediaObject).to receive(:save).and_return(false)
           expect { media_object.publish!(nil, validate: false) }.to raise_error(RuntimeError)
         end
+      end
+    end
+    describe 'inaccessible' do
+      it 'does not publish' do
+        allow(media_object).to receive(:is_accessible?).and_return(false)
+        expect { media_object.publish!('adam@adam.com') }.to raise_error(Avalon::PublishingError)
       end
     end
   end
@@ -637,13 +730,17 @@ describe MediaObject do
     it 'includes virtual group leases in external group facet' do
       media_object.governing_policies += [FactoryBot.create(:lease, inherited_read_groups: ['TestGroup'])]
       media_object.save!
-      expect(media_object.to_solr['read_access_virtual_group_ssim']).to include('TestGroup')
+      media_object.reload
+      solr_doc = media_object.to_solr(include_child_fields: true)
+      expect(solr_doc['read_access_virtual_group_ssim']).to include('TestGroup')
     end
     it 'includes ip group leases in ip group facet' do
       ip_addr = Faker::Internet.ip_v4_address
       media_object.governing_policies += [FactoryBot.create(:lease, inherited_read_groups: [ip_addr])]
       media_object.save!
-      expect(media_object.to_solr['read_access_ip_group_ssim']).to include(ip_addr)
+      media_object.reload
+      solr_doc = media_object.to_solr(include_child_fields: true)
+      expect(solr_doc['read_access_ip_group_ssim']).to include(ip_addr)
     end
     it 'indexes modified time for descMetadata subresource' do
       expect(DateTime.parse(media_object.to_solr['descMetadata_modified_dtsi'])).to eq DateTime.parse(media_object.descMetadata.record_change_date.first)
@@ -762,6 +859,9 @@ describe MediaObject do
       it 'should override the title' do
         expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.title }.to "245 A : B F G K N P S"
       end
+      it 'should override the alternative title' do
+        expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.alternative_title }.to ["246"]
+      end
       it 'should override langauge' do
         expect { media_object.descMetadata.populate_from_catalog!(bib_id, 'local') }.to change { media_object.language }.to [{:code=>"eng", :text=>"English"}, {:code=>"fre", :text=>"French"}, {:code=>"ger", :text=>"German"}]
       end
@@ -804,11 +904,13 @@ describe MediaObject do
   describe '#section_labels' do
     before do
       mf = FactoryBot.create(:master_file, :with_structure, title: 'Test Label', media_object: media_object)
+      mf2 = FactoryBot.create(:master_file, media_object: media_object)
       media_object.reload
     end
     it 'should return correct list of labels' do
       expect(media_object.section_labels.first).to eq 'CD 1'
       expect(media_object.section_labels).to include 'Test Label'
+      expect(media_object.section_labels).to include 'video.mp4'
     end
   end
 
@@ -839,27 +941,21 @@ describe MediaObject do
     let(:new_media_object) { MediaObject.new }
     let(:collection) { FactoryBot.create(:collection, default_hidden: true, default_read_users: ['archivist1@example.com'], default_read_groups: ['TestGroup', 'public'], default_lending_period: 86400)}
 
-    it 'sets hidden based upon collection for new media objects' do
-      expect {new_media_object.collection = collection}.to change {new_media_object.hidden?}.to(true).from(false)
+    it 'new media objects inherited_read_users is based upon collection' do
+      expect {new_media_object.collection = collection}.to change {new_media_object.inherited_read_users}.to(['archivist1@example.com']).from([])
     end
-    it 'sets visibility based upon collection for new media objects' do
-      expect {new_media_object.collection = collection}.to change {new_media_object.visibility}.to('public').from('private')
-    end
-    it 'sets read_users based upon collection for new media objects' do
-      expect {new_media_object.collection = collection}.to change {new_media_object.read_users}.to(['archivist1@example.com']).from([])
-    end
-    it 'sets read_groups based upon collection for new media objects' do
+    it 'new media objects inherited_read_groups is based upon collection' do
       expect(new_media_object.read_groups).not_to include "TestGroup"
-      expect {new_media_object.collection = collection}.to change {new_media_object.read_groups}.to include 'TestGroup'
+      expect {new_media_object.collection = collection}.to change {new_media_object.inherited_read_groups}.to include 'TestGroup'
     end
     it 'sets lending_period based upon collection for new media objects' do
-      expect {new_media_object.collection = collection}.to change {new_media_object.lending_period}.to(86400).from(nil)
+      expect {new_media_object.collection = collection}.to change {new_media_object.inherited_lending_period}.to(86400).from(nil)
     end
     it 'does not change access control fields if not new media object' do
       expect {media_object.collection = collection}.not_to change {new_media_object.hidden?}
       expect {media_object.collection = collection}.not_to change {new_media_object.visibility}
       expect {media_object.collection = collection}.not_to change {new_media_object.read_users}
-      expect {media_object.collection = collection}.not_to change {new_media_object.read_users}
+      expect {media_object.collection = collection}.not_to change {new_media_object.read_groups}
       expect {media_object.collection = collection}.not_to change {new_media_object.lending_period}
     end
   end
@@ -919,6 +1015,7 @@ describe MediaObject do
     end
 
     it 'is indexed' do
+      allow(media_object).to receive(:create_date).and_return(DateTime.now)
       media_object.rights_statement = rights_statement_uri
       expect(media_object.to_solr["rights_statement_ssi"]).to eq rights_statement_uri
     end
@@ -954,6 +1051,7 @@ describe MediaObject do
     end
 
     it 'is indexed' do
+      allow(media_object).to receive(:create_date).and_return(DateTime.now)
       media_object.terms_of_use = terms_of_use_value
       expect(media_object.to_solr["terms_of_use_ssi"]).to eq terms_of_use_value
     end
@@ -1112,22 +1210,33 @@ describe MediaObject do
   end
 
   describe 'lending_period' do
-    context 'there is not a custom lending period' do
-      it 'sets the lending period to the system default' do
-        expect(media_object.lending_period).to eq ActiveSupport::Duration.parse(Settings.controlled_digital_lending.default_lending_period).to_i
-      end
+    let(:media_object) { MediaObject.new }
+
+    it 'is nil for new objects' do
+      expect(media_object.lending_period).to eq nil
     end
-    context 'the parent collection has a custom lending period' do
-      let(:collection) { FactoryBot.create(:collection, default_lending_period: 86400) }
-      let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id) }
-      it "sets the lending period to equal the collection's default lending period" do
-        expect(media_object.lending_period).to eq collection.default_lending_period
-      end
-      context 'the media object has a custom lending period' do
-        let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id, lending_period: 172800)}
-        it "leaves the lending period equal to the custom value" do
-          expect(media_object.lending_period).to eq 172800
-        end
+
+    it 'stores the custom lending period for the object' do
+      expect { media_object.lending_period = 1234 }.to change { media_object.lending_period }.from(nil).to(1234)
+      media_object.save(validate: false)
+      media_object.reload
+      expect(media_object.lending_period).to eq 1234
+    end
+  end
+
+  describe 'active_lending_period' do
+    let(:collection) { FactoryBot.create(:collection, default_lending_period: 86400) }
+    let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id, lending_period: 1234) }
+
+    it 'returns the inherited lending period of the parend' do
+      expect(media_object.active_lending_period).to eq collection.default_lending_period
+    end
+
+    context 'with inheritance disabled' do
+      let(:media_object) { FactoryBot.create(:media_object, collection_id: collection.id, lending_period: 1234, disable_inheritance: true) }
+
+      it 'returns the lending period of the object' do
+        expect(media_object.active_lending_period).to eq media_object.lending_period
       end
     end
   end
@@ -1162,16 +1271,94 @@ describe MediaObject do
     end
   end
 
-  describe ".autocomplete" do
-    before :each do
-      allow(Admin::Collection).to receive(:units).and_return(['Default', 'Test'])
+  describe 'virtual groups' do
+    let!(:local_groups) {[FactoryBot.create(:group).name, FactoryBot.create(:group).name]}
+    let(:virtual_groups) {["vgroup1", "vgroup2"]}
+    let(:ip_groups) {[Faker::Internet.ip_v4_address, Faker::Internet.ip_v6_address, Faker::Internet.ip_v4_address + "/24"]}
+    # UMD Customization
+    let(:umd_ip_manager_groups) {
+      ["#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup1", "#{UmdIpManager::GROUP_PREFIX}UmdIPTestGroup2"]
+    }
+    # End UMD Customization
+
+    before do
+       # UMD Customization
+      subject.read_groups = local_groups + virtual_groups + ip_groups + umd_ip_manager_groups
+      # End UMD Customization
     end
+
+    describe '#local_read_groups' do
+      it 'should have only local groups' do
+        expect(subject.local_read_groups).to eq(local_groups)
+      end
+    end
+
+    describe '#virtual_read_groups' do
+      it 'should have only non-local groups' do
+        expect(subject.virtual_read_groups).to eq(virtual_groups)
+      end
+    end
+
+    describe '#ip_read_groups' do
+      it 'should have only ip groups' do
+        expect(subject.ip_read_groups).to eq(ip_groups)
+      end
+    end
+
+    # UMD Customization
+    describe '#umd_ip_group_exceptions' do
+      it 'should have only UMD IP Manager groups' do
+        expect(subject.umd_ip_manager_read_groups).to eq(umd_ip_manager_groups)
+      end
+    end
+    # End UMD Customization
+
+    context 'inherited' do
+      let(:collection) { FactoryBot.build(:collection) }
+      let(:unit_local_groups) { ['unit_local'] }
+      let(:unit_virtual_groups) { ['unit_virtual'] }
+      let(:unit_ip_groups) { ['127.0.0.1'] }
+      let(:collection_local_groups) { ['collection_local'] }
+      let(:collection_virtual_groups) { ['collection_virtual'] }
+      let(:collection_ip_groups) { ['127.0.0.2'] }
+
+      before do
+        allow(collection).to receive(:inherited_local_read_groups).and_return(unit_local_groups)
+        allow(collection).to receive(:inherited_virtual_read_groups).and_return(unit_virtual_groups)
+        allow(collection).to receive(:inherited_ip_read_groups).and_return(unit_ip_groups)
+        allow(collection).to receive(:default_local_read_groups).and_return(collection_local_groups)
+        allow(collection).to receive(:default_virtual_read_groups).and_return(collection_virtual_groups)
+        allow(collection).to receive(:default_ip_read_groups).and_return(collection_ip_groups)
+        allow(Admin::Group).to receive(:exists?).and_return(true)
+        subject.collection = collection
+      end
+
+      describe '#inherited_local_read_groups' do
+        it 'should have only local groups' do
+          expect(subject.inherited_local_read_groups).to eq(unit_local_groups + collection_local_groups)
+        end
+      end
+
+      describe '#inherited_virtual_read_groups' do
+        it 'should have only non-local groups' do
+          expect(subject.inherited_virtual_read_groups).to eq(unit_virtual_groups + collection_virtual_groups)
+        end
+      end
+
+      describe '#inherited_ip_read_groups' do
+        it 'should have only ip groups' do
+          expect(subject.inherited_ip_read_groups).to eq(unit_ip_groups + collection_ip_groups)
+        end
+      end
+    end
+  end
+
+  describe ".autocomplete" do
     let!(:mo1) { FactoryBot.create(:media_object, collection: collection1, series: ['Test 1', 'Alpha']) }
     let!(:mo2) { FactoryBot.create(:media_object, collection: collection1, series: ['Test 1', 'Test 2']) }
     let!(:mo3) { FactoryBot.create(:media_object, collection: collection2, series: ['Test 3']) }
-    let(:collection1) { FactoryBot.create(:collection, unit: 'Default') }
-    let(:collection2) { FactoryBot.create(:collection, unit: 'Test') }
-
+    let(:collection1) { FactoryBot.create(:collection, unit: FactoryBot.create(:unit, name: 'Default')) }
+    let(:collection2) { FactoryBot.create(:collection, unit: FactoryBot.create(:unit, name: 'Test')) }
 
     it "should return all series within the parent collection's unit that include the query string" do
       expect(MediaObject.autocomplete('Test', mo1.id)).to include({ id: 'Test 1', display: 'Test 1' })
@@ -1223,6 +1410,56 @@ describe MediaObject do
     end
   end
 
+  describe "#is_accessible?" do
+    context 'accessibility enforcement disabled' do
+      it 'returns true' do
+        allow(Settings.accessibility_compliance).to receive(:enforce).and_return(false)
+        expect(media_object.is_accessible?).to be true
+      end
+    end
+    context 'accessibility enforcement enabled' do
+      let(:compliance_date) { DateTime.parse(Settings.accessibility_compliance.compliance_date) }
+      before do
+        allow(Settings.accessibility_compliance).to receive(:enforce).and_return(true)
+      end
+
+      context 'item older than compliance date' do
+        it 'returns true' do
+          allow(media_object).to receive(:create_date).and_return(compliance_date - 1.day)
+          expect(media_object.is_accessible?).to be true
+        end
+      end
+
+      context 'item younger than compliance date' do
+        before { allow(media_object).to receive(:create_date).and_return(compliance_date) }
+        it 'returns false if no captions or transcripts' do
+          expect(media_object.is_accessible?).to be false
+        end
+
+        context 'with captions' do
+          it 'returns true' do
+            allow(media_object).to receive(:has_captions).and_return(true)
+            expect(media_object.is_accessible?).to be true
+          end
+        end
+
+        context 'with transcripts' do
+          it 'returns true' do
+            allow(media_object).to receive(:has_transcripts).and_return(true)
+            expect(media_object.is_accessible?).to be true
+          end
+        end
+
+        context 'exempted from compliance' do
+          let(:media_object) { FactoryBot.create(:media_object, override_accessibility: true) }
+          it 'returns true' do
+            expect(media_object.is_accessible?).to be true
+          end
+        end
+      end
+    end
+  end
+
   describe 'section_list' do
     let(:section) { FactoryBot.create(:master_file) }
     let(:section2) { FactoryBot.create(:master_file) }
@@ -1247,6 +1484,14 @@ describe MediaObject do
     describe 'sections' do
       it 'returns an ordered list of master file objects' do
         expect(media_object.sections).to eq [section, section2]
+      end
+
+      context 'in safe_load mode' do
+        it 'returns only sections that exist in both solr and fedora' do
+          media_object.reload
+          media_object.instance_variable_set(:@section_ids, [section.id, 'non-existant-id', section2.id])
+          expect(media_object.sections(safe_load: true)).to eq [section, section2]
+        end
       end
     end
 
@@ -1301,8 +1546,8 @@ describe MediaObject do
         expect(mo.section_list).not_to eq nil
         expect(mo.sections).not_to eq mo.ordered_master_files.to_a
         expect(mo.section_ids).to eq [section.id, section2.id, new_section.id]
-        expect(mo.master_file_ids).to eq mo.section_ids
-        expect(mo.master_files).to eq mo.sections
+        expect(mo.master_file_ids).to match_array mo.section_ids
+        expect(mo.master_files).to match_array mo.sections
       end
     end
   end
@@ -1321,6 +1566,38 @@ describe MediaObject do
         expect(media_object.sections).to eq []
         expect(media_object.section_ids).to eq []
       end
+    end
+  end
+
+  describe '#section_share_infos' do
+    let(:media_object) { FactoryBot.create(:media_object, :with_master_file) }
+
+    it 'is an array of hashes' do
+      expect(media_object.section_share_infos).to contain_exactly({lti_share_link: be_a(String), link_back_url: be_a(String), embed_code: be_a(String)})
+    end
+  end
+
+  describe '#as_json' do
+    let(:media_object) { FactoryBot.create(:all_fields_media_object) }
+    subject(:json_hash) { media_object.as_json }
+
+    it 'includes necessary fields not in api ingest hash' do
+      expect(subject[:id]).to eq media_object.id
+      expect(subject[:title]).to eq media_object.title
+      expect(subject[:main_contributors]).to eq media_object.creator
+      expect(subject[:publication_date]).to eq media_object.date_created
+      expect(subject[:published_by]).to eq media_object.avalon_publisher
+      expect(subject[:published]).to eq media_object.published?
+      expect(subject[:summary]).to eq media_object.abstract
+      expect(subject[:visibility]).to eq media_object.visibility
+      expect(subject[:read_groups]).to eq media_object.read_groups
+      expect(subject[:discover_groups]).to eq media_object.discover_groups
+      expect(subject[:lending_period]).to eq media_object.lending_period
+      expect(subject[:lending_status]).to eq media_object.lending_status
+      expect(subject[:collection]).to eq media_object.collection.name
+      expect(subject[:collection_id]).to eq media_object.collection.id
+      expect(subject[:unit]).to eq media_object.collection.unit.name
+      expect(subject[:unit_id]).to eq media_object.collection.unit.id
     end
   end
 end

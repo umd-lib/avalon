@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -152,6 +152,15 @@ describe Derivative do
       it "provides a file path" do
         allow(Settings.streaming).to receive(:server).and_return(:nginx)
         expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp4"
+      end
+
+      context "with mp3 derivative" do
+        let(:hls_url) { "http://localhost:3000/streams/6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp3" }
+
+        it "provides a file path" do
+          allow(Settings.streaming).to receive(:server).and_return(:nginx)
+          expect(subject.download_path).to eq "file://6f69c008-06a4-4bad-bb60-26297f0b4c06/35bddaa0-fbb4-404f-ab76-58f22921529c/warning.mp3"
+        end
       end
     end
 

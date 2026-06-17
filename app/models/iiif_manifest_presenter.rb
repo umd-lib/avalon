@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -45,7 +45,7 @@ class IiifManifestPresenter
   end
 
   def to_s
-    media_object.title
+    media_object.title || media_object.id
   end
 
   def manifest_metadata
@@ -99,13 +99,6 @@ class IiifManifestPresenter
     { 'label' => label, 'value' => sanitized_values }
   end
 
-  def combined_display_date(media_object)
-    #FIXME Does this need to change now that date_issued is not required and thus could be nil
-    result = media_object.date_issued
-    result += " (Creation date: #{media_object.date_created})" if media_object.date_created.present?
-    result
-  end
-
   def display_other_identifiers(media_object)
     # bibliographic_id has form [:type,"value"], other_identifier has form [[:type,"value],[:type,"value"],...]
     ids = Array(media_object.other_identifier) - [media_object.bibliographic_id]
@@ -133,7 +126,10 @@ class IiifManifestPresenter
   end
 
   def gather_notes_of_type(media_object, type)
-    media_object.note.present? ? media_object.note.select { |n| n[:type] == type }.collect { |n| n[:note] } : []
+    return [] if media_object.note.blank?
+    notes = media_object.note.select { |n| n[:type] == type }.collect { |n| n[:note] }
+    notes = display_search_linked("donor_ssim", notes) if type == 'acquisition'
+    notes
   end
 
   def display_collection(media_object)
@@ -141,7 +137,12 @@ class IiifManifestPresenter
   end
 
   def display_unit(media_object)
-    "<a href='#{Rails.application.routes.url_helpers.collections_url(filter: media_object.collection.unit)}'>#{media_object.collection.unit}</a>"
+    # The proxy object returns the string of the unit name, the actual MediaObject
+    # returns the Unit itself so we have to specifically request the name in that case.
+    unit_name = media_object.is_a?(SpeedyAF::Proxy::MediaObject) ? media_object.unit.first : media_object.collection.unit.name
+    # Link unit show page to the unit name
+    unit_id = media_object.collection.unit.id
+    "<a href='#{Rails.application.routes.url_helpers.unit_url(unit_id)}'>#{unit_name}</a>"
   end
 
   def display_language(media_object)
@@ -174,23 +175,36 @@ class IiifManifestPresenter
     Rails.application.routes.url_helpers.blacklight_url({ "f[collection_ssim][]" => media_object.collection.name, "f[series_ssim][]" => series })
   end
 
+  def display_search_linked(solr_field, values)
+    Array(values).collect do |value|
+      url = Rails.application.routes.url_helpers.blacklight_url({ "f[#{solr_field}][]" => value })
+      "<a href='#{url}'>#{value}</a>"
+    end
+  end
+
   def display_lending_period(media_object)
     return nil unless lending_enabled
-    ActiveSupport::Duration.build(media_object.lending_period).to_day_hour_s
+    ActiveSupport::Duration.build(media_object.active_lending_period).to_day_hour_s
+  end
+
+  def display_date(date)
+    Avalon::Configuration.humanize_edtf.call(date)
   end
 
   def iiif_metadata_fields
     fields = [
-      metadata_field('Title', media_object.title),
-      metadata_field('Date', combined_display_date(media_object), 'Not provided'),
+      metadata_field('Title', media_object.title, media_object.id),
+      metadata_field('Alternative title', media_object.alternative_title),
+      metadata_field('Publication date', display_date(media_object.date_issued)),
+      metadata_field('Creation date', display_date(media_object.date_created)),
       metadata_field('Main contributor', media_object.creator),
       metadata_field('Summary', display_summary(media_object)),
       metadata_field('Contributor', media_object.contributor),
       metadata_field('Publisher', media_object.publisher),
       metadata_field('Genre', media_object.genre),
-      metadata_field('Subject', media_object.topical_subject),
+      metadata_field('Subject', display_search_linked("subject_ssim", media_object.topical_subject)),
       metadata_field('Time period', media_object.temporal_subject),
-      metadata_field('Location', media_object.geographic_subject),
+      metadata_field('Geographic Subject', media_object.geographic_subject),
       metadata_field('Collection', display_collection(media_object)),
       metadata_field('Unit', display_unit(media_object)),
       metadata_field('Language', display_language(media_object)),

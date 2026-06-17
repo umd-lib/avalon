@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -29,15 +29,13 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%= csrf_meta_tags %>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <%= favicon_link_tag %>
+
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_include_tag "application_bundle", "data-turbo-track": "reload", type: "module", defer: false %>
   <%# UMD Customization %>
   <%= stylesheet_link_tag "//www.lib.umd.edu/unify-1.7/assets/css/app.css" %>
-  <%# End UMD Customization %>
-  <%= stylesheet_link_tag "application", media: "all" %>
-  <%# UMD Customization %>
   <%= stylesheet_link_tag 'custom' %>
   <%# End UMD Customization %>
-  <%= stylesheet_pack_tag 'application' %>
-  <%= javascript_pack_tag 'application' %>
   <%= yield :page_styles %>
   <%= yield :additional_head_content %>
   <%= render "modules/google_analytics" %>
@@ -51,18 +49,20 @@ Unless required by applicable law or agreed to in writing, software distributed
 <body data-mountpoint="<%=main_app.root_path%>" <%= request.fullpath.include?('login_popup') ? 'onunload=closePopup()' : nil %>>
   <%= render partial: 'shared/environment_banner' %>
   <div class="page-container">
+    <%# UMD Customization %>
     <div class="content-wrapper" style="padding-bottom: 60px;">
     <%# End UMD Customization %>
-      <a id="skip-to-content" class="sr-only sr-only-focusable" href="#iiif-media-player">Skip to main content</a>
+      <a id="skip-to-content" class="visually-hidden-focusable" href="<%= skip_to_content_href %>">Skip to main content</a>
       <%= render partial: 'shared/modal' %>
       <% if defined?(Samvera::Persona) %>
       <%= render partial: 'modules/become_message' %>
       <% end %>
       <%= render 'modules/header' %>
+      <%# UMD Customization %>
       <% if controller.action_name != "course_reserves" %>
         <%= render :partial => 'modules/global_navigation' %>
       <% end %>
-      <%# UMD Customization %>
+      <% main_id = "main-content" %>
       <% main_id = "content" unless ['catalog', 'bookmarks'].include?(controller.controller_name) %>
       <% main_id = "content" if current_page?(main_app.root_path) %>
       <main role="main" class="<%= "homepage-main" if current_page?(main_app.root_path) %>" id="<%= main_id %>">
@@ -84,9 +84,11 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       </main>
     </div>
+    <%# UMD Customization %>
     <% if controller.action_name != "course_reserves" %>
       <%= render 'modules/footer' %>
     <% end %>
+    <%# End UMD Customization %>
   </div>
 
   <% if request.fullpath.include?('login_popup') %>
@@ -103,7 +105,7 @@ Unless required by applicable law or agreed to in writing, software distributed
          if they are included here. That means the important content will
          load first; the page will not gag on trying to pull down files
          from a CDN -->
-  <%= javascript_include_tag "application" %>
+  <%= javascript_include_tag 'application' %>
   <%= yield :page_scripts %>
 
   <%# UMD Customization %>

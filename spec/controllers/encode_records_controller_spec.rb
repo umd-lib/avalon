@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -63,6 +63,14 @@ RSpec.describe EncodeRecordsController, type: :controller do
         expect(response).to render_template('errors/restricted_pid')
       end
     end
+
+    context "when state is nil" do
+      let(:encode_record_test) { FactoryBot.create(:encode_record, state: nil) }
+      it "returns a success response" do
+        get :index, params: {}, session: valid_session
+        expect(response).to be_successful
+      end
+    end
   end
 
   describe "GET #show" do
@@ -75,8 +83,16 @@ RSpec.describe EncodeRecordsController, type: :controller do
       let(:user) { FactoryBot.create(:user) }
 
       it "redirects to restricted content page" do
-        get :index, params: {}, session: valid_session
+        get :show, params: { id: encode_record_test.to_param }, session: valid_session
         expect(response).to render_template('errors/restricted_pid')
+      end
+    end
+
+    context "when state is nil" do
+      let(:encode_record_test) { FactoryBot.create(:encode_record, state: nil) }
+      it "returns a success response" do
+        get :show, params: { id: encode_record_test.to_param }, session: valid_session
+        expect(response).to be_successful
       end
     end
   end
@@ -86,52 +102,23 @@ RSpec.describe EncodeRecordsController, type: :controller do
       FactoryBot.reload
       FactoryBot.create_list(:encode_record, 11)
     end
+    it 'returns all results' do
+      post :paged_index, format: 'json', session: valid_session
+      parsed_response = JSON.parse(response.body)
+      expect(parsed_response['recordsTotal']).to eq(11)
+      expect(parsed_response['data'].count).to eq(11)
+    end 
 
-    context 'paging' do
-      let(:common_params) { { order: { '0': { column: 1, dir: 'asc' } }, search: { value: '' } } }
-      it 'returns all results' do
-        post :paged_index, format: 'json', params: common_params.merge(start: 0, length: 20), session: valid_session
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsTotal']).to eq(11)
-        expect(parsed_response['data'].count).to eq(11)
+    context "when state is nil" do
+      before do
+        FactoryBot.create(:encode_record, state: nil)
       end
-      it 'returns first page' do
-        post :paged_index, format: 'json', params: common_params.merge(start: 0, length: 10), session: valid_session
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['data'].count).to eq(10)
-      end
-      it 'returns second page' do
-        post :paged_index, format: 'json', params: common_params.merge(start: 10, length: 10), session: valid_session
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['data'].count).to eq(1)
-      end
-    end
 
-    context 'filtering' do
-      let(:common_params) { { start: 0, length: 20, order: { '0': { column: 3, dir: 'asc' } } } }
-      it "returns results filtered by title" do
-        post :paged_index, format: 'json', params: common_params.merge(search: { value: 'Title 98' }), session: valid_session
+      it "returns a success response" do
+        post :paged_index, format: 'json', session: valid_session
+        expect(response).to be_successful
         parsed_response = JSON.parse(response.body)
-        expect(parsed_response['recordsFiltered']).to eq(2)
-        expect(parsed_response['data'].count).to eq(2)
-        expect(parsed_response['data'][0][3]).to eq('Title 988')
-        expect(parsed_response['data'][1][3]).to eq('Title 989')
-      end
-    end
-
-    context 'filtering' do
-      let(:common_params) { { start: 0, length: 20, search: { value: '' } } }
-      it "returns results sorted by title ascending" do
-        post :paged_index, format: 'json', params: common_params.merge(order: { '0': { column: 3, dir: 'asc' } }), session: valid_session
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['data'][0][3]).to eq('Title 988')
-        expect(parsed_response['data'][1][3]).to eq('Title 989')
-      end
-      it "returns results sorted by title descending" do
-        post :paged_index, format: 'json', params: common_params.merge(order: { '0': { column: 3, dir: 'desc' } }), session: valid_session
-        parsed_response = JSON.parse(response.body)
-        expect(parsed_response['data'][0][3]).to eq('Title 998')
-        expect(parsed_response['data'][1][3]).to eq('Title 997')
+        expect(parsed_response['recordsTotal']).to eq(12)
       end
     end
   end

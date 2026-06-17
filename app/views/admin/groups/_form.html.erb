@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -26,15 +26,13 @@ Unless required by applicable law or agreed to in writing, software distributed
         <% if @group.class.name_is_static? @group.name %>
         <p><%= @group.name %></p>
         <% else %>
-        <div class="form-group">
+        <div class="mb-3">
           <div class="input-group">
             <%= text_field_tag :group_name, "Group name", value: @group.name, class: 'form-control' %>
-            <span class="input-group-append">
-              <%= button_tag "Save", type: "submit", class: "btn btn-primary" %>
-              <%= link_to "Delete Group", admin_group_path(@group.name),
-          method: :delete, confirm: "Deleted group cannot be recovered. Are you sure?",
-          class: "btn btn-danger" %>
-            </span>
+            <%= button_tag "Save", type: "submit", class: "btn btn-primary" %>
+            <%= link_to "Delete Group", admin_group_path(@group.name),
+              method: :delete, confirm: "Deleted group cannot be recovered. Are you sure?",
+              class: "btn btn-danger" %>
           </div>
         </div>
         <% end %>
@@ -54,13 +52,12 @@ Unless required by applicable law or agreed to in writing, software distributed
 
       <div class="card-body">
         <%= bootstrap_form_for @group  do |f| %>
-        <div class="form-group">
+        <div class="mb-3">
           <div class="input-group">
-            <%= text_field_tag :new_user, nil, class: 'typeahead from-model form-control',
-                data: { model: 'user' }, placeholder: 'Enter a username' %>
-            <span class="input-group-append">
-              <%= button_tag "Add user", type: "submit", class: "btn btn-primary" %>
-            </span>
+            <%= render partial: 'modules/autocomplete_input', locals: { field_name: :new_user,
+                                                                        model: 'user',
+                                                                        placeholder: 'Enter a username' } %>
+            <%= button_tag "Add user", type: "submit", class: "btn btn-primary" %>
           </div>
         </div>
         <% end %>
@@ -100,24 +97,34 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% content_for :page_scripts do %>
 <script>
-  $('.select-groups').change(function () {
-    $('input[id^=user_ids_]').prop('checked', $(this).is(':checked')).trigger('change');
-  })
+  query('.select-groups').addEventListener('change', function () {
+    const isChecked = this.checked;
+    queryAll('input[id^=user_ids_]').forEach(function(checkbox) {
+      checkbox.checked = isChecked;
+      checkbox.dispatchEvent(new Event('change'));
+    });
+  });
 
-  $('input[id^=user_ids_]').change(function () {
-    if ($(this).is(':checked')) {
-      enableButtons();
-    } else if ($(':checked').length == 0) {
-      disableButtons();
-    }
-  })
+  queryAll('input[id^=user_ids_]').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function () {
+      if (this.checked) {
+        enableButtons();
+      } else if (queryAll('input[id^=user_ids_]:checked').length === 0) {
+        disableButtons();
+      }
+    });
+  });
 
   function enableButtons() {
-    $('.delete').removeAttr('disabled');
+    queryAll('.delete').forEach(function(button) {
+      button.removeAttribute('disabled');
+    });
   }
 
   function disableButtons() {
-    $('.delete').attr('disabled', 'disabled');
+    queryAll('.delete').forEach(function(button) {
+      button.setAttribute('disabled', 'disabled');
+    });
   }
 </script>
 <% end %>

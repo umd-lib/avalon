@@ -1,18 +1,18 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
-class AccessControlStep < Avalon::Workflow::BasicStep
+class AccessControlStep < BasicStep
   def initialize(step = 'access-control',
                  title = "Access Control",
                  summary = "Who can access the item",
@@ -105,15 +105,16 @@ class AccessControlStep < Avalon::Workflow::BasicStep
     end
     if context['remove_lease'].present?
       limited_access_submit = true
-      lease = Lease.find( context['remove_lease'] )
-      media_object.governing_policies.delete( lease )
+      lease = Lease.find(context['remove_lease'])
+      media_object.governing_policies.delete(lease)
       lease.destroy
     end
 
     unless limited_access_submit
       media_object.visibility = context[:visibility] unless context[:visibility].blank?
       media_object.hidden = context[:hidden] == "1"
-      if media_object.cdl_enabled?
+      media_object.disable_inheritance = context[:disable_inheritance] == "1"
+      if media_object.cdl_enabled? && (context["add_lending_period_days"].present? || context["add_lending_period_hours"].present?)
         lending_period = build_lending_period(context)
         if lending_period.positive?
           media_object.lending_period = lending_period
@@ -123,27 +124,6 @@ class AccessControlStep < Avalon::Workflow::BasicStep
       end
     end
 
-    media_object.save!
-
-    #Setup these values in the context because the edit partial is being rendered without running the controller's #edit (VOV-2978)
-    media_object.reload
-    context[:users] = media_object.read_users
-    context[:groups] = media_object.read_groups
-    context[:virtual_groups] = media_object.virtual_read_groups
-    context[:ip_groups] = media_object.ip_read_groups
-    # UMD Customization
-    context[:umd_ip_manager_groups] = media_object.umd_ip_manager_read_groups
-    # End UMD Customization
-    context[:group_leases] = media_object.leases('local')
-    context[:user_leases] = media_object.leases('user')
-    context[:virtual_leases] = media_object.leases('external')
-    context[:ip_leases] = media_object.leases('ip')
-    context[:addable_groups] = Admin::Group.non_system_groups.reject { |g| context[:groups].include? g.name }
-    context[:addable_courses] = Course.all.reject { |c| context[:virtual_groups].include? c.context_id }
-    # UMD Customization
-    context[:addable_umd_ip_manager_groups] = UmdIpManager.new.groups.reject { |g| context[:umd_ip_manager_groups].include? g.prefixed_key }
-    # End UMD Customization
-    context[:lending_period] = media_object.lending_period
     context
   end
 

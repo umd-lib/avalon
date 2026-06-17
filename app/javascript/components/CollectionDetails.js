@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,7 +14,7 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React, { useState } from 'react';
+import { Fragment, useState } from 'react';
 import PropTypes from 'prop-types';
 
 const expandBtn = {
@@ -59,16 +59,16 @@ const CollectionDetails = ({ content = '', email = '', website = '' }) => {
       )}
       <dl className="row collection-details">
         {email &&
-          <React.Fragment>
+          <Fragment>
             <dt style={descriptionStyle} className="col-sm-3">Contact email:</dt>
             <dd className='col-sm-9'><a href={`mailto:${email}`}>{email}</a></dd>
-          </React.Fragment>
+          </Fragment>
         }
         {website &&
-          <React.Fragment>
+          <Fragment>
             <dt style={descriptionStyle} className="col-sm-3">Website:</dt>
             <dd className='col-sm-9' dangerouslySetInnerHTML={{ __html: website }}></dd>
-          </React.Fragment>
+          </Fragment>
         }
       </dl>
     </div>

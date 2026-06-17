@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -19,7 +19,7 @@ RSpec.describe SearchBuilder do
 
   let(:processor_chain) { [] }
   let(:scope) { CatalogController.new }
-  let(:manager) { FactoryBot.create(:manager) }
+  let(:manager) { FactoryBot.create(:user) }
   let(:ability) { Ability.new(manager) }
 
   describe "#only_published_items" do
@@ -45,8 +45,16 @@ RSpec.describe SearchBuilder do
 
       it "should add section transcript searching to the solr query" do
         subject.search_section_transcripts(solr_parameters)
-        expect(solr_parameters[:defType]).to eq "lucene"
-        expect(solr_parameters[:q]).to eq "({!edismax v=\"Example\"}) {!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:Example"
+        expect(solr_parameters[:q]).to eq "has_model_ssim:MediaObject AND (Example _query_:\"{!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:(Example)\")"
+      end
+
+      context "phrase searching" do
+        let(:solr_parameters) { { q: '"Example captions"' } }
+
+        it "should only match transcripts with the phrase" do
+          subject.search_section_transcripts(solr_parameters)
+          expect(solr_parameters[:q]).to eq "has_model_ssim:MediaObject AND (\\\"Example captions\\\" _query_:\"{!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}transcript_tsim:(\\\"Example captions\\\")\")"
+        end
       end
     end
   end
@@ -70,6 +78,34 @@ RSpec.describe SearchBuilder do
         expect(solr_parameters["sections.fl"]).to eq "id,transcript_tf_0,transcripts:[subquery]"
         expect(solr_parameters["sections.transcripts.fl"]).to eq "id,transcript_tf_0:termfreq(transcript_tsim,Example)"
         expect(solr_parameters["sections.transcripts.q"]).to eq "{!terms f=isPartOf_ssim v=$row.id}{!join to=id from=isPartOf_ssim}"
+      end
+
+      context 'with multiple terms' do
+        let(:solr_parameters) { { q: 'Example query' } }
+
+        it "should add transcript options to query" do
+          subject.term_frequency_counts(solr_parameters)
+          expect(solr_parameters[:fl]).to include "metadata_tf_0:termfreq(mods_tesim,Example),structure_tf_0:termfreq(section_label_tesim,Example),transcript_tf_0"
+          expect(solr_parameters[:fl]).to include "metadata_tf_1:termfreq(mods_tesim,query),structure_tf_1:termfreq(section_label_tesim,query),transcript_tf_1"
+          expect(solr_parameters["sections.fl"]).to eq "id,transcript_tf_0,transcript_tf_1,transcripts:[subquery]"
+          expect(solr_parameters["sections.transcripts.fl"]).to include "transcript_tf_0:termfreq(transcript_tsim,Example)"
+          expect(solr_parameters["sections.transcripts.fl"]).to include "transcript_tf_1:termfreq(transcript_tsim,query)"
+          expect(solr_parameters["sections.transcripts.q"]).to eq "{!terms f=isPartOf_ssim v=$row.id}{!join to=id from=isPartOf_ssim}"
+        end
+
+        context 'with CJK whitespace' do
+          let(:solr_parameters) { { q: 'Example　query' } }
+
+          it "should add transcript options to query" do
+            subject.term_frequency_counts(solr_parameters)
+            expect(solr_parameters[:fl]).to include "metadata_tf_0:termfreq(mods_tesim,Example),structure_tf_0:termfreq(section_label_tesim,Example),transcript_tf_0"
+            expect(solr_parameters[:fl]).to include "metadata_tf_1:termfreq(mods_tesim,query),structure_tf_1:termfreq(section_label_tesim,query),transcript_tf_1"
+            expect(solr_parameters["sections.fl"]).to eq "id,transcript_tf_0,transcript_tf_1,transcripts:[subquery]"
+            expect(solr_parameters["sections.transcripts.fl"]).to include "transcript_tf_0:termfreq(transcript_tsim,Example)"
+            expect(solr_parameters["sections.transcripts.fl"]).to include "transcript_tf_1:termfreq(transcript_tsim,query)"
+            expect(solr_parameters["sections.transcripts.q"]).to eq "{!terms f=isPartOf_ssim v=$row.id}{!join to=id from=isPartOf_ssim}"
+          end
+        end
       end
     end
   end

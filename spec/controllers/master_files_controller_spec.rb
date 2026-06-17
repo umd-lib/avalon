@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -38,17 +38,79 @@ end
 describe MasterFilesController do
   include ActiveJob::TestHelper
 
+  render_views
+
+  describe 'security' do
+    let(:master_file) { FactoryBot.create(:master_file, :with_media_object, :with_derivative) }
+
+    describe 'normal auth' do
+      context 'with unauthenticated user' do
+        it "all routes should redirect to sign in" do
+          # Show redirects to the media object without auth checking
+          #expect(get :show, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(put :update, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :get_frame, params: { id: master_file.id, type: 'thumbnail' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, type: 'thumbnail', format: 'html' }).to render_template('errors/restricted_pid')
+          expect(get :get_frame, params: { id: master_file.id, type: 'poster' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, type: 'poster', format: 'html' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, format: 'html' }).to render_template('errors/restricted_pid')
+          # Embed does it's own auth in the iframe
+          #expect(get :embed, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :captions, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :waveform, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(post :attach_structure, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :transcript, params: { id: master_file.id, t_id: '1' }).to render_template('errors/restricted_pid')
+          expect(post :move, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+        end
+        it "json routes should return 401" do
+          expect(get :search, params: { id: master_file.id }).to have_http_status(401)
+          expect(get :structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(post :set_structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(delete :delete_structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(head :hls_manifest, params: { id: master_file.id, quality: 'high', format: 'm3u8' }).to have_http_status(401)
+          expect(get :hls_manifest, params: { id: master_file.id, quality: 'high', format: 'm3u8' }).to have_http_status(401)
+        end
+      end
+      context 'with end-user' do
+        before do
+          login_as :user
+        end
+        it "all routes should redirect to sign in" do
+          # Show redirects to the media object without auth checking
+          #expect(get :show, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(put :update, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :get_frame, params: { id: master_file.id, type: 'thumbnail' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, type: 'thumbnail', format: 'html' }).to render_template('errors/restricted_pid')
+          expect(get :get_frame, params: { id: master_file.id, type: 'poster' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, type: 'poster', format: 'html' }).to render_template('errors/restricted_pid')
+          expect(post :set_frame, params: { id: master_file.id, format: 'html' }).to render_template('errors/restricted_pid')
+          # Embed does it's own auth in the iframe
+          #expect(get :embed, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :captions, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :waveform, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(post :attach_structure, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+          expect(get :transcript, params: { id: master_file.id, t_id: '1' }).to render_template('errors/restricted_pid')
+          expect(post :move, params: { id: master_file.id }).to render_template('errors/restricted_pid')
+        end
+        it "json routes should return 401" do
+          expect(get :search, params: { id: master_file.id }).to have_http_status(401)
+          expect(get :structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(post :set_structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(delete :delete_structure, params: { id: master_file.id, format: 'json' }).to have_http_status(401)
+          expect(head :hls_manifest, params: { id: master_file.id, quality: 'high', format: 'm3u8' }).to have_http_status(401)
+          expect(get :hls_manifest, params: { id: master_file.id, quality: 'high', format: 'm3u8' }).to have_http_status(401)
+        end
+      end
+    end
+  end
+
   describe "#create" do
     let(:media_object) { FactoryBot.create(:media_object) }
-    # TODO: fill in the lets below with a legitimate values from mediainfo
-    # let(:mediainfo_video) {  }
-    # let(:mediainfo_audio) {  }
 
     before do
       # login_user media_object.collection.managers.first
       login_as :administrator
       disableCanCan!
-      # allow_any_instance_of(MasterFile).to receive(:mediainfo).and_return(mediainfo_output)
     end
 
     context "must provide a container id" do
@@ -144,9 +206,12 @@ describe MasterFilesController do
         request.env["HTTP_REFERER"] = "/"
 
         file = fixture_file_upload('/public-domain-book.txt', 'application/json')
+        image = fixture_file_upload('/collection_poster.jpg', 'image/jpeg')
 
         expect { post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id } }.not_to change { MasterFile.count }
+        expect(flash[:error]).not_to be_nil
 
+        expect { post :create, params: { Filedata: [image], original: 'any', container_id: media_object.id } }.not_to change { MasterFile.count }
         expect(flash[:error]).not_to be_nil
       end
 
@@ -158,6 +223,13 @@ describe MasterFilesController do
         expect(master_file.file_format).to eq "Moving image"
 
         expect(flash[:error]).to be_nil
+      end
+
+      it "rejects when ffprobe is misconfigured" do
+        allow(Settings.ffprobe).to receive(:path).and_return('misconfigured/path')
+        file = fixture_file_upload('/jazz-performance.mp3', 'audio/mp3')
+        expect { post :create, params: { Filedata: [file], original: 'any', container_id: media_object.id } }.not_to change { MasterFile.count }
+        expect(flash[:error]).not_to be_nil
       end
     end
 
@@ -259,6 +331,22 @@ describe MasterFilesController do
       login_as :user
       expect(controller.current_ability.can?(:destroy, master_file)).to be_falsey
       expect(post(:destroy, params: { id: master_file.id })).to render_template('errors/restricted_pid')
+    end
+
+    context "master file with child supplemental files" do
+      let!(:master_file) { FactoryBot.create(:master_file, :with_media_object, :cancelled_processing, supplemental_files: [supplemental_file]) }
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file) }
+
+      around(:example) do |example|
+        perform_enqueued_jobs { example.run }
+      end
+
+      it "deletes child files" do
+        login_as :administrator
+        expect(SupplementalFile.exists?(supplemental_file.id)).to be_truthy
+        post :destroy, params: { id: master_file.id }
+        expect(SupplementalFile.exists?(supplemental_file.id)).to be_falsey
+      end
     end
   end
 
@@ -385,6 +473,18 @@ describe MasterFilesController do
         expect(response.response_code).to eq(404)
       end
     end
+
+    context 'deleted master file' do
+      before do
+        master_file.destroy
+      end
+
+      it 'should redirect to deleted_pid page' do
+        get 'show', params: { id: master_file.id }
+        expect(response).to render_template("errors/deleted_pid")
+        expect(response.response_code).to eq(410)
+      end
+    end
   end
 
   describe "#embed" do
@@ -499,6 +599,20 @@ describe MasterFilesController do
         get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar', offset: '1' }
         expect(response.body).to eq('fake image content')
         expect(response.headers['Content-Type']).to eq('image/jpeg')
+      end
+
+      context "video without thumbnail" do
+        subject(:mf) { FactoryBot.create(:master_file, :with_media_object) }
+        it "returns video_icon.png" do
+          expect(get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar' }).to redirect_to(ActionController::Base.helpers.asset_path('video_icon.png'))
+        end
+      end
+
+      context "audio" do
+        subject(:mf) { FactoryBot.create(:master_file, :audio, :with_media_object) }
+        it "returns audio_icon.png" do
+          expect(get :get_frame, params: { id: mf.id, type: 'thumbnail', size: 'bar' }).to redirect_to(ActionController::Base.helpers.asset_path('audio_icon.png'))
+        end
       end
     end
 
@@ -744,8 +858,8 @@ describe MasterFilesController do
         master_file.destroy
       end
 
-      it 'returns gone (403)' do
-        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:unauthorized)
+      it 'returns gone (410)' do
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:gone)
       end
     end
 
@@ -795,7 +909,7 @@ describe MasterFilesController do
       end
       context 'as an end user' do
         before do
-          login_as :student
+          login_as :user
         end
         it 'redirects to restricted content page' do
           post('move', params: { id: master_file.id, target: target_media_object.id })
@@ -829,6 +943,21 @@ describe MasterFilesController do
         expect(master_file.reload.media_object_id).to eq target_media_object.id
         expect(current_media_object.section_ids).not_to include master_file.id
         expect(target_media_object.section_ids).to include master_file.id
+      end
+
+      context 'extra whitespace in ID' do
+        it 'moves the master file' do
+          expect(current_media_object.section_ids).to include master_file.id
+          expect(target_media_object.section_ids).not_to include master_file.id
+          post('move', params: { id: master_file.id, target: " #{target_media_object.id} " })
+          current_media_object.reload
+          target_media_object.reload
+          expect(response).to redirect_to(edit_media_object_path(current_media_object))
+          expect(flash[:success]).not_to be_blank
+          expect(master_file.reload.media_object_id).to eq target_media_object.id
+          expect(current_media_object.section_ids).not_to include master_file.id
+          expect(target_media_object.section_ids).to include master_file.id
+        end
       end
     end
   end
@@ -931,16 +1060,40 @@ describe MasterFilesController do
         Settings.encoding = double("encoding", engine_adapter: 'test', derivative_bucket: 'mybucket')
       end
 
-      it 'should redirect to a presigned url for AWS' do
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
-        get :download_derivative, params: { id: master_file.id }
-        expect(response.status).to eq 302
-        expect(response.location).to include('s3.us-stubbed-1.amazonaws.com', 'X-Amz-Algorithm', 'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
-      end
-
       after do
         Settings.encoding = @encoding_backup
+      end
+
+      context 'use_presigned_url = true' do
+        it 'should redirect to a presigned url for AWS' do
+          allow(Settings.derivative).to receive(:use_presigned_url).and_return(true)
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('AWS_REGION').and_return('us-east-2')
+          get :download_derivative, params: { id: master_file.id }
+          expect(response.status).to eq 302
+          expect(response.location).to include('s3.us-stubbed-1.amazonaws.com', 'X-Amz-Algorithm', 'X-Amz-Credential', 'X-Amz-Expires', 'X-Amz-SignedHeaders', 'X-Amz-Signature')
+        end
+      end
+
+      context 'use_presigned_url = false' do
+        let(:client) { Aws::S3::Client.new(stub_responses: true) }
+        # Weird encoding quirks from av files caused issue with the test so run the test with a regular
+        # text file to make sure response body is matching. Can manually confirm that av files are 
+        # being returned properly in real world context.
+        let(:object_body) { File.read(Rails.root.join('spec', 'fixtures', 'captions.vtt')) }
+
+        before do
+          client.stub_responses(:get_object, { body: object_body })
+          allow(Aws::S3::Client).to receive(:new).and_return(client)
+          allow(Settings.derivative).to receive(:use_presigned_url).and_return(false)
+        end
+
+        it 'should stream the file contents' do
+          get :download_derivative, params: { id: master_file.id }
+          expect(response.header['Content-Disposition']).to eq 'attachment; filename=fixtures/meow.wav'
+          expect(response.header['Content-Transfer-Encoding']).to eq 'binary'
+          expect(response.body).to eq object_body
+        end
       end
     end
 
@@ -953,23 +1106,24 @@ describe MasterFilesController do
       end
     end
   end
-  
+
   describe "search" do
     let(:transcript_1) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: parent_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt')) }
     let(:transcript_2) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: parent_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.txt'), 'text/plain')) }
     let(:other_transcript) { FactoryBot.create(:supplemental_file, :with_transcript_tag, parent_id: other_master_file.id, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.txt'), 'text/plain')) }
     let(:parent_master_file) { FactoryBot.create(:master_file, :with_media_object) }
-    let(:other_master_file) { FactoryBot.create(:master_file, :with_media_object)}
+    let(:other_master_file) { FactoryBot.create(:master_file, :with_media_object) }
 
     before :each do
       parent_master_file.supplemental_files += [transcript_1, transcript_2]
       other_master_file.supplemental_files += [other_transcript]
       parent_master_file.save
       other_master_file.save
+      login_as :administrator
     end
 
     it "returns a list of matches from all of a master file's transcripts" do
-      get('search', params: { id: parent_master_file.id, q: 'before' } )
+      get('search', params: { id: parent_master_file.id, q: 'before' })
       result = JSON.parse(response.body)
       items = result["items"]
       expect(items.count).to eq 2
@@ -980,18 +1134,37 @@ describe MasterFilesController do
     end
 
     it 'does not return matches from other master files' do
-      get('search', params: { id: parent_master_file.id, q: 'before' } )
+      get('search', params: { id: parent_master_file.id, q: 'before' })
       result = JSON.parse(response.body)
       expect(result['items'].any? { |item| item["id"].include?(other_master_file.id) }).to eq false
     end
 
     it 'does phrase searches' do
-      get('search', params: { id: parent_master_file.id, q: 'before lunch' } )
+      get('search', params: { id: parent_master_file.id, q: 'before lunch' })
       result = JSON.parse(response.body)
       items = result["items"]
       expect(items.count).to eq 1
       expect(items[0]["body"]["value"]).to eq "Just <em>before</em> <em>lunch</em> one day, a puppet show was put on at school."
       expect(items[0]["target"]).to eq "#{Rails.application.routes.url_helpers.transcripts_master_file_supplemental_file_url(parent_master_file.id, transcript_1.id)}#t=00:00:22.200,00:00:26.600"
+    end
+
+    context 'with empty search' do
+      it 'returns an empty valid IIIF content search response' do
+        get('search', params: { id: parent_master_file.id })
+        result = JSON.parse(response.body)
+        expect(result["@context"]).to eq "http://iiif.io/api/search/2/context.json"
+        expect(result["id"]).to eq Rails.application.routes.url_helpers.search_master_file_url(parent_master_file.id).to_s
+        expect(result["type"]).to eq "AnnotationPage"
+        expect(result["items"]).to be_blank
+      end
+    end
+
+    context 'unauthorized user' do
+      it 'receives a 401 response' do
+        login_as :user
+        get('search', params: { id: parent_master_file.id })
+        expect(response.status).to eq 401
+      end
     end
   end
 end

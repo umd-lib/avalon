@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -18,8 +18,10 @@ class SearchBuilder < Blacklight::SearchBuilder
   include Hydra::AccessControlsEnforcement
   include Hydra::MultiplePolicyAwareAccessControlsEnforcement
 
+  PERMISSION_GROUPS = [Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC, Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED]
+
   class_attribute :avalon_solr_access_filters_logic
-  self.avalon_solr_access_filters_logic = [:only_published_items, :limit_to_non_hidden_items]
+  self.avalon_solr_access_filters_logic = [:only_published_items, :limit_to_non_hidden_items, :limit_to_inheritance_enabled_items]
   self.default_processor_chain += [:only_wanted_models, :term_frequency_counts, :search_section_transcripts]
 
   def only_wanted_models(solr_parameters)
@@ -28,33 +30,52 @@ class SearchBuilder < Blacklight::SearchBuilder
   end
 
   def only_published_items(_permission_types = discovery_permissions, _ability = current_ability)
-    [policy_clauses, 'workflow_published_sim:"Published"'].compact.join(" OR ")
+    [policy_clauses(permission_types: [:edit]), 'workflow_published_sim:"Published"'].compact.join(" OR ")
   end
 
   def limit_to_non_hidden_items(_permission_types = discovery_permissions, _ability = current_ability)
-    [policy_clauses,"(*:* NOT hidden_bsi:true)"].compact.join(" OR ")
+    media_object_hidden_clause = "hidden_bsi:true"
+    collection_hidden_clause = "{!join from=id to=isGovernedBy_ssim}default_hidden_bsi:true"
+
+    [policy_clauses(permission_types: [:edit]), "(*:* AND NOT #{media_object_hidden_clause} AND (disable_inheritance_bsi:true OR (*:* AND NOT #{collection_hidden_clause})))"].compact.join(" OR ")
+  end
+
+  def limit_to_inheritance_enabled_items(_permission_types = discovery_permissions, ability = current_ability)
+    current_user = ability.current_user.username
+    user_groups = ability.user_groups - PERMISSION_GROUPS
+    user_visibility_groups = ability.user_groups & PERMISSION_GROUPS
+    read_access_clauses = []
+    read_access_clauses += ["read_access_person_ssim:#{RSolr.solr_escape(current_user)}"] if current_user.present?
+    read_access_clauses += ["_query_:\"{!terms f=read_access_group_ssim}#{RSolr.solr_escape(user_groups.join(','))}\""] if user_groups.present?
+    [policy_clauses(permission_types: [:edit]), "(*:* AND NOT disable_inheritance_bsi:true AND (#{(Array(policy_clauses(permission_types: [:read])) + read_access_clauses).join(" OR ")}))", "(disable_inheritance_bsi:true AND (#{(read_access_clauses + ["read_access_group_ssim:(#{user_visibility_groups.join(" OR ")})"]).join(" OR ")}))"].compact.join(" OR ")
   end
 
   # Overridden to skip for admin users
   def add_access_controls_to_solr_params(solr_parameters)
-    if current_ability.cannot? :discover_everything, MediaObject
-      solr_parameters[:fq] ||= []
-      solr_parameters[:fq] << gated_discovery_filters.reject(&:blank?).join(' OR ')
-      avalon_solr_access_filters_logic.each do |filter|
-        solr_parameters[:fq] << send(filter, discovery_permissions, current_ability)
-      end
-      Rails.logger.debug("Solr parameters: #{solr_parameters.inspect}")
+    return unless current_ability.cannot? :discover_everything, MediaObject
+
+    solr_parameters[:fq] ||= []
+    solr_parameters[:fq] << gated_discovery_filters.reject(&:blank?).join(' OR ')
+    avalon_solr_access_filters_logic.each do |filter|
+      solr_parameters[:fq] << send(filter, discovery_permissions, current_ability)
     end
+    Rails.logger.debug("Solr parameters: #{solr_parameters.inspect}")
   end
 
   def search_section_transcripts(solr_parameters)
     return unless solr_parameters[:q].present? && SupplementalFile.with_tag('transcript').any? && !(blacklight_params[:controller] == 'bookmarks')
 
-    terms = solr_parameters[:q].split
-    return if terms.any? { |term| term.match?(/[\{\}]/) }
-    term_subquery = terms.map { |term| "transcript_tsim:#{RSolr.solr_escape(term)}" }.join(" OR ")
-    solr_parameters[:defType] = "lucene"
-    solr_parameters[:q] = "({!edismax v=\"#{RSolr.solr_escape(solr_parameters[:q])}\"}) {!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}#{term_subquery}"
+    # In order for the multi-word query to work we need to NOT RSolr.solr_escape the query; this is also true for quoted phrase searches
+    # We can manually escape solr special characters that cause issues.
+    query = solr_parameters[:q].gsub(/([\(\)\{\}\[\]\^\*\?\:\$\+\-\/])/, '\\\\\\\\\1')
+    # Wrap transcript query in parenthesis so phrase and non-phrase terms can be mixed together and parse correctly
+    transcript_subquery = "transcript_tsim:(#{query.gsub(/"/, '\\\\"')})"
+    # Enable subqueries that are disabled by default in edismax
+    solr_parameters[:uf]="* _query_"
+    # Subquery needs to be in quotes in order to parse correctly
+    # For some reason solr appears to require the first term in the query.  This causes problems if the search only matches in the transcript and not the metadata.
+    # To workaround this we added the has_model_ssim clause which shouldn't affect query results since it already exists as a filter query in #only_wanted_model.
+    solr_parameters[:q] = "has_model_ssim:MediaObject AND (#{RSolr.solr_escape(solr_parameters[:q])} _query_:\"{!join to=id from=isPartOf_ssim}{!join to=id from=isPartOf_ssim}#{transcript_subquery}\")"
   end
 
   def term_frequency_counts(solr_parameters)
@@ -65,7 +86,8 @@ class SearchBuilder < Blacklight::SearchBuilder
     transcripts_present = SupplementalFile.with_tag('transcript').any?
 
     # List of fields for displaying on search results (Blacklight index fields)
-    fl = ['id', 'has_model_ssim', 'title_tesi', 'date_issued_ssi', 'creator_ssim', 'abstract_ssi', 'duration_ssi', 'section_id_ssim', 'avalon_resource_type_ssim']
+    fl = ['id', 'has_model_ssim', 'title_tesi', 'alternative_title_ssim', 'date_issued_ssi', 'creator_ssim', 'abstract_ssi', 'duration_ssi', 'section_id_ssim', 'avalon_resource_type_ssim',
+          'descMetadata_modified_dtsi', 'timestamp']
 
     # Add a field for matching child sections
     fl << "sections:[subquery]"
@@ -74,9 +96,9 @@ class SearchBuilder < Blacklight::SearchBuilder
     solr_parameters["sections.rows"] = 1_000_000
     sections_fl = ['id']
     transcripts_fl = ['id'] if transcripts_present
-   
-    # Add fields for each term in the query 
-    terms = solr_parameters[:q].split
+
+    # Add fields for each term in the query, explictly escape closing parenthesis to prevent error
+    terms = solr_parameters[:q].gsub(/(\))/, "\\\\\1").split(/[\s\u3000]/).compact_blank
     terms.each_with_index do |term, i|
       fl << "metadata_tf_#{i}:termfreq(mods_tesim,#{RSolr.solr_escape(term)})"
       fl << "structure_tf_#{i}:termfreq(section_label_tesim,#{RSolr.solr_escape(term)})"

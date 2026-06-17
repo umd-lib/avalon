@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -16,13 +16,13 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% options[:display_label] ||= options[:multivalued] ? "#{field.to_s.humanize}(s)" : field.to_s.humanize %>
 
     <%= form.label(field, class: 'col-form-label') do %>
-      <%= content_tag :span, class: 'tooltip-label', :'data-title' => options[:display_label], :'data-tooltip' => "##{field.to_s}_tooltip" do %>
+      <%= content_tag :span, class: 'tooltip-label', :'data-title' => options[:display_label], :'data-bs-toggle' => 'collapse', :'data-bs-target' => "##{field.to_s}_tooltip" do %>
          <%= options[:display_label] %><% if options[:required] %>*<% end %>
          <%= content_tag :span, '', class: 'fa fa-question-circle' %>
       <% end %>
     <% end %>
     
     <span class="form-text tooltip-block text-muted collapse" id="<%= field.to_s %>_tooltip">
-      <%= content_tag :span, '', class: 'close fa fa-times' %>
+      <%= content_tag :span, '', class: 'btn-close' %>
       <%= tooltip.html_safe %>
     </span>

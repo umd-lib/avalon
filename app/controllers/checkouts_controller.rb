@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -19,6 +19,8 @@ class CheckoutsController < ApplicationController
 
   # GET /checkouts or /checkouts.json
   def index
+    # Checkouts for index page are loaded via /javascript/componenets/tables/CheckoutsTable.jsx
+    # which requests the json for all records on initial page load.
     respond_to do |format|
       format.html { render :index }
       format.json do
@@ -29,7 +31,8 @@ class CheckoutsController < ApplicationController
             else
               user_array(checkout)
             end
-          end
+          end.compact,
+          "recordsTotal": @checkouts.count
         }
         render json: response
       end
@@ -125,17 +128,21 @@ class CheckoutsController < ApplicationController
     end
 
     def admin_array(checkout)
-      [checkout.user.user_key] + user_array(checkout)
+      checkout_array = user_array(checkout)
+      checkout_array.present? ? [checkout.user.user_key] + checkout_array : nil
     end
 
     def user_array(checkout)
+      checkout_title = checkout.media_object.title ? checkout.media_object.title : checkout.media_object.id
       [
-        view_context.link_to(checkout.media_object.title, main_app.media_object_url(checkout.media_object)),
+        view_context.link_to(checkout_title, main_app.media_object_url(checkout.media_object)),
         "<span data-utc-time='#{checkout.checkout_time.iso8601}' />",
         "<span data-utc-time='#{checkout.return_time.iso8601}' />",
         time_remaining(checkout),
         checkout_actions(checkout)
       ]
+    rescue ActiveFedora::ObjectNotFoundError
+      nil
     end
 
     def time_remaining(checkout)

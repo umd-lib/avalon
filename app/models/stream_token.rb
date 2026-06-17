@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,6 +14,7 @@
 
 class StreamToken < ActiveRecord::Base
   scope :expired, proc { where('expires <= :now', now: Time.now.utc) }
+  scope :not_expired, proc { where('expires > :now', now: Time.now.utc) }
   class Unauthorized < Exception; end
 
   #  attr_accessible :token, :target, :expires
@@ -60,10 +61,10 @@ class StreamToken < ActiveRecord::Base
       attrs[:id] = existing_token_hash[attrs[:token]] if existing_token_hash[attrs[:token]].present?
     end
 
-    result = token_attributes.present? ? StreamToken.upsert_all(token_attributes) : []
+    token_attributes.present? ? StreamToken.upsert_all(token_attributes) : []
 
     # Fetch StreamToken fresh so they can be put into session and returned
-    tokens = StreamToken.where(id: result.to_a.pluck("id"))
+    tokens = StreamToken.where(id: token_attributes.pluck(:id))
     session[:hash_tokens] += tokens.pluck(:token)
     session[:hash_tokens].uniq! # Avoid duplicate entry
     tokens.to_a
@@ -76,9 +77,11 @@ class StreamToken < ActiveRecord::Base
   end
 
   def self.purge_expired!(session)
-    purged = expired.delete_all
-    session[:hash_tokens] = StreamToken.where(token: Array(session[:hash_tokens])).order(expires: :desc).limit(max_tokens_per_user).pluck(:token)
-    purged
+    session[:hash_tokens] = not_expired.where(token: Array(session[:hash_tokens])).order(expires: :desc).limit(max_tokens_per_user).pluck(:token)
+  end
+
+  def self.delete_expired
+    expired.delete_all
   end
 
   def self.validate_token(value)

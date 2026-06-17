@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -13,34 +13,56 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
-<div id="share-list">
-    <nav class="nav nav-tabs share-tabs">
-      <%= render_conditional_partials :share, section:'share-tabs' %>
-    </nav>
+<div id="share-list" data-testid="playlist-share-list">
+  <nav class="nav nav-tabs share-tabs" role="tablist">
+    <%= render_conditional_partials :share, section:'share-tabs' %>
+  </nav>
 
-    <div class="tab-content">
-      <%= render_conditional_partials :share, section:'tab-content' %>
-    </div>
+  <div class="tab-content">
+    <%= render_conditional_partials :share, section:'tab-content' %>
   </div>
+</div>
 
 <% content_for :page_scripts do %>
 
 <script>
-  $(document).ready(function() {
+  document.addEventListener('DOMContentLoaded', function() {
     setInterval(shareResourceListener, 500);
 
     function shareResourceListener() {
-      if(!$('nav.share-tabs').first().hasClass('active')) {
-        $('nav.share-tabs').first().toggleClass('active');
-        $('.share-tabs a').first().attr('aria-selected', true);
-        $('#share-list .tab-content .tab-pane').first().toggleClass('active');
+      const firstShareTab = query('nav.share-tabs');
+      if (firstShareTab && !firstShareTab.classList.contains('active')) {
+        firstShareTab.classList.add('active');
+
+        const firstTabLink = query('.share-tabs a');
+        if (firstTabLink) {
+          firstTabLink.setAttribute('aria-selected', 'true');
+        }
+
+        const firstTabPane = query('#share-list .tab-content .tab-pane');
+        if (firstTabPane) {
+          firstTabPane.classList.add('active');
+        }
       }
 
-      $('.share-tabs a').click(function (e) {
-        e.preventDefault();
-        $(this).tab('show');
-        $('.share-tabs a').attr('aria-selected', false);
-        $(this).attr('aria-selected', true);
+      const shareTabLinks = queryAll('.share-tabs a');
+      shareTabLinks.forEach(function(link) {
+        // Remove existing listeners by cloning (prevents duplicate listeners)
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+
+        newLink.addEventListener('click', function(e) {
+          e.preventDefault();
+
+          // Show the tab using Bootstrap's Tab API
+          const tab = new bootstrap.Tab(this);
+          tab.show();
+
+          // Update aria-selected attributes
+          const allTabLinks = queryAll('.share-tabs a');
+          allTabLinks.forEach(tabLink => tabLink.setAttribute('aria-selected', 'false'));
+          this.setAttribute('aria-selected', 'true');
+        });
       });
     }
   })

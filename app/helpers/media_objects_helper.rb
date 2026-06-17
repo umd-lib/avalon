@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -51,18 +51,6 @@ module MediaObjectsHelper
      ic.iconv(url)
   end
 
-  def combined_display_date media_object
-    (issued,created) = case media_object
-    when MediaObject, SpeedyAF::Proxy::MediaObject
-      [media_object.date_issued, media_object.date_created]
-    when Hash
-      [media_object[:document]['date_issued_ssi'], media_object[:document]['date_created_ssi']]
-    end
-    result = issued
-    result += " (Creation date: #{created})" if created.present?
-    result
-  end
-
   def display_other_identifiers media_object
     # bibliographic_id has form [:type,"value"], other_identifier has form [[:type,"value],[:type,"value"],...]
     ids = media_object.bibliographic_id.present? ? [media_object.bibliographic_id] : []
@@ -95,7 +83,8 @@ module MediaObjectsHelper
   end
 
   def display_unit(media_object)
-    link_to(media_object.collection.unit, collections_path(filter: media_object.collection.unit))
+    unit = media_object.collection.unit
+    link_to(unit.name, unit_path(unit.id))
   end
 
   def display_language media_object

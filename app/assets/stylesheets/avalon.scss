@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2025, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -17,6 +17,7 @@
 @import 'branding';
 @import 'avalon/mixins';
 @import 'avalon/accordions';
+@import 'avalon/bookmarks';
 @import 'avalon/buttons';
 @import 'avalon/collections';
 @import 'avalon/facets';
@@ -48,7 +49,7 @@ body {
 html {
   font-size: 14px;
 
-  @include media-breakpoint-down(md) {
+  @include media-breakpoint-down(lg) {
     font-size: 12px;
   }
 }
@@ -81,6 +82,10 @@ tr.active-false td {
   border-color: $state-info-border;
 }
 
+.form-control {
+  appearance: auto;
+}
+
 pre {
   background-color: #f5f5f5;
   border: 1px solid #ccc;
@@ -107,7 +112,8 @@ div.alert-danger {
 
 .info-text-gray {
   font-style: italic;
-  color: gray;
+  color: #6c757d;
+  /* Bootstrap secondary color with 4.5:1 contrast ratio */
 }
 
 .nowrap {
@@ -123,9 +129,16 @@ div.alert-danger {
   display: flex;
   flex-wrap: wrap;
 
-  > [class*='col-'] {
+  >[class*='col-'] {
     flex-grow: 1;
   }
+}
+
+// Force bootstrap grid to display poster buttons next to each other
+.row .edit_admin_collection,
+.row .edit_admin_unit {
+  width: unset;
+  max-width: 50%
 }
 
 // TODO: We should find and replace these usages
@@ -143,7 +156,7 @@ div.alert-danger {
     margin-top: 0;
   }
 
-  @include media-breakpoint-down(md) {
+  @include media-breakpoint-down(lg) {
     h1 {
       font-size: 2rem;
     }
@@ -182,13 +195,13 @@ div.alert-danger {
 }
 
 .mobile-hidden {
-  @include media-breakpoint-down(sm) {
+  @include media-breakpoint-down(md) {
     display: none !important;
   }
 }
 
 .sm-hidden {
-  @include media-breakpoint-down(sm) {
+  @include media-breakpoint-down(md) {
     display: none !important;
   }
 }
@@ -208,7 +221,6 @@ div.alert-danger {
   margin-left: -40%;
 }
 
-// Custom file preview field for Jasny bootstrap
 .uneditable-input-exists {
   //@extend .uneditable-input;
   width: 45%;
@@ -231,17 +243,13 @@ div.alert-danger {
   cursor: pointer;
 }
 
-.tooltip-block .close {
+.tooltip-block .btn-close {
   font-size: 14px;
 }
 
 .access-block {
   .row {
     margin-right: 0;
-  }
-
-  span.twitter-typeahead {
-    width: 100%;
   }
 
   .remove:hover,
@@ -255,6 +263,7 @@ div.alert-danger {
 
   td.access_list_remove {
     min-width: 3rem;
+    text-align: right;
   }
 }
 
@@ -304,15 +313,6 @@ span.constraints-label {
   margin-top: 2em;
 }
 
-.progress-inline {
-  display: inline-block;
-  height: 9pt;
-  width: 36pt;
-  margin-right: 2pt;
-  margin-bottom: 0;
-  cursor: pointer;
-}
-
 .control-group .controls {
   &.error {
     input:first-child {
@@ -348,12 +348,12 @@ span.constraints-label {
 }
 
 .role-popover-help {
-  & + .popover .arrow {
+  &+.popover .arrow {
     left: 10%;
   }
 }
 
-.btn-confirmation + .popover .popover-content {
+.btn-confirmation+.popover .popover-content {
   white-space: nowrap;
 }
 
@@ -400,7 +400,7 @@ a[data-trigger='submit'] {
     margin-bottom: 10px;
   }
 
-  @include media-breakpoint-down(sm) {
+  @include media-breakpoint-down(md) {
     margin-top: 1rem;
     padding: 0;
   }
@@ -413,7 +413,7 @@ a[data-trigger='submit'] {
   font-weight: 700 !important;
 }
 
-.tab-content > .tab-pane {
+.tab-content>.tab-pane {
   padding: 10px;
   border-bottom: 1px solid #ddd;
   border-left: 1px solid #ddd;
@@ -456,7 +456,7 @@ a[data-trigger='submit'] {
   }
 }
 
-@include media-breakpoint-down(xs) {
+@include media-breakpoint-down(sm) {
   #content {
     .btn {
       margin-top: 2px;
@@ -472,7 +472,7 @@ a[data-trigger='submit'] {
   }
 }
 
-.edit_media_object .form-group {
+.edit_media_object .mb-3 {
   margin-bottom: 0;
 }
 
@@ -515,11 +515,6 @@ a[data-trigger='submit'] {
   }
 }
 
-div.status-detail {
-  margin-bottom: 0;
-  font-size: 0.9em;
-}
-
 /* MediaObject structure page */
 .structure_add_to_playlist {
   float: right;
@@ -534,13 +529,13 @@ div.status-detail {
 #mediaobject_structure {
   overflow-x: auto;
 
-  @include media-breakpoint-between (md, xl) {
+  @include media-breakpoint-between (sm, xxl) {
     ul {
       width: 100%;
     }
   }
 
-  @include media-breakpoint-down (sm) {
+  @include media-breakpoint-down (md) {
     ul {
       width: 730px;
     }
@@ -661,12 +656,12 @@ div.structure_edit {
       background-color: $state-danger-bg;
     }
 
-    .attribute_container > textarea {
+    .attribute_container>textarea {
       resize: both;
     }
 
-    .attribute_container > a,
-    .attribute_container > label {
+    .attribute_container>a,
+    .attribute_container>label {
       vertical-align: top;
     }
   }
@@ -717,12 +712,14 @@ h5.card-title {
   min-height: 1em;
 }
 
-.card-header .accordion-toggle:before {
+.card-header .accordion-toggle:before,
+.facets-header .accordion-toggle:before {
   font-family: 'FontAwesome';
   content: '\f078';
 }
 
-.card-header .accordion-toggle.collapsed:before {
+.card-header .accordion-toggle.collapsed:before,
+.facets-header .accordion-toggle.collapsed:before {
   content: '\f054';
 }
 
@@ -759,11 +756,9 @@ h5.card-title {
     font-weight: bold;
   }
 
-  .clip_start_time {
-  }
+  .clip_start_time {}
 
-  .clip_end_time {
-  }
+  .clip_end_time {}
 
   .clip_position {
     text-align: center;
@@ -786,9 +781,22 @@ h5.card-title {
   padding: 8px;
 }
 
-.twitter-typeahead {
-  z-index: auto !important;
-  background-color: $white;
+.autocomplete_popup {
+  z-index: 100;
+
+  &#admin_collection\[unit_name\]-popup {
+    white-space: nowrap;
+  }
+
+  &:not(#admin_collection\[unit_name\]-popup) {
+    width: 100%;
+  }
+}
+
+#blacklight-modal {
+  auto-complete {
+    flex-grow: 0;
+  }
 }
 
 /**
@@ -817,7 +825,7 @@ h5.card-title {
     padding-bottom: 10px;
     justify-content: space-between;
 
-    > span {
+    >span {
       padding: 0 5px;
     }
 
@@ -902,7 +910,7 @@ h5.card-title {
   div.file_view {
     margin: 10px 0 5px 20px;
 
-    ul {
+    ul:not(.autocomplete_popup) {
       padding-left: 20px;
 
       li {
@@ -932,17 +940,32 @@ h5.card-title {
         .file-remove {
           display: none;
         }
-        .form-group {
-          margin-bottom: 0.2rem;
+        .fa-gears {
+          display: none;
         }
         display: flex;
+
+        .ms-3 {
+          margin-left: 0 !important;
+        }
+
+        .form-check-inline {
+          margin-right: 0;
+          white-space: nowrap;
+
+          &:first-of-type {
+            margin-left: 0.5rem;
+            margin-right: -0.5rem;
+          }
+        }
       }
       margin-top: 0.75rem;
 
       .visible-inline {
         display: none;
 
-        .icon-success, .icon-error {
+        .icon-success,
+        .icon-error {
           font-size: 1.2rem;
         }
       }
@@ -952,8 +975,8 @@ h5.card-title {
       }
     }
 
-    div.supplemental-file-data.is-editing:not(.edit-item) + div.supplemental-file-data {
-      margin-top: 2.5rem;
+    div.supplemental-file-data.is-editing:not(.edit-item)+div.supplemental-file-data {
+      margin-top: 2.75rem;
     }
 
     .supplemental-file-form {
@@ -978,10 +1001,8 @@ h5.card-title {
       height: 25px;
     }
 
-    &.captions, &.transcripts {
-      div.supplemental-file-data.is-editing:last-child {
-        margin-bottom: 1.75rem;
-      }
+    div.supplemental-file-data.is-editing:last-child {
+      margin-bottom: 2rem;
     }
   }
 }
@@ -1027,7 +1048,8 @@ h5.card-title {
   white-space: pre-wrap;
 }
 
-.admin-collection-details {
+.admin-collection-details,
+.admin-unit-details {
   border-radius: 4px;
   border: 1px solid #e3e3e3;
   background-color: #f5f5f5;
@@ -1084,30 +1106,29 @@ h5.card-title {
 }
 
 /*Encode dashboard progress bar */
-#encode-records {
-  .progress {
+.encoding_jobs-table-container {
+  .progress-bar {
     background-color: #bcbebf;
     text-align: left;
     position: relative;
     height: 13px;
     margin: 4px 0px;
-    .completed {
-      background-color: $success;
-    }
-    .failed {
-      background-color: $danger;
-    }
-    .cancelled {
-      background-color: $gray;
-    }
-    .running {
-      background-color: $lightblue;
-    }
-    .progress-bar {
-      text-align: left;
-      line-height: 13px;
-      padding: 1px 10px 2px;
-    }
+  }
+  .completed {
+    background-color: $success;
+  }
+  .failed {
+    background-color: $danger;
+  }
+  .cancelled {
+    background-color: $gray;
+  }
+  .running {
+    background-color: $lightblue;
+  }
+  /* Break long filenames */
+  td {
+    word-break: break-all;
   }
 }
 
@@ -1139,29 +1160,8 @@ h5.card-title {
 }
 
 #file-upload {
+  margin-top: 1rem;
   display: flex;
-}
-
-/* DataTables in Playlists, Timelines, Persona Users, and Encode Dashboard */
-.dataTableToolsTop {
-  text-align: right;
-}
-
-@include media-breakpoint-up(xs) {
-  .dataTables_length {
-    float: left;
-  }
-}
-
-// Make table body scrollable in mobile devices
-@include media-breakpoint-down(md) {
-  .dataTableBody {
-    width: 100%;
-    overflow-x: scroll;
-  }
-  .pagination {
-    justify-content: center !important;
-  }
 }
 
 // Action column of each table
@@ -1171,11 +1171,6 @@ h5.card-title {
   td:last-child {
     white-space: nowrap;
   }
-}
-
-#users-table th,
-td {
-  padding-right: 6px !important;
 }
 
 .create-buttons {
@@ -1195,6 +1190,12 @@ td {
 
   &:hover {
     background-color: $lightgray;
+  }
+
+  // Override Bootstrap 5's default styling to remove button border on focus-visible
+  &:focus-visible {
+    border: 1px solid $btn-outline-border-color;
+    box-shadow: 0 0 0 0.2rem rgba($btn-outline-border-color, 0.25);
   }
 }
 
@@ -1218,14 +1219,14 @@ td {
 
 /* CDL controls on view page styles */
 .cdl-controls {
-  @include media-breakpoint-down(sm) {
+  @include media-breakpoint-down(md) {
     margin-top: 1rem;
   }
   .remaining-time {
     display: flex;
     text-align: center;
 
-    @include media-breakpoint-down(sm) {
+    @include media-breakpoint-down(md) {
       margin: 0;
     }
   }
@@ -1254,7 +1255,7 @@ td {
   }
 
   #return-btn {
-    @include media-breakpoint-down(sm) {
+    @include media-breakpoint-down(md) {
       float: right;
     }
   }
@@ -1267,7 +1268,7 @@ td {
   p {
     position: relative;
     text-align: center;
-    @include media-breakpoint-down(md) {
+    @include media-breakpoint-down(lg) {
       margin-bottom: 0;
     }
   }
@@ -1277,18 +1278,18 @@ td {
     margin: 0 auto;
   }
 
-  .centered {
-    margin: auto;
-    position: absolute;
-    width: 50%;
-    left: 25%;
-  }
-
   .centered.video {
     top: 50%;
+    left: 25%;
     position: absolute;
     margin: 0;
     transform: translateY(-50%);
+  }
+
+  .centered {
+    width: 50%;
+    margin: 0 auto;
+    text-align: center;
   }
 }
 
@@ -1303,3 +1304,12 @@ td {
   position: relative;
 }
 /* End of CDL controls on view page styles */
+
+/* Align thumbnail with item title */
+.documents-list .document .document-thumbnail {
+  padding-left: 1rem;
+}
+
+.document-metadata {
+  margin-bottom: 3rem;
+}

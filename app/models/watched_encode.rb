@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -34,23 +34,45 @@ class WatchedEncode < ActiveEncode::Base
     if Settings.encoding.derivative_bucket &&
        (Settings.encoding.engine_adapter.to_sym == :ffmpeg || is_a?(PassThroughEncode))
       bucket = Aws::S3::Bucket.new(name: Settings.encoding.derivative_bucket)
+
       encode.output.collect! do |output|
-        file = FileLocator.new output.url
-        key = file.location.sub(/\/(.*?)\//, "")
-        obj = bucket.object key
-
-        if File.exist? file.location
-          obj.upload_file file.location
-          File.delete file.location
+        if output.format == "vtt"
+          new_file = SupplementalFile.new(tags: ['caption'], parent_id: record.master_file_id)
+          new_file.label = output.label.presence
+          if output.language.present?
+            begin
+              new_file.language = LanguageTerm.find(output.language).code
+            rescue LanguageTerm::LookupError
+              new_file.language = nil
+            end
+          end
+          new_file.attach_file(FileLocator.new(output.url, filename: File.basename(output.url)), io: true)
+          new_file.save
+          output.url = if Settings.active_storage.bucket.present?
+                      "s3://#{Settings.active_storage.bucket}/#{new_file.file.blob.key}"
+                    else
+                      new_file.file.blob.url
+                    end
+          output.id = new_file.to_global_id.to_s
+          output
         else
-          # Calls to Addressable::URI.escape here are to counter the unescaping that happens in FileLocator
-          # This is needed because files uploaded to minio (and probably AWS) escape spaces (%20) instead of keeping spaces
-          obj.upload_file Addressable::URI.escape(file.location)
-          File.delete Addressable::URI.escape(file.location)
-        end
+          file = FileLocator.new output.url
+          key = file.location.sub(/\/(.*?)\//, "")
+          obj = bucket.object key
 
-        output.url = "s3://#{obj.bucket.name}/#{obj.key}"
-        output
+          if File.exist? file.location
+            obj.upload_file file.location
+            File.delete file.location
+          else
+            # Calls to Addressable::URI.escape here are to counter the unescaping that happens in FileLocator
+            # This is needed because files uploaded to minio (and probably AWS) escape spaces (%20) instead of keeping spaces
+            obj.upload_file Addressable::URI.escape(file.location)
+            File.delete Addressable::URI.escape(file.location)
+          end
+
+          output.url = "s3://#{obj.bucket.name}/#{obj.key}"
+          output
+        end
       end
 
       # Save translated output urls

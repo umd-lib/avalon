@@ -1,11 +1,8 @@
-version: '3.4'
-
 volumes:
   # UMD Customization
   streaming:
   # End UMD Customization
   database:
-  fedora:
   solr:
   npms:
   # UMD Customization
@@ -19,9 +16,7 @@ networks:
 
 services:
   db: &db-avalon
-    # UMD Customization
-    image: docker.lib.umd.edu/db:fedora4-avalon-7.8.0-umd-0
-    # End UMD Customization
+    image: postgres:17-alpine
     volumes:
       - database:/data
     environment:
@@ -36,29 +31,31 @@ services:
     volumes: []
 
   fedora: &fedora
-    # UMD Customization
-    image: docker.lib.umd.edu/fedora:4.7.5-avalon-7.8.0-umd-0
-    # End UMD Customization
-    depends_on:
-      - db
-    volumes:
-      - fedora:/data
+    image: fcrepo/fcrepo:7-tomcat10
+    # UMD Customization - local OCFL storage from F4→F6 migration
     environment:
-      - JAVA_OPTIONS=-Dfcrepo.modeshape.configuration=classpath:/config/file-simple/repository.json -Dfcrepo.home=/data
+      - >-
+       CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false
+       -Dfcrepo.storage=ocfl-fs
+       -Dfcrepo.home=/fcrepo-home
+    volumes:
+      - ./ocfl-home:/fcrepo-home
+    # End UMD Customization
     networks:
       internal:
     ulimits:
       nofile:
-        soft: 65536
-        hard: 65536
+        soft: '65536'
+        hard: '65536'
   fedora-test:
     <<: *fedora
+    depends_on: []
+    environment:
+      - CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false
     volumes: []
 
   solr: &solr
-    # UMD Customization
-    image: docker.lib.umd.edu/solr:avalon-7.8.0-umd-0
-    # End UMD Customization
+    image: solr:9
     volumes:
       - ./solr/conf:/opt/solr/avalon_conf
       - solr:/var/solr
@@ -66,8 +63,14 @@ services:
       - solr-precreate
       - avalon
       - /opt/solr/avalon_conf
+    environment:
+      - SOLR_MODULES=analysis-extras,extraction
     networks:
       internal:
+    ulimits:
+      nofile:
+        soft: '65536'
+        hard: '65536'
   solr-test:
     <<: *solr
     volumes:
@@ -80,8 +83,14 @@ services:
     # End UMD Customization
     environment:
       - AVALON_DOMAIN=http://avalon:3000
-      - AVALON_STREAMING_BASE_URL=http://localhost:8880
     # UMD Customization
+      - AVALON_STREAMING_BASE_URL=http://localhost:8880
+      # - AVALON_STREAMING_BUCKET_URL=http://minio:9000/derivatives/
+      # - VOD_MODE=remote
+      # - S3_BUCKET_NAME=derivatives
+      # - AWS_ACCESS_KEY_ID=minio
+      # - AWS_SECRET_ACCESS_KEY=minio123
+      # - S3_SERVER=localhost:9000
     volumes:
       - streaming:/data
     # End UMD Customization
@@ -89,12 +98,11 @@ services:
     ports:
       - '8880:80'
     networks:
+      internal:
       external:
 
   redis: &redis
-    # UMD Customization
-    image: docker.lib.umd.edu/redis:avalon-7.8.0-umd-0
-    # End UMD Customization
+    image: redis:alpine
     networks:
       internal:
   redis-test:
@@ -102,45 +110,69 @@ services:
 
   avalon: &avalon
     # UMD Customization
-    image: docker.lib.umd.edu/avalon:7.8.0-umd-0
+    image: docker.lib.umd.edu/avalon:8.2-umd-0
     # End UMD Customization
     build:
       context: .
       target: dev
-    command: bash -c "/docker_init.sh && bundle exec rails server -b 0.0.0.0"
+    command: bash -c "/docker_init.sh && bin/dev"
     depends_on:
       - db
       - fedora
       - solr
       - redis
       - hls
-    environment:
       # UMD Customization
+      # - minio
+      # End UMD Customization
+    environment:
       - APP_NAME=avalon
+      - BUNDLE_FLAGS=--with development postgres --without production test
+        # UMD Customization
       - SETTINGS__DOMAIN__PROTOCOL=http
       - SETTINGS__DOMAIN__HOST=av-local
       - SETTINGS__DOMAIN__PORT=3000
-      - BUNDLE_FLAGS=--with development postgres --without production test
       - ENCODE_WORK_DIR=/streamfiles
+      - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
+        # End UMD Customization
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
       - DATABASE_URL=postgres://postgres:password@db/avalon
-      - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
       - DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL=true
-      - FEDORA_NAMESPACE=avalon
-      - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fedora/rest
+      - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fcrepo/rest
+      # - FEDORA_BASE_PATH=/dev  # UMD Customization - use root path
       - RAILS_ENV=development
       - RAILS_ADDITIONAL_HOSTS=avalon
-      - SETTINGS__REDIS__HOST=redis
-      - SETTINGS__REDIS__PORT=6379
+      - SETTINGS__REDIS__URL=redis://redis:6379/0
       - SECRET_KEY_BASE=abcd
       - SOLR_URL=http://solr:8983/solr/avalon
+      # UMD Customization - S3/minio settings (used in staging; overridden by env in production)
+      # - AWS_REGION=us-east-1
+      # - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
+      # - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
+      # - SETTINGS__MINIO__ENDPOINT=http://minio:9000
+      # - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
+      # - SETTINGS__MINIO__ACCESS=minio
+      # - SETTINGS__MINIO__SECRET=minio123
+      # - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
+      # - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
+      # - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
+      # - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
+      # - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
+      # - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
       - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
-      - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
+      # End UMD Customization
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
       - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
+      - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=primarykey1234
+      - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=deterministickey1234
+      - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=derivationsalt1234
       - SYSTEM_GROUPS=administrator,group_manager,manager
+      - PIDFILE=tmp/pids/server.pid
+      - PUMA_STATE_PATH=tmp/puma.state
+      - AVALON_PROFILING=true
+      # UMD Customization
       - SAML_ISSUER=av-local:3000
       - UMD_HANDLE_PREFIX=1903.1
       - UMD_HANDLE_REPO=avalon
@@ -178,26 +210,110 @@ services:
       - DIGITAL_COLLECTIONS_URL=https://digital-test.lib.umd.edu/
       # End UMD Customization
       - SETTINGS__FFMPEG__PATH=/usr/bin/ffmpeg
-      - SETTINGS__REDIS__HOST=redis-test
-      - SETTINGS__REDIS__PORT=6379
-      - FEDORA_URL=http://fedora-test:8080/fedora/rest
+      - SETTINGS__REDIS__URL=redis://redis-test:6379/0
+      - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora-test:8080/fcrepo/rest
+      - FEDORA_BASE_PATH=/test
       - SOLR_URL=http://solr-test:8983/solr/avalon
+      - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=primarykey1234
+      - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=deterministickey1234
+      - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=derivationsalt1234
       - RAILS_ENV=test
       - BUNDLE_FLAGS=--with aws test postgres --without production
       - DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL=true
     ports: []
 
+  staging: &staging
+    # UMD Customization
+    <<: *avalon
+    # End UMD Customization
+    container_name: avalon
+    image: ghcr.io/avalonmediasystem/avalon:staging
+    build:
+      context: .
+      target: prod
+    command: bash -c "bundle exec rake db:migrate && bundle exec rails server -b 0.0.0.0"
+    # UMD Customization
+    environment:
+      - APP_NAME=avalon
+      - BUNDLE_FLAGS=--with development postgres --without production test
+        # UMD Customization
+      - SETTINGS__DOMAIN__PROTOCOL=http
+      - SETTINGS__DOMAIN__HOST=av-local
+      - SETTINGS__DOMAIN__PORT=3000
+      - ENCODE_WORK_DIR=/streamfiles
+      - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
+        # End UMD Customization
+      - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
+      - DATABASE_URL=postgres://postgres:password@db/avalon
+      - DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL=true
+      - FEDORA_URL=http://fedoraAdmin:fedoraAdmin@fedora:8080/fcrepo/rest
+      # - FEDORA_BASE_PATH=/dev  # UMD Customization - use root path
+      - RAILS_ENV=production
+      - RAILS_ADDITIONAL_HOSTS=avalon
+      - SETTINGS__REDIS__URL=redis://redis:6379/0
+      - SECRET_KEY_BASE=abcd
+      - SOLR_URL=http://solr:8983/solr/avalon
+      # UMD Customization - S3/minio settings (used in staging; overridden by env in production)
+      # - AWS_REGION=us-east-1
+      # - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
+      # - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
+      # - SETTINGS__MINIO__ENDPOINT=http://minio:9000
+      # - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
+      # - SETTINGS__MINIO__ACCESS=minio
+      # - SETTINGS__MINIO__SECRET=minio123
+      # - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
+      # - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
+      # - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
+      # - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
+      # - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
+      # - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
+      - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
+      # End UMD Customization
+      - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
+      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
+      - SETTINGS__STREAMING__SERVER=nginx
+      - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
+      - SYSTEM_GROUPS=administrator,group_manager,manager
+      - PIDFILE=tmp/pids/server.pid
+      - PUMA_STATE_PATH=tmp/puma.state
+      - AVALON_PROFILING=true
+      # UMD Customization
+      - SAML_ISSUER=av-local:3000
+      - UMD_HANDLE_PREFIX=1903.1
+      - UMD_HANDLE_REPO=avalon
+      - ENVIRONMENT_BANNER=Local Environment
+      - ENVIRONMENT_BANNER_FOREGROUND=#fff
+      - ENVIRONMENT_BANNER_BACKGROUND=#008000
+      # End UMD Customization
+    volumes:
+      # UMD Customization
+      - .:/home/app/avalon
+      - ./masterfiles:/masterfiles
+      - streaming:/streamfiles
+      - npms:/home/app/avalon/node_modules
+      # End UMD Customization
+    ports:
+      - '80:3000'
+    # End UMD Customization
+
   worker:
     <<: *avalon
+    command: dumb-init -- bash -c "/home/app/avalon/script/worker_entrypoint.sh"
+    ports: []
+
+  worker-staging:
+    <<: *staging
+    container_name: worker
     command: dumb-init -- bash -c "bundle install && bundle exec sidekiq -C config/sidekiq.yml"
     ports: []
-# UMD Customization
+
+  # UMD Customization
   # minio:
-  #   image: minio/minio:RELEASE.2024-01-29T03-56-32Z
+  #   image: minio/minio
   #   command: minio server /data --console-address ":9090"
   #   environment:
-  #     MINIO_ACCESS_KEY: minio
-  #     MINIO_SECRET_KEY: minio123
+  #     MINIO_ROOT_USER: minio
+  #     MINIO_ROOT_PASSWORD: minio123
   #   volumes:
   #     - data:/data
   #   ports:
@@ -207,7 +323,7 @@ services:
   #     internal:
   #     external:
   #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+  #     test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
   #     interval: 30s
   #     timeout: 20s
   #     retries: 3
@@ -215,28 +331,32 @@ services:
   # createbuckets:
   #   image: minio/mc
   #   depends_on:
-  #     - minio
+  #     minio:
+  #       condition: service_healthy
   #   entrypoint: >
   #     /bin/sh -c "
-  #     /usr/bin/mc config host add myminio http://minio:9000 minio minio123;
+  #     /usr/bin/mc alias set myminio http://minio:9000 minio minio123;
   #     /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
-  #     /usr/bin/mc anonymous set download myminio/derivatives;
   #     /usr/bin/mc anonymous set download myminio/supplementalfiles;
   #     exit 0;
   #     "
   #   networks:
-  #     internal:
-# End UMD Customization
+  #     internal:+
+  # End UMD Customization
 
   cypress:
     network_mode: host
     image: cypress/included:latest
     depends_on:
       - avalon
-    entrypoint: cypress run -C spec/cypress/cypress.config.js
+    entrypoint:
+      - sh
+      - -c
+      - 'yarn install --dev && cypress run -C spec/cypress/cypress.config.js'
     working_dir: /e2e
     volumes:
       - ./:/e2e
       - npms:/e2e/node_modules
     environment:
-      - CYPRESS_ENV=${CYPRESS_ENV:-local}
+      CYPRESS_ENV: ${CYPRESS_ENV:-local}
+      grepTags: ${CYPRESS_grep:-@critical}

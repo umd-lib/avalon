@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -29,5 +29,10 @@ describe ExternalGroup do
     allow_any_instance_of(Net::LDAP).to receive(:search).and_return([entry1,entry2])
     expect( ExternalGroup.ldap_lookup('Group') ).to eq( [{id:'Group1',display:'Group1'},{id:'Group2',display:'Group2'}] )
     expect( ExternalGroup.autocomplete('Group') ). to eq( ExternalGroup.ldap_lookup('Group') )
+  end
+  it "autocomplete limits to 10 results" do
+    results = (1..15).collect { |i| {id:'Group#{i}',display:'Group#{i}'} }
+    allow(ExternalGroup).to receive(:ldap_lookup).and_return(results)
+    expect(ExternalGroup.autocomplete('Test').size).to eq 10
   end
 end

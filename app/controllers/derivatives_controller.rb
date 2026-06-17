@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -27,11 +27,13 @@ class DerivativesController < ApplicationController
       return head :forbidden
     end
 
+    # UMD Customization
     # If the request header contains 'S3-Presigned-URL', we need to generate a presigned URL
     if request.headers['X-Want-S3-Presigned-URL'] == 'true'
       presigned_url = presigned_streaming_url(bucket:  Settings.encoding.derivative_bucket, key: params[:name], expires_in: 300)
       response.set_header('X-S3-Presigned-URL', presigned_url)
     end
+    # End UMD Customization
 
     respond_to do |format|
       format.urlencoded do
@@ -52,10 +54,12 @@ class DerivativesController < ApplicationController
     return head :forbidden
   end
 
+  # UMD Customization
   private
 
     def presigned_streaming_url(bucket:, key:, expires_in: 300)
       object = Aws::S3::Object.new(bucket_name: bucket, key: key)
       object.presigned_url(:get, expires_in: expires_in)
     end
+  # End UMD Customization
 end

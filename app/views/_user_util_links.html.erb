@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -17,7 +17,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   <%# UMD Customization %>
   <li class="nav-item"><%= link_to 'Home', main_app.root_path, class: 'nav-link' %></li>
   <%# End UMD Customization %>
-  <li class="nav-item"><%= link_to 'Browse', main_app.search_catalog_path(search_field: 'all_fields', utf8: '✓', q: ''), class: 'nav-link' %></li>
+  <li class="nav-item"><%= link_to 'Browse', main_app.search_catalog_path(search_field: 'all_fields', utf8: '✓', q: ''), class: 'nav-link' , data:{testid: "browse-items-link"}%></li>
   <li class="nav-item <%= active_for_controller('collections') %>"><%= link_to 'Collections', main_app.collections_path, class: 'nav-link' %></li>
 
   <% if user_session && user_session[:lti_group] %>
@@ -40,7 +40,7 @@ Unless required by applicable law or agreed to in writing, software distributed
     <li class="nav-item <%= active_for_controller('checkouts') %>">
       <%= link_to main_app.checkouts_path, id:'checkouts_nav', class: 'nav-link' do %>
         Checkouts
-        (<span data-role='checkout-counter'><%= Checkout.active_for_user(current_or_guest_user.id).count %></span>)
+        (<span data-role='checkout-counter' data-testid='checkout-counter'><%= Checkout.active_for_user(current_or_guest_user.id).count %></span>)
       <% end %>
     </li>
     <% end %>
@@ -49,14 +49,14 @@ Unless required by applicable law or agreed to in writing, software distributed
   <li class="nav-item <%= active_for_controller('bookmarks') %>">
     <%= link_to main_app.bookmarks_path, id:'bookmarks_nav', class: 'nav-link' do %>
       <%= t('blacklight.header_links.bookmarks') %>
-      (<span data-role='bookmark-counter'><%= current_or_guest_user.bookmarks.count %></span>)
+      (<span data-role='bookmark-counter' data-testid='bookmark-counter'><%= current_or_guest_user.bookmarks.count %></span>)
     <% end %>
   </li>
   <% end %>
   <% if can?(:read, Admin::Collection) || can?(:manage, Admin::Group) || (defined?(Samvera::Persona) && can?(:manage, User)) %>
     <li>
       <div class="btn-group manage-dropdown dropdown" id="manage-dropdown">
-        <button id="manageDropdown" class="btn btn-primary manage-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button id="manageDropdown" class="btn btn-primary manage-btn" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           Manage
         </button>
         <ul class="dropdown-menu manage-dropdown-menu bg-primary" aria-labelledby="manageDropdown">
@@ -70,9 +70,9 @@ Unless required by applicable law or agreed to in writing, software distributed
             <%= link_to 'View Courses', main_app.courses_path, class: 'nav-link' %></li>
           <% end %>
           <%# End UMD Customization %>
-          <% if can? :read, Admin::Collection %>
-          <li class="nav-item <%= active_for_controller('admin/collections') %>">
-            <%= link_to 'Manage Content', main_app.admin_collections_path, class: 'nav-link' %></li>
+          <% if (can? :manage, Admin::Unit) || (can? :read, Admin::Collection) %>
+          <li class="nav-item <%= active_for_controller('admin/dashboard') %>">
+            <%= link_to 'Manage Content', main_app.admin_dashboard_path, class: 'nav-link' %></li>
           <% end %>
           <% if can? :read, :encode_dashboard %>
           <li class="nav-item <%= active_for_controller('encode_records') %>">

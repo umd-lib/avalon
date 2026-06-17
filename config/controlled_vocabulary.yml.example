@@ -24,9 +24,11 @@ note_types:
   # UMD Customization
   access: Access
   # End UMD Customization
+  acquisition: Donors
   awards: Awards
   biographical/historical: Bibliographical/Historical Note
   creation/production credits: Creation/Production Credits
+  instruments: Instruments
   language: Language Note
   local: Local Note
   performers: Performers

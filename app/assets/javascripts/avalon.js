@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,113 +14,108 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-// Empty file for future js
 /* Override the search_context so it stops POSTing links which confuses
  * Rails and causes it to redirect to the wrong place. */
-$(document).ready(function () {
-  Blacklight.do_search_context_behavior = function () { };
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof Blacklight != undefined) {
+    Blacklight.do_search_context_behavior = function () { };
+  }
 
-  $(document).on('click', '.btn-stateful-loading', function () {
-    $(this).button('loading');
-  });
+  document.addEventListener('click', (e) => {
+    const btn = e.target;
 
-  $('.popover-target').popover({
-    placement: 'top',
-    html: true,
-    trigger: 'hover',
-    delay: { show: 250, hide: 500 },
-    content: function () {
-      return $(this)
-        .next('.po-body')
-        .html();
+    /**
+     * Retain stateful button behavior after Bootstrap 3.
+     * Reference: https://www.robertmullaney.com/2018/10/25/continue-using-data-loading-text-buttons-bootstrap-4-jquery/
+     */
+    if (btn.classList.contains('btn-stateful-loading') && btn?.dataset?.loadingText != undefined) {
+      btn.value = btn.dataset.loadingText;
+      btn.style.cursor = 'not-allowed';
+      btn.style.opacity = 0.5;
     }
   });
 
-  $('#show_object_tree').on('click', function () {
-    var ot = $('#object_tree');
-    ot.load(ot.data('src'));
-    // return false;
-  });
-
-  var iOS = !!/(iPad|iPhone|iPod)/g.test(navigator.userAgent);
-  if (iOS) {
-    $('input[readonly], textarea[readonly]').on('cut paste keydown', function (
-      e
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
+  const showObjectTree = getById('show_object_tree');
+  if (showObjectTree) {
+    showObjectTree.addEventListener('click', function () {
+      const objectTree = getById('object_tree');
+      if (objectTree) {
+        fetch(objectTree.dataset.src)
+          .then(response => response.text())
+          .then(html => {
+            objectTree.innerHTML = html;
+          });
+      }
     });
-    $('input[readonly], textarea[readonly]').attr('readonly', false);
   }
 
-  $('a')
-    .has('img, ul')
-    .addClass('block');
+  const iOS = !!/(iPad|iPhone|iPod)/g.test(navigator.userAgent);
+  function preventDefaultAndStop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+  if (iOS) {
+    const readonlyInputs = queryAll('input[readonly], textarea[readonly]');
+    readonlyInputs.forEach(function (input) {
+      input.addEventListener('cut', preventDefaultAndStop);
+      input.addEventListener('paste', preventDefaultAndStop);
+      input.addEventListener('keydown', preventDefaultAndStop);
+      input.removeAttribute('readonly');
+    });
+  }
 
-  window.addEventListener(
-    'hashchange',
-    function (event) {
-      var element = document.getElementById(location.hash.substring(1));
-      if (element) {
-        if (!/^(?:a|select|input|button|textarea)$/i.test(element.tagName)) {
-          element.tabIndex = -1;
-        }
-        element.focus();
+  window.addEventListener('hashchange', function () {
+    var element = getById(location.hash.substring(1));
+    if (element) {
+      if (!/^(?:a|select|input|button|textarea)$/i.test(element.tagName)) {
+        element.tabIndex = -1;
       }
-    },
-    false
-  );
+      element.focus();
+    }
+  }, false);
 
   // Set CSS to push the page content above footer
-  $('.content-wrapper').css('padding-bottom', $('#footer').css('height'));
+  const contentWrapper = query('.content-wrapper');
+  const footer = getById('footer');
 
-  // Re-set the space between content-wrapper and footer on window resize.
-  // With this the main content height is adjusted when orientation changes when
-  // using mobile devices, avoiding main content bleeding into the footer.
-  window.addEventListener("resize", () => {
-    $('.content-wrapper').css('padding-bottom', $('#footer').css('height'));
-  }, true);
-
-
-  /* Toggle CSS classes for global search form */
-  const $searchWrapper = $('.global-search-wrapper');
-  const $searchSubmit = $('.global-search-submit');
-
-  // Remove CSS classes at initial page load for mobile screens
-  if ($(window).width() < 768) {
-    $searchWrapper.removeClass('input-group-lg');
-    $searchSubmit.removeClass('btn-primary');
+  function adjustFooterPadding() {
+    if (contentWrapper && footer) {
+      const footerHeight = window.getComputedStyle(footer).height;
+      contentWrapper.style.paddingBottom = footerHeight;
+    }
   }
 
-  // Toggle CSS classes when window resizes
-  $(window).resize(function () {
-    if ($(window).width() < 768) {
-      if ($searchWrapper.hasClass('input-group-lg')) {
-        $searchWrapper.removeClass('input-group-lg');
-      }
-      if ($searchSubmit.hasClass('btn-primary')) {
-        $searchSubmit.removeClass('btn-primary');
-      }
-    } else {
-      $searchWrapper.addClass('input-group-lg');
-      $searchSubmit.addClass('btn-primary');
-    }
-  });
+  // Adjust footer on page load
+  adjustFooterPadding();
 
-  /**
-   * jQuery plugin to retain stateful button behavior after
-   * Bootstrap 4 upgrade.
-   * Reference: https://www.robertmullaney.com/2018/10/25/continue-using-data-loading-text-buttons-bootstrap-4-jquery/
-   */
-  (function ($) {
-    $.fn.button = function (action) {
-      let $btn = this[0];
-      if (action === 'loading' && $btn.dataset.loadingText) {
-        $btn.value = $btn.dataset.loadingText;
-        $btn.style.cursor = 'not-allowed';
-        $btn.style.opacity = 0.5;
+  /* Toggle CSS classes for global search form */
+  const searchWrapper = query('.global-search-wrapper');
+  const searchSubmit = query('.global-search-submit');
+
+  function toggleSearchClasses() {
+    if (searchWrapper && searchSubmit) {
+      if (window.innerWidth < 768) {
+        searchWrapper.classList.remove('input-group-lg');
+        searchSubmit.classList.remove('btn-primary');
+      } else {
+        searchWrapper.classList.add('input-group-lg');
+        searchSubmit.classList.add('btn-primary');
       }
-    };
-  }(jQuery));
+    }
+  }
+
+  // Remove CSS classes at initial page load for mobile screens
+  toggleSearchClasses();
+
+  window.addEventListener('resize', () => {
+    // Toggle CSS classes when window resizes
+    toggleSearchClasses();
+    /**
+     * Re-set the space between content-wrapper and footer on window resize.
+     * With this the main content height is adjusted when orientation changes when
+     * using mobile devices, avoiding main content bleeding into the footer.
+     */
+    adjustFooterPadding();
+  }, true);
 });

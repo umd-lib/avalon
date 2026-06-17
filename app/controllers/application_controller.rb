@@ -1,4 +1,4 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -11,6 +11,8 @@
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
+
+require 'speedy_af/errors'
 
 class ApplicationController < ActionController::Base
   before_action :store_location, unless: :devise_controller?
@@ -28,6 +30,8 @@ class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception, unless: proc{|c| request.headers['Avalon-Api-Key'].present? }
 
   helper_method :render_bookmarks_control?
+  # Define application_name here to override Blacklight's implementation
+  helper_method :application_name
 
   around_action :handle_api_request, if: proc{|c| request.format.json? || request.format.atom? || request.headers['Avalon-Api-Key'].present? }
   before_action :rewrite_v4_ids, if: proc{|c| request.method_symbol == :get && [params[:id], params[:content]].flatten.compact.any? { |i| i =~ /^[a-z]+:[0-9]+$/}}
@@ -38,6 +42,14 @@ class ApplicationController < ActionController::Base
   rescue_from RSolr::Error::Timeout, :with => :handle_solr_connection_error
   rescue_from Blacklight::Exceptions::ECONNREFUSED, :with => :handle_solr_connection_error
   rescue_from Faraday::ConnectionFailed, :with => :handle_fedora_connection_error
+
+  # Enable profiling
+  if ActiveModel::Type::Boolean.new.cast(ENV['AVALON_PROFILING'])
+    prepend_before_action do
+      # Setup profiling for all users
+      Rack::MiniProfiler.authorize_request
+    end
+  end
 
   def set_no_cache_headers
     response.headers["Cache-Control"] = "no-cache, no-store"
@@ -112,7 +124,7 @@ class ApplicationController < ActionController::Base
       end
 
       logger.debug "Redirecting to Course Reserve Page for #{params['context_id']}"
-      collection = Admin::Collection.all.find { |collection| collection&.unit == Settings.streaming_reserves.unit_name }
+      collection = Admin::Collection.all.find { |collection| collection&.unit&.name == Settings.streaming_reserves.unit_name }
 
       "/collections/#{collection.id}/course_reserves?course_id=#{params['context_id']}"
     else
@@ -153,13 +165,30 @@ class ApplicationController < ActionController::Base
       if user.blank?
         SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection").to_a
       else
-        SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection AND inheritable_edit_access_person_ssim:#{user}").to_a
+        SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim: Admin\\:\\:Collection AND (inheritable_edit_access_person_ssim: #{user} OR {!join from='id' to='heldBy_ssim'}inheritable_edit_access_person_ssim:#{user})")
       end
     else
-      SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim:Admin\\:\\:Collection AND inheritable_edit_access_person_ssim:#{user_key}").to_a
+      SpeedyAF::Proxy::Admin::Collection.where("has_model_ssim: Admin\\:\\:Collection AND (inheritable_edit_access_person_ssim: #{user_key} OR {!join from='id' to='heldBy_ssim'}inheritable_edit_access_person_ssim:#{user_key})")
     end
   end
   helper_method :get_user_collections
+
+  # Returns units for current_user
+  # @param [Array <String>] with_ids list of unit ids to be included in final list
+  # @param [boolean] sort sort return list by unit name (default: true)
+  # @return [units] Units in which current_user is a unit admin
+  def get_user_units(with_ids: [], sort: true)
+    units = []
+    # return all units to admin
+    if can?(:manage, Admin::Unit)
+      units = SpeedyAF::Proxy::Admin::Unit.where("has_model_ssim: Admin\\:\\:Unit")
+    else
+      id_query = with_ids.collect { |id| "id:#{id}" }.join(" OR ")
+      units = SpeedyAF::Proxy::Admin::Unit.where("has_model_ssim: Admin\\:\\:Unit AND (#{["unit_administrators_ssim: #{user_key}", id_query].compact_blank.join(" OR ")})")
+    end
+    sort ? units.sort_by { |u| u.name.downcase } : units
+  end
+  helper_method :get_user_units
 
   # Returns milliseconds from a time string of format h:m:s.s or m:s.s or s.s
   # @param [String] The time string
@@ -188,9 +217,9 @@ class ApplicationController < ActionController::Base
     # UMD Customization
     access_token = request.query_parameters[:access_token]
     session_opts = session_opts.merge(access_token: access_token) if access_token
-    # End UMD Customization
 
     @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.ip))
+    # End UMD Customization
   end
 
   rescue_from CanCan::AccessDenied do |exception|
@@ -202,11 +231,20 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  rescue_from ActiveFedora::ObjectNotFoundError do |exception|
+  rescue_from ActiveFedora::ObjectNotFoundError, SpeedyAF::RecordNotFound do |exception|
     if request.format == :json
       render json: {errors: ["#{params[:id]} not found"]}, status: 404
     else
       render '/errors/unknown_pid', status: 404
+    end
+  end
+
+  rescue_from ActiveFedora::ModelMismatch, SpeedyAF::ModelMismatch do |exception|
+    if request.format == :json
+      render json: { errors: ["Requested resource type does not match type of #{params[:id]}"] }, status: 422
+    else
+      flash[:error] = "Requested resource type does not match type of #{params[:id]}."
+      redirect_to(root_path)
     end
   end
 
@@ -255,7 +293,17 @@ class ApplicationController < ActionController::Base
     obj || GlobalID::Locator.locate(id)
   end
 
+  def fetch_proxy(id)
+    SpeedyAF::Base.find(id)
+  rescue SpeedyAF::RecordNotFound
+    fetch_object(id)
+  end
+
   private
+
+    def application_name
+      Settings.name || 'Avalon Media System'
+    end
 
     def remove_zero_width_chars
       # params is a ActionController::Parameters
@@ -285,10 +333,10 @@ class ApplicationController < ActionController::Base
       raise if Settings.app_controller.solr_and_fedora.raise_on_connection_error
       Rails.logger.error(exception.class.to_s + ': ' + exception.message + '\n' + exception.backtrace.join('\n'))
 
-      if request.format == :json
-        render json: {errors: [exception.message]}, status: 503
+      if request.format == :html
+        render '/errors/solr_connection', layout: false, status: :service_unavailable
       else
-        render '/errors/solr_connection', layout: false, status: 503
+        render json: { errors: [exception.message] }, status: :service_unavailable
       end
     end
 
@@ -296,10 +344,10 @@ class ApplicationController < ActionController::Base
       raise if Settings.app_controller.solr_and_fedora.raise_on_connection_error
       Rails.logger.error(exception.class.to_s + ': ' + exception.message + '\n' + exception.backtrace.join('\n'))
 
-      if request.format == :json
-        render json: {errors: [exception.message]}, status: 503
+      if request.format == :html
+        render '/errors/fedora_connection', status: :service_unavailable
       else
-        render '/errors/fedora_connection', status: 503
+        render json: { errors: [exception.message] }, status: :service_unavailable
       end
     end
 end

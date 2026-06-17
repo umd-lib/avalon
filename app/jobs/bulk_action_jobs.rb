@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -22,6 +22,7 @@ module BulkActionJobs
         media_object = MediaObject.find(id)
         media_object.hidden = params[:hidden] if !params[:hidden].nil?
         media_object.visibility = params[:visibility] unless params[:visibility].blank?
+        media_object.disable_inheritance = params[:disable_inheritance] unless params[:disable_inheritance].blank?
         # Limited access stuff
         # UMD Customization
         ["group", "class", "user", "ipaddress", "umd_ip_manager_group"].each do |title|
@@ -138,6 +139,10 @@ module BulkActionJobs
       successes = []
       documents.each do |id|
         media_object = MediaObject.find(id)
+        supplemental_files = media_object.supplemental_files
+        DeleteChildFiles.perform_now(supplemental_files, nil)
+        media_object.supplemental_files = []
+
         if media_object.destroy
           successes += [media_object]
         else
@@ -145,6 +150,19 @@ module BulkActionJobs
         end
       end
       return successes, errors
+    end
+  end
+
+  class DeleteChildFiles < ActiveJob::Base
+    def perform(documents, _params)
+      documents.each do |doc|
+        begin
+          doc.destroy
+        rescue
+          logger.error("Failed to delete supplemental file #{doc.id}")
+          next
+        end
+      end
     end
   end
 
@@ -217,39 +235,6 @@ module BulkActionJobs
           media_object.lending_period = collection.default_lending_period
         end
 
-
-        if save_field == "special_access"
-          # If MediaObject visibility is different than Collection, the collection visibility
-          # overwrites, or is added to, the media object read groups. This can result in the media object
-          # read groups containing the wrong visibilty or multiple visibilities.
-          # Remove visibility from the default_read_groups array to protect against this.
-          collection_read_groups = collection.default_read_groups.to_a - [Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED,
-                                                                          Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC,
-                                                                          Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PRIVATE]
-
-          # When overwriting the read group, we have to add the media object visibility back into the array,
-          # otherwise the media object will default to private.
-          media_object_visibility_group = if media_object.visibility == Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PUBLIC
-                                            [Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC]
-                                          elsif media_object.visibility == Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_AUTHENTICATED
-                                            [Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED]
-                                          else
-                                            [Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PRIVATE]
-                                          end
-
-          # Special access
-          if overwrite
-            media_object.read_groups = collection_read_groups
-            media_object.read_groups += media_object_visibility_group
-            media_object.read_users = collection.default_read_users.to_a
-          else
-            media_object.read_groups += collection_read_groups
-            media_object.read_groups.uniq!
-            media_object.read_users += collection.default_read_users.to_a
-            media_object.read_users.uniq!
-          end
-        end
-
         if media_object.save
           successes << media_object
         else
@@ -258,6 +243,25 @@ module BulkActionJobs
       end
 
       [successes, errors]
+    end
+  end
+
+  class ReturnCheckouts < ActiveJob::Base
+    def perform(collection_id)
+      collection = Admin::Collection.find(collection_id)
+      Checkout.active_for_media_object(collection.media_object_ids).update_all(return_time: DateTime.current, updated_at: DateTime.current)
+    end
+  end
+
+  class RemoveManagers < ActiveJob::Base
+    def perform(user_ids)
+      collections = Admin::Collection.where("collection_managers_ssim: (#{user_ids.join(' OR ')})")
+      collections.each do |collection|
+        collection.managers = collection.managers - user_ids
+      rescue ArgumentError
+        logger.error("At least one manager is required: #{collection.id}")
+        next
+      end
     end
   end
 end

@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -16,16 +16,16 @@ module IiifSupplementalFileBehavior
   private
 
   def supplemental_files_rendering(object)
-    tags = ['caption', nil]
+    tags = ['caption', 'description', nil]
     supplemental_files = []
     tags.each do |tag|
       supplemental_files += object.supplemental_files(tag: tag).collect do |sf|
-                              {
-                                "@id" => object_supplemental_file_url(object, sf),
-                                "type" => determine_rendering_type(sf.file.content_type),
-                                "label" => { "en" => [sf.label] },
-                                "format" => sf.file.content_type
-                              }
+        {
+          "@id" => object_supplemental_file_url(object, sf),
+          "type" => determine_rendering_type(sf.file.content_type),
+          "label" => { "en" => [sf.label] },
+          "format" => sf.file.content_type
+        }
       end
     end
 
@@ -33,7 +33,7 @@ module IiifSupplementalFileBehavior
   end
 
   def object_supplemental_file_url(object, supplemental_file)
-    if object.is_a? MasterFile
+    if object.is_a?(MasterFile) || object.is_a?(SpeedyAF::Proxy::MasterFile)
       Rails.application.routes.url_helpers.master_file_supplemental_file_url(id: supplemental_file.id, master_file_id: object.id)
     else
       Rails.application.routes.url_helpers.media_object_supplemental_file_url(id: supplemental_file.id, media_object_id: object.id)

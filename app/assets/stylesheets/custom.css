@@ -134,28 +134,26 @@ a:focus#skip-to-content {
 .homepage-splash-lead-copy{
   background: rgba(000, 0, 0, 0.8);
 }
-.sidenav .top-panel-heading {
+.sidenav .facets-header {
   background-color: #333;
 }
-.sidenav .top-panel-heading h2 {
+.sidenav .facets-header h2 {
   color: #fff;
 }
 .digital .headline h1, .headline h2, .headline h3, .headline h4 {
   border-bottom: 2px solid #a40404;
   color: #e4e4e4;
 }
-.facet_limit-active > .panel-heading {
+.facet-limit-active > .card-header.facet-field-heading {
   color: #3c763d;
   background-color: #d7d7d7;
   border-color: #d7d7d7;
 }
-.panel-title > a, .panel-title {
+.card-header.facet-field-heading button {
   color: #000;
 }
-.panel-success>.panel-heading+.panel-collapse>.panel-body, .facet_limit-active>.panel-heading+.panel-collapse>.panel-body{
+.facet-limit-active .card-body {
   background: #f8f8f8;
-}
-.panel-success > .panel-heading + .panel-collapse > .panel-body, .facet_limit-active > .panel-heading + .panel-collapse > .panel-body {
   border-top-color: #ccc;
 }
 

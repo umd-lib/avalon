@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *
@@ -14,29 +14,32 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React from 'react';
 import {
-	IIIFPlayer,
-	MediaPlayer
+  useEffect,
+  useState
+} from 'react';
+import {
+  IIIFPlayer,
+  MediaPlayer
 } from '@samvera/ramp';
 import 'video.js/dist/video-js.css';
 import "@samvera/ramp/dist/ramp.css";
 import './Ramp.scss';
 
-const Ramp = ({
-	urls,
-	media_object_id,
+const EmbeddedRamp = ({
+  urls,
+  media_object_id,
   is_video,
   // UMD Customization
   allow_view_in_repo
   // End UMD Customization
 }) => {
-	const [manifestUrl, setManifestUrl] = React.useState('');
-	const [startCanvasId, setStartCanvasId] = React.useState();
-  const [startCanvasTime, setStartCanvasTime] = React.useState();
+  const [manifestUrl, setManifestUrl] = useState('');
+  const [startCanvasId, setStartCanvasId] = useState();
+  const [startCanvasTime, setStartCanvasTime] = useState();
   let interval;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const { base_url, fullpath_url } = urls;
     // Split the current path from the time fragment in the format .../:id?t=time
     let [fullpath, start_time] = fullpath_url.split('?t=');
@@ -67,23 +70,23 @@ const Ramp = ({
   const addControls = () => {
     let player = document.getElementById('iiif-media-player');
     if (player && player.player) {
-      let embeddedPlayer = player.player
+      let embeddedPlayer = player.player;
 
       // Player API handling
-      window.addEventListener('message', function(event) {
+      window.addEventListener('message', function (event) {
         var command = event.data.command;
 
-        if (command=='play') embeddedPlayer.play();
-        else if (command=='pause') embeddedPlayer.pause();
-        else if (command=='toggle_loop') {
-          embeddedPlayer.loop() ? embeddedPlayer.loop(false): embeddedPlayer.loop(true);
+        if (command == 'play') embeddedPlayer.play();
+        else if (command == 'pause') embeddedPlayer.pause();
+        else if (command == 'toggle_loop') {
+          embeddedPlayer.loop() ? embeddedPlayer.loop(false) : embeddedPlayer.loop(true);
           embeddedPlayer.autoplay() ? embeddedPlayer.autoplay(false) : embeddedPlayer.autoplay(true);
         }
-        else if (command=='set_offset') embeddedPlayer.currentTime(event.data.offset); // time is in seconds
-        else if (command=='get_offset') event.source.postMessage({'command': 'currentTime','currentTime': embeddedPlayer.currentTime()}, event.origin);
+        else if (command == 'set_offset') embeddedPlayer.currentTime(event.data.offset); // time is in seconds
+        else if (command == 'get_offset') event.source.postMessage({ 'command': 'currentTime', 'currentTime': embeddedPlayer.currentTime() }, event.origin);
       });
 
-      if (embeddedPlayer.audioOnlyMode()) { 
+      if (embeddedPlayer.audioOnlyMode()) {
         /* 
           Quality selector extends outside iframe for audio items, so we need to disable that control
           and rely on the quality automatically selected by the user's system.
@@ -106,21 +109,26 @@ const Ramp = ({
         viewInRepoButton.controlText('View in Repository');
 
         // Add button icon
+        document.querySelector('.vjs-custom-external-link').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><style>svg{fill:#ffffff}</style><path d="M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32h82.7L201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3V192c0 17.7 14.3 32 32 32s32-14.3 32-32V32c0-17.7-14.3-32-32-32H320zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/></svg>';
+
+        // Add button icon
         document.querySelector('.vjs-custom-external-link').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><style>svg{fill:#ffffff}</style><path d="M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32h82.7L201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3V192c0 17.7 14.3 32 32 32s32-14.3 32-32V32c0-17.7-14.3-32-32-32H320zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/></svg>'
       }
       // This function only needs to run once, so we clear the interval here
       clearInterval(interval);
-    }  
+    }
   };
 
   return (
-  	<IIIFPlayer manifestUrl={manifestUrl}
-      customErrorMessage='This embed encountered an error. Please refresh or contact an administrator.'
-      startCanvasId={startCanvasId}
-      startCanvasTime={startCanvasTime}>
-      <MediaPlayer enableFileDownload={false} enablePlaybackRate={is_video} enableTitleLink={is_video} />
-    </IIIFPlayer>
+    <div className='embedded-ramp'>
+      <IIIFPlayer manifestUrl={manifestUrl}
+        customErrorMessage='This embed encountered an error. Please refresh or contact an administrator.'
+        startCanvasId={startCanvasId}
+        startCanvasTime={startCanvasTime}>
+        <MediaPlayer enableFileDownload={false} enablePlaybackRate={is_video} enableTitleLink={is_video} />
+      </IIIFPlayer>
+    </div>
   );
 };
 
-export default Ramp;
+export default EmbeddedRamp;

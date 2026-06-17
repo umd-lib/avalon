@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -115,21 +115,29 @@ class IiifPlaylistCanvasPresenter
 
     def video_content
       # @see https://github.com/samvera-labs/iiif_manifest
-      stream_urls.collect { |quality, _url| video_display_content(quality) }
+      stream_urls.collect { |quality, url, mimetype| video_display_content(quality, url, mimetype) }
     end
 
-    def video_display_content(quality)
-      IIIFManifest::V3::DisplayContent.new(CGI.unescape(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality, anchor: fragment_identifier)),
-                                           **manifest_attributes(quality, 'Video'))
+    def video_display_content(quality, url, mimetype)
+      if mimetype.present? && mimetype != 'application/x-mpegURL'
+        IIIFManifest::V3::DisplayContent.new(URI.join(url, "##{fragment_identifier}").to_s, **manifest_attributes(quality, 'Video', mimetype: mimetype))
+      else
+        IIIFManifest::V3::DisplayContent.new(CGI.unescape(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality, anchor: fragment_identifier)),
+                                             **manifest_attributes(quality, 'Video'))
+      end
     end
 
     def audio_content
-      stream_urls.collect { |quality, _url| audio_display_content(quality) }
+      stream_urls.collect { |quality, url, mimetype| audio_display_content(quality, url, mimetype) }
     end
 
-    def audio_display_content(quality)
-      IIIFManifest::V3::DisplayContent.new(CGI.unescape(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality, anchor: fragment_identifier)),
-                                           **manifest_attributes(quality, 'Sound'))
+    def audio_display_content(quality, url, mimetype)
+      if mimetype.present? && mimetype != 'application/x-mpegURL'
+        IIIFManifest::V3::DisplayContent.new(URI.join(url, "##{fragment_identifier}").to_s, **manifest_attributes(quality, 'Sound', mimetype: mimetype))
+      else
+        IIIFManifest::V3::DisplayContent.new(CGI.unescape(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality, anchor: fragment_identifier)),
+                                             **manifest_attributes(quality, 'Sound'))
+      end
     end
 
     def marker_content(marker)
@@ -139,17 +147,11 @@ class IiifPlaylistCanvasPresenter
     end
 
     def supplemental_captions
-      files = master_file.supplemental_files(tag: 'caption')
-      files += [master_file.captions] if master_file.captions.present? && master_file.captions.persisted?
-      files
+      master_file.supplemental_files(tag: 'caption')
     end
 
     def supplemental_captions_data(file)
-      url = if !file.is_a?(SupplementalFile)
-              Rails.application.routes.url_helpers.captions_master_file_url(master_file.id)
-            elsif file.tags.include?('caption')
-              Rails.application.routes.url_helpers.captions_master_file_supplemental_file_url(master_file.id, file.id)
-            end
+      url = Rails.application.routes.url_helpers.captions_master_file_supplemental_file_url(master_file.id, file.id)
       IIIFManifest::V3::AnnotationContent.new(body_id: url, **supplemental_attributes(file))
     end
 
@@ -174,7 +176,7 @@ class IiifPlaylistCanvasPresenter
 
     def stream_urls
       stream_info[:stream_hls].collect do |d|
-        [d[:quality], d[:url]]
+        [d[:quality], d[:url], d[:mimetype]]
       end
     end
 
@@ -192,14 +194,15 @@ class IiifPlaylistCanvasPresenter
       )
     end
 
-    def manifest_attributes(quality, media_type)
+    def manifest_attributes(quality, media_type, mimetype: 'application/x-mpegURL')
       media_hash = {
         label: quality,
         width: (master_file.width || '1280').to_i,
         height: (master_file.height || MasterFile::AUDIO_HEIGHT).to_i,
         duration: stream_info[:duration],
         type: media_type,
-        format: 'application/x-mpegURL'
+        format: mimetype,
+        thumbnail: [{ id: thumbnail_url, type: 'Image' }]
       }.compact
 
       if master_file.media_object.visibility == 'public'
@@ -260,5 +263,13 @@ class IiifPlaylistCanvasPresenter
           }
         ]
       }
+    end
+
+    def thumbnail_url
+      if master_file.is_video?
+        Rails.application.routes.url_helpers.thumbnail_master_file_url(master_file.id)
+      else
+        ActionController::Base.helpers.asset_url('audio_icon.png')
+      end
     end
 end

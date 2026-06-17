@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -37,6 +37,7 @@ module Avalon
       property :supplementalFiles,   "rdfs:isDefinedBy" => %(avr-master_file:).freeze, type: "rdfs:Class".freeze
       property :thumbnailOffset,     "rdfs:isDefinedBy" => %(avr-master_file:).freeze, type: "rdfs:Class".freeze
       property :workingFilePath,     "rdfs:isDefinedBy" => %(avr-master_file:).freeze, type: "rdfs:Class".freeze
+      property :originalFileName,    "rdfs:isDefinedBy" => %(avr-master_file:).freeze, type: "rdfs:Class".freeze
     end
 
     class Derivative < RDF::StrictVocabulary("http://avalonmediasystem.org/rdf/vocab/derivative#")
@@ -66,7 +67,17 @@ module Avalon
       property :default_visibility,       "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :default_hidden,           "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :cdl_enabled,              "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
-      property :collection_managers,       "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
+      property :collection_managers,      "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
+    end
+
+    class Unit < RDF::StrictVocabulary("http://avalonmediasystem.org/rsf/vocab/unit#")
+      property :website_label,            "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
+      property :default_read_users,       "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
+      property :default_read_groups,      "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
+      property :default_visibility,       "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
+      property :default_hidden,           "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
+      property :collection_managers,      "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class.freeze"
+      property :unit_administrators,      "rdfs:isDefinedBy" => %(avr-unit:).freeze, type: "rdfs:Class".freeze
     end
 
     class EBUCore < RDF::StrictVocabulary("http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#")

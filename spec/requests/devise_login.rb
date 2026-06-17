@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -29,13 +29,24 @@ describe 'devise login', type: :request do
       expect(response).to redirect_to(root_path)
     end
 
-    context 'when previous_url is in the session' do
+    context 'when user_return_to is in the session' do
       let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'restricted') }
 
       it 'redirects to url' do
         get "/media_objects/#{media_object.id}"
         post '/users/sign_in', params: { user: { login: user.username, password: user.password }, admin: true, email: true }
         expect(response).to redirect_to("/media_objects/#{media_object.id}")
+      end
+
+      context 'when public item is requested first' do
+        let!(:public_media_object) { FactoryBot.create(:published_media_object, :with_master_file, visibility: 'public') }
+
+        it 'redirects to correct media object' do
+          get "/media_objects/#{public_media_object.id}"
+          get "/media_objects/#{media_object.id}"
+          post '/users/sign_in', params: { user: { login: user.username, password: user.password }, admin: true, email: true }
+          expect(response).to redirect_to("/media_objects/#{media_object.id}")
+        end
       end
     end
   end

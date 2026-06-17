@@ -1,0 +1,7 @@
+<div class="document-thumbnail col-md-12 col-lg-4 row">
+  <% if thumbnail_value %>
+    <%= helpers.link_to_document(presenter.document, thumbnail_value, class: 'result-thumbnail', 'aria-hidden': true, tabindex: -1, counter: @counter) %>
+  <% else %>
+    <%= image_tag 'no_icon.png', alt: "", class: 'result-thumbnail no-icon' %>
+  <% end %>
+</div>

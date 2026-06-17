@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -31,16 +31,12 @@ describe Avalon::Batch::Ingest do
 
     FactoryBot.create(:user, username: 'frances.dickens@reichel.com', email: 'frances.dickens@reichel.com')
     FactoryBot.create(:user, username: 'jay@krajcik.org', email: 'jay@krajcik.org')
-    Avalon::RoleControls.add_user_role('frances.dickens@reichel.com','manager')
-    Avalon::RoleControls.add_user_role('jay@krajcik.org','manager')
     allow(IngestBatchEntryJob).to receive(:perform_later).and_return(nil)
   end
 
   after :each do
     Settings.dropbox.path = @saved_dropbox_path
     Dir['spec/fixtures/**/*.xlsx.process*','spec/fixtures/**/*.xlsx.error'].each { |file| File.delete(file) }
-    Avalon::RoleControls.remove_user_role('frances.dickens@reichel.com','manager')
-    Avalon::RoleControls.remove_user_role('jay@krajcik.org','manager')
 
     # this is a test environment, we don't want to kick off
     # generation jobs if possible

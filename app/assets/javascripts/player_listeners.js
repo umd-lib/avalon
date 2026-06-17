@@ -1,12 +1,12 @@
-/* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+/*
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -18,9 +18,13 @@ let canvasIndex = -1;
 let currentSectionLabel = undefined;
 let addToPlaylistListenersAdded = false;
 let firstLoad = true;
+let reloadAdded = false;
 let streamId = '';
 let isMobile = false;
 let isPlaying = false;
+let reloadInterval = false;
+let seeking = false;
+let currentTime;
 
 /**
  * Bind action buttons on the page with player events and re-populate details
@@ -32,9 +36,54 @@ let isPlaying = false;
  * @param {String} mediaObjectId 
  * @param {Array<String>} sectionIds array of ordered masterfile ids in the mediaobject
  */
-function addActionButtonListeners(player, mediaObjectId, sectionIds) {
+function addActionButtonListeners(player, mediaObjectId, sectionIds, sectionShareInfos) {
   if (player && player.player != undefined) {
     let currentIndex = parseInt(player.dataset.canvasindex);
+    /* Ensure we only add player listeners once */
+    if (firstLoad === true) {
+      /* Add player event listeners to update UI components on the page */
+      // Listen to 'seeked' event to udate add to playlist form when using while media is playing or manually seeking
+      player.player.on('seeked', () => {
+        if (getActiveItem() != undefined) {
+          activeTrack = getActiveItem(false);
+          if (activeTrack != undefined) {
+            streamId = activeTrack.streamId;
+          }
+          disableEnableCurrentTrack(activeTrack, player.player.currentTime(), isPlaying, currentSectionLabel);
+        }
+      });
+
+      player.player.on('play', () => { isPlaying = true; });
+
+      player.player.on('pause', () => { isPlaying = false; });
+
+      /*
+        Disable action buttons tied to player related information on player's 'emptied' event which functions
+        parallel to the player's src changes. So, that the user doesn't interact with them get corrupted data 
+        in the UI when player is loading the new section media into it.
+        Once the player is fully loaded these buttons are enabled as needed.
+      */
+      player.player.on('emptied', () => {
+        resetAllActionButtons();
+      });
+
+      /*
+        Enable action buttons on player's 'loadstart' event which functions parallel to the player's src changes.
+        Sometimes the player event to disable the buttons is triggered after the function to enable the buttons,
+        resulting in the buttons never enabling. Since the enabling of the action buttons occurs before the player
+        is emptied, it is also possible that the information populating the buttons is for the old canvas, so we
+        run `buildActionButtons` again rather than just enabling the buttons.
+      */
+      player.player.on('loadstart', () => {
+        let addToPlaylistBtn = getById('addToPlaylistBtn');
+        let thumbnailBtn = getById('thumbnailBtn');
+        let timelineBtn = getById('timelineBtn');
+
+        if (addToPlaylistBtn.disabled || thumbnailBtn.disabled || timelineBtn.disabled) {
+          buildActionButtons(player, mediaObjectId, sectionIds, sectionShareInfos);
+        }
+      });
+    }
     /*
       For both Android and iOS, player.readyState() is 0 until media playback is
       started. Therefore, use player.src() to check whether there's a playable media
@@ -55,7 +104,7 @@ function addActionButtonListeners(player, mediaObjectId, sectionIds) {
     if (currentIndex != canvasIndex && !player.player.canvasIsEmpty) {
       if (isMobile || player?.player.readyState() >= 2) {
         canvasIndex = currentIndex;
-        buildActionButtons(player, mediaObjectId, sectionIds);
+        buildActionButtons(player, mediaObjectId, sectionIds, sectionShareInfos);
         firstLoad = false;
       }
     }
@@ -65,44 +114,20 @@ function addActionButtonListeners(player, mediaObjectId, sectionIds) {
     */
     if (currentIndex != canvasIndex && player.player.canvasIsEmpty) {
       canvasIndex = currentIndex;
-      setUpShareLinks(mediaObjectId, sectionIds);
+      setUpShareLinks(sectionShareInfos);
       resetAllActionButtons();
     }
 
-    /* Add player event listeners to update UI components on the page */
-    // Listen to 'seeked' event to udate add to playlist form
-    player.player.on('seeked', () => {
-      if (getActiveItem() != undefined) {
-        activeTrack = getActiveItem(false);
-        if (activeTrack != undefined) {
-          streamId = activeTrack.streamId;
-        }
-        disableEnableCurrentTrack(activeTrack, player.player.currentTime(), isPlaying, currentSectionLabel);
-      }
-    });
-
-    player.player.on('play', () => { isPlaying = true; });
-
-    player.player.on('pause', () => { isPlaying = false; });
-
-    /*
-      Disable action buttons tied to player related information on player's 'loadstart' event which functions
-      parallel to the player's src changes. So, that the user doesn't interact with them get corrupted data 
-      in the UI when player is loading the new section media into it.
-      Once the player is fully loaded these buttons are enabled as needed.
-    */
-    player.player.on('loadstart', () => {
-      resetAllActionButtons();
-    });
-
     // Collapse sub-panel related to the selected option in the add to playlist form when it is collapsed
-    let playlistSection = $('#playlistitem_scope_section');
-    let playlistTrack = $('#playlistitem_scope_track');
-    let multiItemExpanded = $('#multiItemCheck.show').val();
-    let moreDetailsExpanded = $('#moreDetails.show').val();
-    if (playlistSection.prop("checked") && multiItemExpanded === undefined && moreDetailsExpanded === undefined) {
+    let playlistSection = getById('playlistitem_scope_section');
+    let playlistTrack = getById('playlistitem_scope_track');
+    let multiItemExpandedEl = getById('multiItemCheck.show');
+    let moreDetailsExpandedEl = getById('moreDetails.show');
+    let multiItemExpanded = multiItemExpandedEl ? multiItemExpandedEl.value : undefined;
+    let moreDetailsExpanded = moreDetailsExpandedEl ? moreDetailsExpandedEl.value : undefined;
+    if (playlistSection?.checked && multiItemExpanded === undefined && moreDetailsExpanded === undefined) {
       collapseMultiItemCheck();
-    } else if (playlistTrack.prop("checked") && multiItemExpanded === undefined && moreDetailsExpanded === undefined) {
+    } else if (playlistTrack?.checked && multiItemExpanded === undefined && moreDetailsExpanded === undefined) {
       collapseMoreDetails();
     }
   }
@@ -112,20 +137,17 @@ function addActionButtonListeners(player, mediaObjectId, sectionIds) {
  */
 function resetAllActionButtons() {
   currentSectionLabel = undefined;
-  let addToPlaylistBtn = document.getElementById('addToPlaylistBtn');
-  $('#addToPlaylistPanel').collapse('hide');
+  let addToPlaylistBtn = getById('addToPlaylistBtn');
+  if (getById('addToPlaylistPanel')?.classList.contains('show')) {
+    showOrCollapse(getById('addToPlaylistPanel'), false);
+  }
   resetAddToPlaylistForm();
-  if (addToPlaylistBtn) {
-    addToPlaylistBtn.disabled = true;
-  }
-  let thumbnailBtn = document.getElementById('thumbnailBtn');
-  if (thumbnailBtn) {
-    thumbnailBtn.disabled = true;
-  }
-  let timelineBtn = document.getElementById('timelineBtn');
-  if (timelineBtn) {
-    timelineBtn.disabled = true;
-  }
+  if (addToPlaylistBtn) addToPlaylistBtn.disabled = true;
+  let thumbnailBtn = getById('thumbnailBtn');
+  if (thumbnailBtn) thumbnailBtn.disabled = true;
+
+  let timelineBtn = getById('timelineBtn');
+  if (timelineBtn) timelineBtn.disabled = true;
 }
 
 /**
@@ -135,8 +157,8 @@ function resetAllActionButtons() {
  * @param {String} mediaObjectId 
  * @param {Array<String>} sectionIds array of ordered masterfile ids in the mediaobject
  */
-function buildActionButtons(player, mediaObjectId, sectionIds) {
-  setUpShareLinks(mediaObjectId, sectionIds);
+function buildActionButtons(player, mediaObjectId, sectionIds, sectionShareInfos) {
+  setUpShareLinks(sectionShareInfos);
   setUpAddToPlaylist(player, sectionIds, mediaObjectId);
   setUpCreateThumbnail(player, sectionIds);
   setUpCreateTimeline(player);
@@ -145,28 +167,29 @@ function buildActionButtons(player, mediaObjectId, sectionIds) {
 /**
  * Populate the relevant share links for the current section (masterfile) loaded into
  * the player on page
- * @param {String} mediaObjectId 
- * @param {Array<String>} sectionIds array of ordered masterfile id in the mediaobject
+ * @param {Array<Object>} sectionShareInfos
  */
-function setUpShareLinks(mediaObjectId, sectionIds) {
-  const sectionId = sectionIds[canvasIndex];
-  $.ajax({
-    url: '/media_objects/' + mediaObjectId + '/section/' + sectionId + '/stream',
-    type: 'GET',
-    success: function (data) {
-      const { lti_share_link, link_back_url, embed_code } = data;
-      $('#share-link-section')
-        .val(link_back_url)
-        .attr('placeholder', link_back_url);
-      $('#ltilink-section')
-        .val(lti_share_link)
-        .attr('placeholder', lti_share_link);
-      $('#embed-part').val(embed_code);
-    },
-    error: function (err) {
-      console.log(err);
-    }
-  });
+function setUpShareLinks(sectionShareInfos) {
+  const sectionShareInfo = sectionShareInfos[canvasIndex];
+  const { lti_share_link, link_back_url, embed_code } = sectionShareInfo;
+
+  const shareLinkSection = getById('share-link-section');
+  if (shareLinkSection) {
+    shareLinkSection.value = link_back_url;
+    shareLinkSection.setAttribute('placeholder', link_back_url);
+  }
+
+  const ltilinkSection = getById('ltilink-section');
+  if (ltilinkSection) {
+    ltilinkSection.value = lti_share_link;
+    ltilinkSection.setAttribute('placeholder', lti_share_link);
+  }
+
+  const embedPart = getById('embed-part');
+  if (embedPart) {
+    embedPart.value = embed_code;
+  }
+
   shareListeners();
 }
 
@@ -174,22 +197,42 @@ function setUpShareLinks(mediaObjectId, sectionIds) {
  * Event listeners for the share panel and tabs
  */
 function shareListeners() {
-  // Hide add to playlist panel when share resource panel is collapsed
-  $('#shareResourcePanel').on('show.bs.collapse', function (e) {
-    $('#addToPlaylistPanel').collapse('hide');
-  });
-
-  if (!$('nav.share-tabs').first().hasClass('active')) {
-    $('nav.share-tabs').first().toggleClass('active');
-    $('.share-tabs a').first().attr('aria-selected', true);
-    $('#share-list .tab-content .tab-pane').first().toggleClass('active');
+  // Hide add to playlist panel when share resource panel is opened
+  const shareResourcePanel = getById('shareResourcePanel');
+  if (shareResourcePanel) {
+    shareResourcePanel.addEventListener('show.bs.collapse', function () {
+      // Hide add to playlist panel if its showing
+      const addToPlaylistPanel = getById('addToPlaylistPanel');
+      if (addToPlaylistPanel && addToPlaylistPanel.classList.contains('show')) {
+        showOrCollapse(addToPlaylistPanel, false);
+      }
+    });
   }
 
-  $('.share-tabs a').click(function (e) {
-    e.preventDefault();
-    $(this).tab('show');
-    $('.share-tabs a').attr('aria-selected', false);
-    $(this).attr('aria-selected', true);
+  const firstShareTab = query('nav.share-tabs');
+  if (firstShareTab && !firstShareTab.classList.contains('active')) {
+    firstShareTab.classList.add('active');
+    const firstShareLink = query('.share-tabs a');
+    if (firstShareLink) {
+      firstShareLink.setAttribute('aria-selected', 'true');
+    }
+    const firstTabPane = query('#share-list .tab-content .tab-pane');
+    if (firstTabPane) {
+      firstTabPane.classList.add('active');
+    }
+  }
+
+  const shareTabLinks = queryAll('.share-tabs a');
+  shareTabLinks.forEach(link => {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      // Show tab using Bootstrap 5 API
+      const tab = new bootstrap.Tab(this);
+      tab.show();
+      // Update aria-selected attributes
+      shareTabLinks.forEach(l => l.setAttribute('aria-selected', 'false'));
+      this.setAttribute('aria-selected', 'true');
+    });
   });
 }
 
@@ -200,7 +243,7 @@ function shareListeners() {
  * @param {String} mediaObjectId
  */
 function setUpAddToPlaylist(player, sectionIds, mediaObjectId) {
-  let addToPlaylistBtn = document.getElementById('addToPlaylistBtn');
+  let addToPlaylistBtn = getById('addToPlaylistBtn');
 
   if (addToPlaylistBtn && addToPlaylistBtn.disabled
     && (player.player?.readyState() >= 2 || isMobile)) {
@@ -219,110 +262,141 @@ function setUpAddToPlaylist(player, sectionIds, mediaObjectId) {
  * @param {String} mediaObjectId
  */
 function addToPlaylistListeners(sectionIds, mediaObjectId) {
-  $('#addToPlaylistPanel').on('show.bs.collapse', function (e) {
-    // Hide add to playlist alert on panel show
-    $('#add_to_playlist_alert').slideUp(0);
-    // Hide share resource panel on add to playlist panel show
-    $('#shareResourcePanel').collapse('hide');
+  const addToPlaylistPanel = getById('addToPlaylistPanel');
+  if (addToPlaylistPanel) {
+    addToPlaylistPanel.addEventListener('show.bs.collapse', function (event) {
+      // Hide add to playlist alert on panel show
+      const playlistAlert = getById('add_to_playlist_alert');
+      if (playlistAlert) {
+        playlistAlert.style.display = 'none';
+      }
 
-    let playlistForm = $('#add_to_playlist')[0];
-    if (!playlistForm) {
-      return;
-    }
+      // Hide share resource panel on add to playlist panel show
+      const shareResourcePanel = getById('shareResourcePanel');
+      if (shareResourcePanel && shareResourcePanel.classList.contains('show')) {
+        showOrCollapse(shareResourcePanel, false);
+      }
 
-    // For custom scope set start, end times as current time and media duration respectively
-    let start, end, currentTime, duration = 0;
-    let currentPlayer = document.getElementById('iiif-media-player');
-    if (currentPlayer && currentPlayer.player) {
-      currentTime = currentPlayer.player.currentTime();
-      duration = currentPlayer.player.duration();
-    }
+      let playlistForm = getById('add_to_playlist');
+      if (!playlistForm) return;
 
-    let activeTrack = null;
-    let mediaObjectTitle = playlistForm.dataset.title;
-    let timelineScopes = getTimelineScopes();
-    let scopes = timelineScopes.scopes;
-    streamId = timelineScopes.streamId || sectionIds[canvasIndex];
-    currentSectionLabel = `${mediaObjectTitle || mediaObjectId} - ${streamId}`;
+      // For custom scope set start, end times as current time and media duration respectively
+      let start, end, currentTime, duration = 0;
+      let currentPlayer = getById('iiif-media-player');
+      if (currentPlayer && currentPlayer.player) {
+        currentTime = currentPlayer.player.currentTime();
+        duration = currentPlayer.player.duration();
+      }
 
-    // Fill in the current track and section titles and custom scope times
-    if (scopes?.length > 0) {
-      let sectionInfo = scopes.filter(s => s.tags.includes('current-section'));
-      let trackInfo = scopes.filter(s => s.tags.includes('current-track'));
+      let activeTrack = null;
+      let mediaObjectTitle = playlistForm.dataset.title;
+      let timelineScopes = getTimelineScopes();
+      let scopes = timelineScopes.scopes;
+      streamId = timelineScopes.streamId || sectionIds[canvasIndex];
+      currentSectionLabel = `${mediaObjectTitle || mediaObjectId} - ${streamId}`;
 
-      if (sectionInfo?.length > 0) {
-        currentSectionLabel = sectionInfo[0].label || currentSectionLabel;
+      // Fill in the current track and section titles and custom scope times
+      if (scopes?.length > 0) {
+        let sectionInfo = scopes.filter(s => s.tags.includes('current-section'));
+        let trackInfo = scopes.filter(s => s.tags.includes('current-track'));
 
-        if (trackInfo.length === 0 && event?.target.id === "addToPlaylistBtn") {
-          $('#playlistitem_scope_section').prop('checked', true);
+        if (sectionInfo?.length > 0) {
+          currentSectionLabel = sectionInfo[0].label || currentSectionLabel;
+
+          if (trackInfo.length === 0) {
+            const playlistScopeSection = getById('playlistitem_scope_section');
+            if (playlistScopeSection) playlistScopeSection.checked = true;
+          }
+        }
+
+        if (trackInfo.length > 0) {
+          activeTrack = trackInfo[0];
+          let trackName = activeTrack.tags.includes('current-section')
+            ? activeTrack.label || streamId
+            : `${currentSectionLabel} - ${activeTrack.label || streamId}`;
+          const currentTrackName = getById('current-track-name');
+          if (currentTrackName) currentTrackName.textContent = trackName;
+          if (event.target.id === "addToPlaylistPanel") {
+            const playlistScopeTrack = getById('playlistitem_scope_track');
+            if (playlistScopeTrack) playlistScopeTrack.checked = true;
+          }
+          // Update start, end times for custom scope from the active timespan
+          start = activeTrack.times.begin;
+          end = activeTrack.times.end;
+        } else {
+          activeTrack = undefined;
         }
       }
 
-      if (trackInfo.length > 0) {
-        activeTrack = trackInfo[0];
-        let trackName = activeTrack.tags.includes('current-section')
-          ? activeTrack.label || streamId
-          : `${currentSectionLabel} - ${activeTrack.label || streamId}`;
-        $('#current-track-name').text(trackName);
-        if (event?.target.id === "addToPlaylistBtn") {
-          $('#playlistitem_scope_track').prop('checked', true);
+      const playlistItemTitle = getById('playlist_item_title');
+      disableEnableCurrentTrack(
+        activeTrack, currentTime, isPlaying,
+        // Preserve user edits for the title when available
+        (playlistItemTitle ? playlistItemTitle.value : '') || currentSectionLabel
+      );
+      const currentSectionName = getById('current-section-name');
+      if (currentSectionName) currentSectionName.textContent = currentSectionLabel;
+      const playlistItemStart = getById('playlist_item_start');
+      if (playlistItemStart) playlistItemStart.value = createTimestamp(start || currentTime, true);
+      const playlistItemEnd = getById('playlist_item_end');
+      if (playlistItemEnd) playlistItemEnd.value = createTimestamp(duration || end, true);
+
+      // Show add to playlist form on show and reset initially
+      const addToPlaylistFormGroup = getById('add_to_playlist_form_group');
+      if (addToPlaylistFormGroup) addToPlaylistFormGroup.style.display = 'block';
+    });
+  }
+
+  const addToPlaylistSave = getById('addToPlaylistSave');
+  if (addToPlaylistSave) {
+    addToPlaylistSave.addEventListener('click', function (e) {
+      e.preventDefault();
+      const playlistId = getById('post_playlist_id')?.value;
+
+      const playlistScopeTrack = getById('playlistitem_scope_track');
+      const playlistTimeSelection = getById('playlistitem_timeselection');
+      const playlistScopeSection = getById('playlistitem_scope_section');
+      const playlistScopeItem = getById('playlistitem_scope_item');
+
+      if (playlistScopeTrack?.checked) {
+        if (activeTrack === undefined) {
+          activeTrack = getActiveItem(false);
         }
-        // Update start, end times for custom scope from the active timespan
-        start = activeTrack.times.begin;
-        end = activeTrack.times.end;
+        let starttime = createTimestamp(activeTrack.times.begin, true);
+        let endtime = createTimestamp(activeTrack.times.end, true);
+        addPlaylistItem(playlistId, streamId, starttime, endtime);
+      } else if (playlistTimeSelection?.checked) {
+        let starttime = getById('playlist_item_start') ? getById('playlist_item_start').value : '';
+        let endtime = getById('playlist_item_end') ? getById('playlist_item_end').value : '';
+        addPlaylistItem(playlistId, streamId, starttime, endtime);
+      } else if (playlistScopeSection?.checked) {
+        let multiItemCheck = getById('playlistitem_scope_structure')?.checked || false;
+        let scope = multiItemCheck ? 'structure' : 'section';
+        addToPlaylist(playlistId, scope, streamId, mediaObjectId);
+      } else if (playlistScopeItem?.checked) {
+        let multiItemCheck = getById('playlistitem_scope_structure')?.checked || false;
+        let scope = multiItemCheck ? 'structure' : 'section';
+        addToPlaylist(playlistId, scope, '', mediaObjectId);
       } else {
-        activeTrack = undefined;
+        handleAddError({ responseJSON: { message: ['Please select a playlist option'] } });
       }
-    }
-
-    disableEnableCurrentTrack(
-      activeTrack,
-      currentTime,
-      isPlaying,
-      $('#playlist_item_title').val() || currentSectionLabel // Preserve user edits for the title when available
-    );
-    $('#current-section-name').text(currentSectionLabel);
-    $('#playlist_item_start').val(createTimestamp(start || currentTime, true));
-    $('#playlist_item_end').val(createTimestamp(duration || end, true));
-
-    // Show add to playlist form on show and reset initially
-    $('#add_to_playlist_form_group').slideDown();
-  });
-
-  $('#addToPlaylistSave').on('click', function (e) {
-    e.preventDefault();
-    let playlistId = $('#post_playlist_id').val();
-    if ($('#playlistitem_scope_track')[0].checked) {
-      let starttime = createTimestamp(activeTrack.times.begin, true);
-      let endtime = createTimestamp(activeTrack.times.end, true);
-      addPlaylistItem(playlistId, streamId, starttime, endtime);
-    } else if ($('#playlistitem_timeselection')[0].checked) {
-      let starttime = $('#playlist_item_start').val();
-      let endtime = $('#playlist_item_end').val();
-      addPlaylistItem(playlistId, streamId, starttime, endtime);
-    } else if ($('#playlistitem_scope_section')[0].checked) {
-      let multiItemCheck = $('#playlistitem_scope_structure')[0].checked;
-      let scope = multiItemCheck ? 'structure' : 'section';
-      addToPlaylist(playlistId, scope, streamId, mediaObjectId);
-    } else if ($('#playlistitem_scope_item')[0].checked) {
-      let multiItemCheck = $('#playlistitem_scope_structure')[0].checked;
-      let scope = multiItemCheck ? 'structure' : 'section';
-      addToPlaylist(playlistId, scope, '', mediaObjectId);
-    } else {
-      handleAddError({ responseJSON: { message: ['Please select a playlist option'] } });
-    }
-  });
+    });
+  }
 
   // In testing, this action did not function properly using `hide.bs.collapse`
   // or `hidden.bs.collapse`. Triggering on click and limiting via if-statement
   // was consistent.
-  $('#addToPlaylistBtn').on('click', function (e) {
-    // Only reset the form when the panel is closing to mitigate risk
-    // of conflicting actions when populating panel.
-    if ($('#addToPlaylistPanel.show').length > 0) {
-      resetAddToPlaylistForm();
-    }
-  });
+  const addToPlaylistBtn = getById('addToPlaylistBtn');
+  if (addToPlaylistBtn) {
+    addToPlaylistBtn.addEventListener('click', function () {
+      // Only reset the form when the panel is closing to mitigate risk
+      // of conflicting actions when populating panel.
+      const addToPlaylistPanel = getById('addToPlaylistPanel');
+      if (addToPlaylistPanel?.classList.contains('show')) {
+        resetAddToPlaylistForm();
+      }
+    });
+  }
 
   addToPlaylistListenersAdded = true;
 }
@@ -333,13 +407,13 @@ function addToPlaylistListeners(sectionIds, mediaObjectId) {
  * @param {Array<String>} sectionIds array of ordered masterfile ids in the mediaobject
  */
 function setUpCreateThumbnail(player, sectionIds) {
-  let thumbnailBtn = document.getElementById('thumbnailBtn');
+  let thumbnailBtn = getById('thumbnailBtn');
   let baseUrl = '';
   let offset = '';
 
   // Leave 'Create Thumbnail' button disabled when item is audio
   if (thumbnailBtn && thumbnailBtn.disabled
-    && (player.player?.readyState() >= 2 || isMobile) && !player.player.isAudio()) {
+    && (player.player?.readyState() >= 2 || isMobile) && !player.player.audioOnlyMode()) {
     thumbnailBtn.disabled = false;
 
     /*
@@ -351,7 +425,7 @@ function setUpCreateThumbnail(player, sectionIds) {
     if (firstLoad) {
       thumbnailBtn.addEventListener('click',
         () => handleCreateThumbnailModalShow(sectionIds, offset, baseUrl));
-      document.getElementById('create-thumbnail-submit-button').addEventListener('click',
+      getById('create-thumbnail-submit-button').addEventListener('click',
         () => handleUpdateThumbnail(sectionIds, offset, baseUrl));
     }
   }
@@ -364,19 +438,25 @@ function setUpCreateThumbnail(player, sectionIds) {
  * @param {String} baseUrl base URL for the API request to get the still frame
  */
 function handleCreateThumbnailModalShow(sectionIds, offset, baseUrl) {
-  let currentPlayer = document.getElementById('iiif-media-player');
-  let $imgPolaroid = document.getElementById('img-polaroid');
+  let currentPlayer = getById('iiif-media-player');
+  let imgPolaroid = getById('img-polaroid');
   offset = currentPlayer.player.currentTime();
 
   const sectionId = sectionIds[canvasIndex];
   baseUrl = '/master_files/' + sectionId;
 
-  if ($imgPolaroid) {
+  if (imgPolaroid) {
     let src = baseUrl + '/poster?offset=' + offset + '&preview=true';
 
     // Display a preview of thumbnail to user
-    $imgPolaroid.setAttribute('src', src);
-    $($imgPolaroid).fadeIn('slow');
+    imgPolaroid.setAttribute('src', src);
+    imgPolaroid.style.opacity = '0';
+    imgPolaroid.style.display = 'block';
+    // Fade in effect using CSS transition
+    setTimeout(() => {
+      imgPolaroid.style.transition = 'opacity 0.6s';
+      imgPolaroid.style.opacity = '1';
+    }, 10);
   }
 };
 
@@ -387,36 +467,52 @@ function handleCreateThumbnailModalShow(sectionIds, offset, baseUrl) {
  * @param {String} baseUrl base URL for the API request to set the thumbnail
  */
 function handleUpdateThumbnail(sectionIds, offset, baseUrl) {
-  let currentPlayer = document.getElementById('iiif-media-player');
+  let currentPlayer = getById('iiif-media-player');
   const sectionId = sectionIds[canvasIndex];
   baseUrl = '/master_files/' + sectionId;
   offset = currentPlayer.player.currentTime();
 
-  const modalBody = document.getElementsByClassName('modal-body')[0];
-  // Put in a loading spinner and disable buttons to prevent double clicks
-  modalBody.classList.add('spinner');
-  $('#thumbnailModal')
-    .find('button')
-    .attr({ disabled: true });
+  const modalBody = query('.modal-body');
+  const thumbnailModal = getById('thumbnailModal');
 
-  $.ajax({
-    url: baseUrl + '/still',
-    type: 'POST',
-    data: {
-      offset: offset
-    }
+  // Put in a loading spinner and disable buttons to prevent double clicks
+  if (modalBody) {
+    modalBody.classList.add('spinner');
+  }
+
+  if (thumbnailModal) {
+    const buttons = queryAll('button', thumbnailModal);
+    buttons.forEach(btn => btn.disabled = true);
+  }
+
+  // Create form data for POST request
+  const formData = new FormData();
+  formData.append('offset', offset);
+
+  // Get CSRF token for Rails
+  const csrfToken = query('meta[name="csrf-token"]')?.getAttribute('content');
+
+  fetch(baseUrl + '/still', {
+    method: 'POST',
+    headers: {
+      'X-CSRF-Token': csrfToken
+    },
+    body: formData
   })
-    .done(response => {
-      $('#thumbnailModal').modal('hide');
+    .then(response => {
+      if (thumbnailModal) toggleModal(thumbnailModal, false);
     })
-    .fail(error => {
+    .catch(error => {
       console.log(error);
     })
-    .always(() => {
-      modalBody.classList.remove('spinner');
-      $('#thumbnailModal')
-        .find('button')
-        .attr({ disabled: false });
+    .finally(() => {
+      if (modalBody) {
+        modalBody.classList.remove('spinner');
+      }
+      if (thumbnailModal) {
+        const buttons = queryAll('button', thumbnailModal);
+        buttons.forEach(btn => btn.disabled = false);
+      }
     });
 };
 
@@ -425,7 +521,7 @@ function handleUpdateThumbnail(sectionIds, offset, baseUrl) {
  * @param {Object} player 
  */
 function setUpCreateTimeline(player) {
-  let timelineBtn = document.getElementById('timelineBtn');
+  let timelineBtn = getById('timelineBtn');
 
   if (timelineBtn && timelineBtn.disabled
     && (player.player?.readyState() >= 2 || isMobile)) {
@@ -441,12 +537,12 @@ function setUpCreateTimeline(player) {
  */
 function handleCreateTimelineModalShow() {
   let title;
-  let currentPlayer = document.getElementById('iiif-media-player').player;
+  let currentPlayer = getById('iiif-media-player').player;
 
-  let $modalBody = $('#timelineModal').find('div#new-timeline-inputs')[0];
+  const modalBody = query('div#new-timeline-inputs', getById('timelineModal')) || null;
   let bodyText = "<p>Choose scope for new timeline:</p>";
 
-  title = $('#timelineModal')[0].dataset.title;
+  title = getById('timelineModal')?.dataset.title || '';
   let timelineScopes = getTimelineScopes();
   let scopes = timelineScopes.scopes;
   streamId = timelineScopes.streamId;
@@ -461,7 +557,7 @@ function handleCreateTimelineModalShow() {
     if (scope.tracks > 1) {
       label += " (" + scope.tracks + " tracks)";
     }
-    checked = (index == scopes.length - 1) ? 'checked' : '';
+    let checked = (index == scopes.length - 1) ? 'checked' : '';
     bodyText += "<div class=\"form-check\">";
     bodyText += "<input class=\"form-check-input\" type=\"radio\" name=\"scope\" id=\"timelinescope" + index + "\" " + checked + ">";
     bodyText += "<label class=\"form-check-label\" for=\"timelinescope" + index + "\" style=\"margin-left: 5px;\"> " + label + "</label>";
@@ -473,39 +569,96 @@ function handleCreateTimelineModalShow() {
   bodyText += "<input type=\"text\" name=\"custombegin\" id=\"custombegin\" size=\"10\" value=\"" + createTimestamp(currentPlayer.currentTime(), true) + "\" \> to ";
   bodyText += "<input type=\"text\" name=\"customend\" id=\"customend\" size=\"10\" value=\"" + createTimestamp(currentPlayer.duration(), true) + "\" \>";
   bodyText += "</div>";
-  $modalBody.innerHTML = bodyText;
+  modalBody.innerHTML = bodyText;
 
-  $('#timelineModalSave').on('click', function (e) {
-    let label, t, id;
-    if ($('#timelinescope_custom')[0].checked) {
-      let pattern = /^(\d+:){0,2}\d+(\.\d+)?$/;
-      let beginval = $('#custombegin')[0].value;
-      let endval = $('#customend')[0].value;
-      if (pattern.test(beginval) && pattern.test(endval)) {
-        label = 'custom scope';
-        t = 't=' + timeToS($('#custombegin')[0].value) + ',' + timeToS($('#customend')[0].value);
-      } else {
-        $('#custombegin').css('color', (pattern.test(beginval) ? 'black' : 'red'));
-        $('#customend').css('color', (pattern.test(endval) ? 'black' : 'red'));
-        return;
-      }
-    } else {
-      let selectedIndex = -1;
-      for (let index = 0; index < scopes.length; index++) {
-        if ($('#timelinescope' + index)[0].checked) {
-          selectedIndex = index;
-          break;
+  const timelineModalSave = getById('timelineModalSave');
+  if (timelineModalSave) {
+    timelineModalSave.addEventListener('click', function () {
+      let label, t, id;
+      const timelineScopeCustom = getById('timelinescope_custom');
+      if (timelineScopeCustom?.checked) {
+        let pattern = /^(\d+:){0,2}\d+(\.\d+)?$/;
+        const customBegin = getById('custombegin');
+        const customEnd = getById('customend');
+        let beginval = customBegin ? customBegin.value : '';
+        let endval = customEnd ? customEnd.value : '';
+        if (pattern.test(beginval) && pattern.test(endval)) {
+          label = 'custom scope';
+          t = 't=' + timeToS(beginval) + ',' + timeToS(endval);
+        } else {
+          if (customBegin) {
+            customBegin.style.color = pattern.test(beginval) ? 'black' : 'red';
+          }
+          if (customEnd) {
+            customEnd.style.color = pattern.test(endval) ? 'black' : 'red';
+          }
+          return;
         }
+      } else {
+        let selectedIndex = -1;
+        for (let index = 0; index < scopes.length; index++) {
+          const timelineScope = getById('timelinescope' + index);
+          if (timelineScope?.checked) {
+            selectedIndex = index;
+            break;
+          }
+        }
+        if (selectedIndex === -1) return;
+        let scope = scopes[selectedIndex];
+        label = scope.label;
+        let { begin, end } = scope.times;
+        t = `t=${begin},${end}`;
       }
-      if (selectedIndex === -1) return;
-      let scope = scopes[selectedIndex];
-      label = scope.label;
-      let { begin, end } = scope.times;
-      t = `t=${begin},${end}`;
+      id = streamId;
+      const newTimelineTitle = getById('new-timeline-title');
+      if (newTimelineTitle) {
+        newTimelineTitle.value = label;
+      }
+      const newTimelineSource = getById('new-timeline-source');
+      if (newTimelineSource) {
+        newTimelineSource.value = '/master_files/' + id + '?' + t;
+      }
+      const newTimelineForm = getById('new-timeline-form');
+      if (newTimelineForm) {
+        newTimelineForm.submit();
+      }
+    });
+  }
+}
+
+/**
+ * Handler to refresh stream tokens via reloading the m3u8 file
+ */
+function initM3U8Reload(player) {
+  if (player && player.player != undefined) {
+    if (reloadAdded === false) {
+      player.player.on('pause', () => {
+        currentTime = player.player.currentTime();
+        // How long to wait before resetting stream tokens: default 5 minutes
+        intervalLength = 5 * 60 * 1000;
+        reloadInterval = setInterval(m3u8Reload, intervalLength);
+      });
+
+      player.player.on('play', () => {
+        if (reloadInterval !== false) {
+          clearInterval(reloadInterval);
+          reloadInterval = false;
+        }
+      });
+
+      player.player.on('seeking', () => {
+        seeking = true
+      });
+
+      player.player.on('waiting', () => {
+        if (seeking === true) {
+          seeking = false;
+        } else {
+          m3u8Reload();
+        }
+      });
+
+      reloadAdded = true;
     }
-    id = streamId;
-    $('#new-timeline-title')[0].value = label;
-    $('#new-timeline-source')[0].value = '/master_files/' + id + '?' + t;
-    $('#new-timeline-form')[0].submit();
-  });
+  }
 }

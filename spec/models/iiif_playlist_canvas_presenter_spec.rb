@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -90,6 +90,23 @@ describe IiifPlaylistCanvasPresenter do
         expect(subject.width).to eq 1280
         expect(subject.height).to eq 40
       end
+
+      it 'has thumbnail' do
+        expect(subject.thumbnail.first[:id]).to start_with "http://test.host/assets/audio_icon"
+      end
+
+      context 'with mp3 file' do
+        let(:mp3_url) { 'https://streaming.example.com/dir/file.mp3' }
+        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp3_url, mime_type: 'audio/mpeg' ) }
+
+        it 'has format' do
+          expect(subject.format).to eq 'audio/mpeg'
+        end
+
+        it 'has progressive download url with media fragment' do
+          expect(subject.url).to eq "#{mp3_url}#t=#{playlist_item.start_time / 1000},#{playlist_item.end_time / 1000}"
+        end
+      end
     end
 
     context 'when video file' do
@@ -104,6 +121,23 @@ describe IiifPlaylistCanvasPresenter do
       it 'has height and width' do
         expect(subject.width).to eq 1024
         expect(subject.height).to eq 768
+      end
+
+      it 'has thumbnail' do
+        expect(subject.thumbnail.first[:id]).to eq "http://test.host/master_files/#{master_file.id}/thumbnail"
+      end
+
+      context 'with mp4 file' do
+        let(:mp4_url) { 'https://streaming.example.com/dir/file.mp4' }
+        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp4_url, mime_type: 'video/mp4' ) }
+
+        it 'has format' do
+          expect(subject.format).to eq 'video/mp4'
+        end
+
+        it 'has progressive download url with media fragment' do
+          expect(subject.url).to eq "#{mp4_url}#t=#{playlist_item.start_time / 1000},#{playlist_item.end_time / 1000}"
+        end
       end
     end
 
@@ -156,12 +190,12 @@ describe IiifPlaylistCanvasPresenter do
 
       it "serializes captions as iiif annotations" do
         expect(subject).to all be_a(IIIFManifest::V3::AnnotationContent)
-        expect(subject.length).to eq 2
+        expect(subject.length).to eq 1
       end
 
-      it "includes paths to supplemental and legacy caption files" do
+      it "includes paths to supplemental but NOT legacy caption files" do
         expect(subject.any? { |content| content.body_id =~ /supplemental_files\/#{caption_file.id}\/captions/ }).to eq true
-        expect(subject.any? { |content| content.body_id =~ /master_files\/#{master_file.id}\/captions/ }).to eq true
+        expect(subject.any? { |content| content.body_id =~ /master_files\/#{master_file.id}\/captions/ }).to eq false
       end
 
       it "includes 'supplementing' motivation" do
@@ -177,7 +211,7 @@ describe IiifPlaylistCanvasPresenter do
 
       it "serializes captions as iiif annotations" do
         expect(subject).to all be_a(IIIFManifest::V3::AnnotationContent)
-        expect(subject.length).to eq 3
+        expect(subject.length).to eq 2
       end
 
       it "includes marker label" do
@@ -188,9 +222,9 @@ describe IiifPlaylistCanvasPresenter do
         expect(subject.any? { |content| content.media_fragment =~ /t=#{marker.start_time}/ }).to eq true
       end
 
-      it "includes paths to supplemental and legacy caption files" do
+      it "includes paths to supplemental but NOT legacy caption files" do
         expect(subject.any? { |content| content.body_id =~ /supplemental_files\/#{caption_file.id}\/captions/ }).to eq true
-        expect(subject.any? { |content| content.body_id =~ /master_files\/#{master_file.id}\/captions/ }).to eq true
+        expect(subject.any? { |content| content.body_id =~ /master_files\/#{master_file.id}\/captions/ }).to eq false
       end
 
       it "includes 'highlighting' motivation" do
@@ -224,7 +258,7 @@ describe IiifPlaylistCanvasPresenter do
     subject { presenter.range }
 
     it 'generates the clip range' do
-    	expect(subject.label.to_s).to eq "{\"none\"=>[\"#{playlist_item.title}\"]}"
+    	expect(subject.label.to_s).to eq "{\"none\" => [\"#{playlist_item.title}\"]}"
     	expect(subject.items.size).to eq 1
     	expect(subject.items.first).to be_a IiifPlaylistCanvasPresenter
       expect(subject.items.first.media_fragment).to eq "t=#{playlist_item.start_time / 1000},#{playlist_item.end_time / 1000}"

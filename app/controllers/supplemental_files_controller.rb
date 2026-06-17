@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -16,7 +16,8 @@
 class SupplementalFilesController < ApplicationController
   include Rails::Pagination
 
-  before_action :set_object
+  before_action :set_object, only: [:create, :update, :destroy]
+  before_action :set_proxy, except: [:create, :update, :destroy]
   before_action :authorize_object
 
   rescue_from Avalon::SaveError do |exception|
@@ -42,9 +43,10 @@ class SupplementalFilesController < ApplicationController
       raise Avalon::BadRequest, "Missing required Content-type headers" unless request.headers["Content-Type"] == 'application/json'
     end
     raise Avalon::BadRequest, "Missing required parameters" unless validate_params
+    raise Avalon::BadRequest, "Forced attribute is already assigned to another caption. Ensure no other captions are forced before setting attribute." unless validate_forced
 
     @supplemental_file = SupplementalFile.new(**metadata_from_params)
-    
+
     if attachment
       begin
         @supplemental_file.attach_file(attachment)
@@ -58,7 +60,7 @@ class SupplementalFilesController < ApplicationController
 
     raise Avalon::SaveError, @supplemental_file.errors.full_messages unless @supplemental_file.save
 
-    @object.supplemental_files += [@supplemental_file]
+    @object.supplemental_files = @object.supplemental_files(include_private: true) + [@supplemental_file]
     raise Avalon::SaveError, @object.errors[:supplemental_files_json] unless @object.save
 
     flash[:success] = "Supplemental file successfully added."
@@ -85,9 +87,11 @@ class SupplementalFilesController < ApplicationController
       format.html { 
         # Redirect or proxy the content
         if Settings.supplemental_files.proxy
-          send_data @supplemental_file.file.download, filename: @supplemental_file.file.filename.to_s, type: @supplemental_file.file.content_type, disposition: 'attachment'
+          send_data @supplemental_file.file.download, filename: @supplemental_file.download_filename, type: @supplemental_file.file.content_type, disposition: "inline; filename=#{@supplemental_file.download_filename}"
         else
-          redirect_to rails_blob_path(@supplemental_file.file, disposition: "attachment")
+          # Rails 7.0 adds a config option to protect against "open redirects". We override
+          # that here in case the active storage db is not local.
+          redirect_to rails_blob_path(@supplemental_file.file, disposition: "inline; filename=#{@supplemental_file.download_filename}"), allow_other_host: true
         end
       }
       format.json { render json: @supplemental_file.as_json }
@@ -103,6 +107,7 @@ class SupplementalFilesController < ApplicationController
       raise Avalon::BadRequest, "Missing required Accept headers" unless request.headers["Accept"] == 'application/json'
     end
     raise Avalon::BadRequest, "Missing required parameters" unless validate_params
+    raise Avalon::BadRequest, "Forced attribute is already assigned to another caption. Ensure no other captions are forced before setting attribute." unless validate_forced
 
     find_supplemental_file
 
@@ -132,8 +137,7 @@ class SupplementalFilesController < ApplicationController
 
   def destroy
     find_supplemental_file
-
-    @object.supplemental_files -= [@supplemental_file]
+    @object.supplemental_files = @object.supplemental_files(include_private: true) - [@supplemental_file]
     raise Avalon::SaveError, "An error occurred when deleting the supplemental file: #{@object.errors[:supplemental_files_json]}" unless @object.save
     # FIXME: also wrap this in a transaction
     raise Avalon::SaveError, "An error occurred when deleting the supplemental file: #{@supplemental_file.errors.full_messages}" unless @supplemental_file.destroy
@@ -149,15 +153,19 @@ class SupplementalFilesController < ApplicationController
     find_supplemental_file
 
     file_content = @supplemental_file.file.download
-    content = @supplemental_file.file.content_type == 'text/srt' ? SupplementalFile.convert_from_srt(file_content) : file_content
+    content = ['text/srt', 'application/x-subrip'].include?(@supplemental_file.file.content_type) ? SupplementalFile.convert_from_srt(file_content) : file_content
 
-    send_data content, filename: @supplemental_file.file.filename.to_s, type: 'text/vtt', disposition: 'attachment'
+    send_data content, filename: @supplemental_file.download_filename, type: 'text/vtt', disposition: "inline; filename=#{@supplemental_file.download_filename}"
   end
 
   private
 
     def set_object
       @object = fetch_object params[:master_file_id] || params[:media_object_id]
+    end
+
+    def set_proxy
+      @object = fetch_proxy params[:master_file_id] || params[:media_object_id]
     end
 
     def validate_params
@@ -181,12 +189,14 @@ class SupplementalFilesController < ApplicationController
              end
       treat_as_transcript = 'transcript' if meta_params[:treat_as_transcript] == true
       machine_generated = 'machine_generated' if meta_params[:machine_generated] == true
+      private_file = 'private' if meta_params[:private] == true
+      forced = 'forced' if meta_params[:forced] == true
 
       sup_file_params[:label] ||= meta_params[:label].presence
       sup_file_params[:language] ||= meta_params[:language].presence
       # The uniq is to prevent multiple instances of 'transcript' tag if an update is performed with
       # `{ type: transcript, treat_as_transcript: 1}`
-      sup_file_params[:tags] ||= [type, treat_as_transcript, machine_generated].compact.uniq
+      sup_file_params[:tags] ||= [type, treat_as_transcript, machine_generated, private_file, forced].compact.uniq
       sup_file_params
     end
 
@@ -196,7 +206,7 @@ class SupplementalFilesController < ApplicationController
       raise Avalon::NotFound, "Supplemental file: #{params[:id]} not found" unless SupplementalFile.exists? params[:id].to_s
 
       @supplemental_file = SupplementalFile.find(params[:id])
-      raise Avalon::NotFound, "Supplemental file: #{@supplemental_file.id} not found" unless @object.supplemental_files.any? { |f| f.id == @supplemental_file.id }
+      raise Avalon::NotFound, "Supplemental file: #{@supplemental_file.id} not found" unless @object.supplemental_files(include_private: true).any? { |f| f.id == @supplemental_file.id }
     end
 
 
@@ -235,9 +245,11 @@ class SupplementalFilesController < ApplicationController
         return
       end
 
-      file_params = [ 
+      file_params = [
         { param: "machine_generated_#{params[:id]}".to_sym, tag: "machine_generated", method: :machine_generated? },
-        { param: "treat_as_transcript_#{params[:id]}".to_sym, tag: "transcript", method: :caption_transcript? }
+        { param: "treat_as_transcript_#{params[:id]}".to_sym, tag: "transcript", method: :caption_transcript? },
+        { param: "private_#{params[:id]}".to_sym, tag: "private", method: :private? },
+        { param: "forced_#{params[:id]}".to_sym, tag: "forced", method: :forced? }
       ]
 
       file_params.each do |v|
@@ -250,6 +262,14 @@ class SupplementalFilesController < ApplicationController
           @supplemental_file.tags -= [tag]
         end
       end
+    end
+
+    def validate_forced
+      return true unless params["forced_#{params[:id]}".to_sym]
+      forced_files = @object.supplemental_files(tag: 'forced')
+      return false if forced_files.length.positive?
+
+      true
     end
 
     def metadata_from_params

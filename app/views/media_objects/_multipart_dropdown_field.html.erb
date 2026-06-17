@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -16,11 +16,6 @@ Unless required by applicable law or agreed to in writing, software distributed
 <% selected_value ||= options[:dropdown_options].keys.first %>
 <% fieldarray = options[:multivalued]? "[]" : "" %>
 
-<div class="input-group-prepend">
-  <% fieldname = "media_object[#{options[:dropdown_field]}]#{fieldarray}" %>
-  <%# UMD Customization %>
-  <%= hidden_field_tag fieldname, selected_value, :disabled => "true" %>
-  <%# End UMD Customization %>
-  <% option_hash = (options[:dropdown_options].values).zip(options[:dropdown_options].keys) %>
-  <%= select_tag fieldname.to_s, options_for_select(option_hash, selected_value) %>
-</div>
+<% fieldname = "media_object[#{options[:dropdown_field]}]#{fieldarray}" %>
+<% option_hash = (options[:dropdown_options].values).zip(options[:dropdown_options].keys) %>
+<%= select_tag fieldname.to_s, options_for_select(option_hash, selected_value) %>

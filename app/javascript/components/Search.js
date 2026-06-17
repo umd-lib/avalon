@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,7 +14,7 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React, { Component } from 'react';
+import { Component } from 'react';
 import axios from 'axios';
 import SearchResults from './collections/landing/SearchResults';
 import Pagination from './collections/landing/Pagination';
@@ -132,7 +132,7 @@ class Search extends Component {
       <div className="search-wrapper">
         <div className="row">
           <form onSubmit={this.handleSubmit} className="search-bar col-sm-6 offset-3">
-            <label htmlFor="q" className="sr-only">
+            <label htmlFor="q" className="visually-hidden">
               search for
             </label>
             <input

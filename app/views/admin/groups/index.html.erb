@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -53,12 +53,10 @@ Unless required by applicable law or agreed to in writing, software distributed
       </div>
       <div class="card-body">
         <%= form_tag(admin_groups_path) do -%>
-        <div class="form-group">
+        <div class="mb-3">
           <div class="input-group">
             <%= text_field_tag 'admin_group', nil, :placeholder => 'Enter group name here...', class: 'form-control' %>
-            <span class="input-group-append">
-              <%= button_tag 'Create Group', type: 'submit', class: 'btn btn-primary' %>
-            </span>
+            <%= button_tag 'Create Group', type: 'submit', class: 'btn btn-primary' %>
 
           </div>
         </div>
@@ -97,32 +95,40 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <% content_for :page_scripts do %>
 <script>
-  $('.close').click(function () {
-    $(this).parent().remove();
-  })
+  queryAll('.close').forEach(function(closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      this.parentElement.remove();
+    });
+  });
 
-  $('.select-groups').change(function () {
-    $('input[id^=group_ids_]').prop('checked', $(this).is(':checked')).trigger('change');
-  })
+  query('.select-groups').addEventListener('change', function () {
+    const isChecked = this.checked;
+    queryAll('input[id^=group_ids_]').forEach(function(checkbox) {
+      checkbox.checked = isChecked;
+      checkbox.dispatchEvent(new Event('change'));
+    });
+  });
 
-  $('input[id^=group_ids_]').change(function () {
-    if ($(this).is(':checked')) {
-      enableButtons();
-    } else if ($(':checked').length == 0) {
-      disableButtons();
-    }
-  })
+  queryAll('input[id^=group_ids_]').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function () {
+      if (this.checked) {
+        enableButtons();
+      } else if (queryAll('input[id^=group_ids_]:checked').length === 0) {
+        disableButtons();
+      }
+    });
+  });
 
   function enableButtons() {
-    $('#add-ability').removeClass('disabled');
-    $('#remove-ability').removeClass('disabled');
-    $('.delete').removeAttr('disabled');
+    getById('add-ability').classList.remove('disabled');
+    getById('remove-ability').classList.remove('disabled');
+    query('.delete').removeAttribute('disabled');
   }
 
   function disableButtons() {
-    $('#add-ability').addClass('disabled');
-    $('#remove-ability').addClass('disabled');
-    $('.delete').attr('disabled', 'disabled');
+    getById('add-ability').classList.add('disabled');
+    getById('remove-ability').classList.add('disabled');
+    query('.delete').setAttribute('disabled', 'disabled');
   }
 </script>
 <% end %>

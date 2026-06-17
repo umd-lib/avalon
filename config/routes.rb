@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   concern :searchable, Blacklight::Routes::Searchable.new
   concern :exportable, Blacklight::Routes::Exportable.new
 
-  resource :catalog, only: [:index], as: 'catalog', path: '/catalog', controller: 'catalog' do
+  resource :catalog, only: [], as: 'catalog', path: '/catalog', controller: 'catalog' do
     concerns :searchable
   end
 
@@ -41,6 +41,7 @@ Rails.application.routes.draw do
 
     collection do
       delete 'clear'
+      delete 'remove_selected', action: :destroy_selected
       get 'delete'#, as: :delete_bookmarks
       post 'delete'
       get 'move'#, as: :move_bookmarks
@@ -74,6 +75,7 @@ Rails.application.routes.draw do
   match "/authorize/:path", to: 'derivatives#authorize', via: [:get, :post]
 
   namespace :admin do
+    get '/dashboard', to: 'dashboard#index'
     resources :groups, except: [:show] do
       collection do
         put 'update_multiple'
@@ -88,7 +90,19 @@ Rails.application.routes.draw do
         get 'remove'
         get 'items'
         get 'poster'
+        # UMD Customization
         get 'external_groups'
+        # End UMD Customization
+        post 'poster', action: :attach_poster, as: 'attach_poster'
+        delete 'poster', action: :remove_poster, as: 'remove_poster'
+      end
+    end
+    resources :units do
+      member do
+        get 'edit'
+        get 'remove'
+        get 'items'
+        get 'poster'
         post 'poster', action: :attach_poster, as: 'attach_poster'
         delete 'poster', action: :remove_poster, as: 'remove_poster'
       end
@@ -110,6 +124,12 @@ Rails.application.routes.draw do
       # UMD Customization
       get :course_reserves
       # End UMD Customization
+    end
+  end
+
+  resources :units, only: [:index, :show] do
+    member do
+      get :poster
     end
   end
 
@@ -181,6 +201,7 @@ Rails.application.routes.draw do
       member do
         get 'captions'
         get 'transcripts', :to => redirect('/master_files/%{master_file_id}/supplemental_files/%{id}')
+        get 'descriptions', :to => redirect('master_files/%{master_file_id}/supplemental_files/%{id}')
       end
       get :index, constraints: { format: 'json' }, on: :collection
     end
@@ -272,7 +293,7 @@ Rails.application.routes.draw do
   # End UMD Customization
 
   scope :persona, as: 'persona' do
-    resources :users, only: [:paged_index], controller: 'samvera/persona/users' do
+    resources :users, only: [], controller: 'samvera/persona/users' do
       collection do
         post 'paged_index'
       end

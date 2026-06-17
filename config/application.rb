@@ -10,7 +10,7 @@ Bundler.require(*Rails.groups)
 
 module Avalon
   # UMD Customization
-  VERSION = '7.8.0-umd-4'
+  VERSION = '8.2.0-umd-0'
   # End UMD Customization
 
   class Application < Rails::Application
@@ -21,14 +21,25 @@ module Avalon
     end
 
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 6.0
+    config.load_defaults 8.0
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration should go into files in config/initializers
     # -- all .rb files in that directory are automatically loaded.
 
-    # Set Time.zone default to the specified zone and make Active Record auto-convert to this zone.
-    # Run "rake -D time" for a list of tasks for finding time zone names. Default is UTC.
+    # Please, add to the `ignore` list any other `lib` subdirectories that do
+    # not contain `.rb` files, or that should not be reloaded or eager loaded.
+    # Common ones are `templates`, `generators`, or `middleware`, for example.
+    # config.autoload_lib(ignore: %w[assets avalon capistrano tasks])
+
+    # Configuration for the application, engines, and railties goes here.
+    #
+    # These settings can be overridden in specific environments using the files
+    # in config/environments, which are processed later.
+    #
+    # config.time_zone = "Central Time (US & Canada)"
+    # config.eager_load_paths << Rails.root.join("extras")
+
     # UMD Customization
     config.time_zone = 'America/New_York'
     # End UMD Customization
@@ -43,21 +54,43 @@ module Avalon
 
     config.action_dispatch.default_headers = { 'X-Frame-Options' => 'ALLOWALL' }
 
+    # We have a number of serializers in place that have not previously had a :coder defined.
+    # Setting our global default to the old default :coder should maintain compatibility.
+    config.active_record.default_column_serializer = YAML
+
+    # Set active record encryption. Currently only used on user API tokens.
+    config.active_record.encryption.primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
+    config.active_record.encryption.deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]
+    config.active_record.encryption.key_derivation_salt = ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"]
+
+    # Conditionally enable these for migration
+    # ```ApiToken.all.each { |t| t.encrypt }```
+    if ENV['ACTIVE_RECORD_ENCRYPTION_MIGRATION'] == 'true'
+      config.active_record.encryption.support_unencrypted_data = true
+      config.active_record.encryption.extend_queries = true
+    end
+
+    # Rails recommends having this set to false, especially in zeitwerk mode. However, that
+    # currently causes issues with the Samvera gems (hydra-head, Blacklight)
+    config.add_autoload_paths_to_load_path = true
+
     config.middleware.insert_before 0, Rack::Cors do
       allow do
         origins { |source| true }
         resource '/avalon_marker/*', headers: :any, credentials: true, methods: [:get, :post, :put, :delete]
         resource '/media_objects/*/manifest*', headers: :any, methods: [:get]
         resource '/master_files/*/thumbnail', headers: :any, methods: [:get]
-        resource '/master_files/*/transcript/*/*', headers: :any, methods: [:get]
+        resource '/master_files/*/transcript/*', headers: :any, methods: [:get]
         resource '/master_files/*/structure.json', headers: :any, methods: [:get, :post, :delete]
         resource '/master_files/*/waveform.json', headers: :any, methods: [:get]
         resource '/master_files/*/*.m3u8', headers: :any, credentials: true, methods: [:get, :head]
         resource '/master_files/*/captions', headers: :any, methods: [:get]
         resource '/master_files/*/supplemental_files/*', headers: :any, methods: [:get]
-        resource '/playlists/*/manifest.json', headers: :any, credentials: true, methods: [:get]
-        resource '/timelines/*/manifest.json', headers: :any, methods: [:get, :post]
+        resource '/playlists/*/manifest*', headers: :any, credentials: true, methods: [:get]
+        resource '/timelines/*/manifest*', headers: :any, methods: [:get, :post]
         resource '/master_files/*/search', headers: :any, methods: [:get]
+        resource '/rails/active_storage/blobs/*/*/*', headers: :any, methods: [:get]
+        resource '/rails/active_storage/disk/*/*', headers: :any, methods: [:get]
       end
     end
 

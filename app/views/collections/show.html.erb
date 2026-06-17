@@ -1,5 +1,5 @@
 <%#
-Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+Copyright 2011-2025, The Trustees of Indiana University and Northwestern
   University.  Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
 
@@ -20,7 +20,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 <div class="collections-landing-wrapper">
   <ol class="breadcrumb">
     <li style="padding-bottom: 0px" class="breadcrumb-item"><%= link_to 'All Collections', collections_path %></li>
-    <li style="padding-bottom: 0px" class="breadcrumb-item"><%= link_to @doc_presenter.unit, collections_path(filter: @doc_presenter.unit) %>
+    <li style="padding-bottom: 0px" class="breadcrumb-item"><%= link_to @doc_presenter.unit, unit_path(@doc_presenter.unit_id) %>
     </li>
     <li class="breadcrumb-item active" style="padding-bottom: 0px"><%= @doc_presenter.name %></li>
   </ol>
@@ -41,17 +41,22 @@ Unless required by applicable law or agreed to in writing, software distributed
       <div>
         <h3 class="sub-headline"><strong>Unit:</strong> <%= @doc_presenter.unit %></h3>
         <p class="lead document-description"></p>
+        <%# UMD Customization %>
         <% if @doc_presenter.is_course_reserves? %>
           <%= link_to 'Show Course Reserves', course_reserves_collection_path(@doc_presenter.id), class: 'btn btn-primary' %>
         <% end %>
-        <%= react_component("CollectionDetails",
-          { content: @doc_presenter.description,
-            email: @doc_presenter.contact_email,
-            website: @doc_presenter.website_link
+        <%# End UMD Customization %>
+        <%= react_component("CollectionDetails", 
+          {
+            props: { 
+              content: @doc_presenter.description,
+              email: @doc_presenter.contact_email,
+              website: @doc_presenter.website_link,
+            }
           }) %>
       </div>
     </div>
   </div>
 
-  <%= react_component("Search", { baseUrl: root_url, collection: @doc_presenter.name }) %>
+  <%= react_component("Search", { props: { baseUrl: root_url, collection: @doc_presenter.name }}) %>
 </div>

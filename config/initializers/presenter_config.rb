@@ -22,6 +22,7 @@ Rails.application.config.to_prepare do
                       }
       include MasterFileIntercom
       include MasterFileBehavior
+      include SupplementalFileReadBehavior
       include Rails.application.routes.url_helpers
     end
 
@@ -63,9 +64,9 @@ Rails.application.config.to_prepare do
                         series: [],
                         format: []
                       }
-      include VirtualGroups
       include MediaObjectIntercom
       include MediaObjectBehavior
+      include SupplementalFileReadBehavior
       include Rails.application.routes.url_helpers
     end
 
@@ -74,6 +75,10 @@ Rails.application.config.to_prepare do
                         cdl_enabled: nil
                       }
       include AdminCollectionBehavior
+    end
+
+    sp.config Admin::Unit do
+      include AdminUnitBehavior
     end
 
     sp.config Derivative do
@@ -103,6 +108,10 @@ Rails.application.config.to_prepare do
 	ng_xml.xpath(*args)
       end
     end
+
+    sp.config IndexedFile do
+      self.defaults = { original_name: nil }
+    end
   end
 
   SpeedyAF::Base.class_eval do
@@ -115,4 +124,7 @@ Rails.application.config.to_prepare do
       @real_object
     end
   end
+
+  # Reduce from 10_000_000 to reduce solr QTimes from triple digits to single digits
+  SpeedyAF::Base::SOLR_ALL = 100_000
 end

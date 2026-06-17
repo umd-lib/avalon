@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -15,9 +15,9 @@
 */
 
 function expandFilename(id) {
-  var trunc = document.getElementById("truncated_" + id);
-  var full = document.getElementById("full_" + id);
-  var expand = document.getElementById("expand_" + id);
+  var trunc = getById("truncated_" + id);
+  var full = getById("full_" + id);
+  var expand = getById("expand_" + id);
 
   if (full.style.display === "none") {
     full.style.display = "";
@@ -26,6 +26,6 @@ function expandFilename(id) {
   } else {
     full.style.display = "none";
     trunc.style.display = "";
-    expand.innerHTML = "(Expand)"
+    expand.innerHTML = "(Expand)";
   }
 }

@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -488,6 +488,7 @@ module MediaObjectMods
   # Put the pieces into the right order and validate to make sure that there are no
   # syntactic errors
   def normalize_desc_metadata!
+    return unless descMetadata.content_changed?
     descMetadata.ensure_identifier_exists!(self.uri)
     descMetadata.update_change_date!
     descMetadata.reorder_elements!
@@ -495,6 +496,11 @@ module MediaObjectMods
   end
 
   def delete_all_values(*field_name)
+    # Manually mark the content as changed when deleteing values.
+    # Adding values causes calls into active_fedora-datastreams which markes the content as changed.
+    # The ng_xml_will_change! call here covers the case when all values are deleted and none are added back.
+    # This also markes the content as changed.
+    descMetadata.ng_xml_will_change!
     descMetadata.find_by_terms(*field_name).each &:remove
   end
 end

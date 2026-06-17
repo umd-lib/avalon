@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -33,9 +33,9 @@ class BookmarksController < CatalogController
 
   blacklight_config.add_show_tools_partial( :move, callback: :move_action, if: Proc.new { |context, config, options| context.user_can? :move } )
 
-  blacklight_config.add_show_tools_partial( :publish, callback: :status_action, modal: false, partial: 'formless_document_action', if: Proc.new { |context, config, options| context.user_can? :publish } )
+  blacklight_config.add_show_tools_partial( :publish, callback: :status_action, modal: false, component: FormlessDocumentActionComponent, if: Proc.new { |context, config, options| context.user_can? :publish } )
 
-  blacklight_config.add_show_tools_partial( :unpublish, callback: :status_action, modal: false, partial: 'formless_document_action', if: Proc.new { |context, config, options| context.user_can? :unpublish } )
+  blacklight_config.add_show_tools_partial( :unpublish, callback: :status_action, modal: false, component: FormlessDocumentActionComponent, if: Proc.new { |context, config, options| context.user_can? :unpublish } )
 
   blacklight_config.add_show_tools_partial( :delete, callback: :delete_action, if: Proc.new { |context, config, options| context.user_can? :delete } )
 
@@ -44,6 +44,9 @@ class BookmarksController < CatalogController
   blacklight_config.add_show_tools_partial( :intercom_push, callback: :intercom_push_action, if: Proc.new { |context, config, options| context.user_can? :intercom_push } )
 
   blacklight_config.add_show_tools_partial( :merge, callback: :merge_action, if: Proc.new { |context, config, options| context.user_can? :merge } )
+  
+  # Add a custom action to remove only selected bookmarks
+  blacklight_config.add_results_collection_tool(:remove_selected)
 
   before_action :verify_permissions, only: :index
 
@@ -69,16 +72,16 @@ class BookmarksController < CatalogController
   end
 
   def verify_permissions
-    @response, @documents = action_documents
+    @response = action_documents
     @valid_user_actions = [:delete, :unpublish, :publish, :merge, :move, :update_access_control, :add_to_playlist]
     @valid_user_actions += [:intercom_push] if Settings.intercom.present?
-    @documents.each do |doc|
+    Array(@response).each do |doc|
       mo = SpeedyAF::Proxy::MediaObject.find(doc.id)
       @valid_user_actions.delete :delete if @valid_user_actions.include? :delete and cannot? :destroy, mo
       @valid_user_actions.delete :unpublish if @valid_user_actions.include? :unpublish and cannot? :unpublish, mo
       @valid_user_actions.delete :publish if @valid_user_actions.include? :publish and cannot? :update, mo
       @valid_user_actions.delete :merge if @valid_user_actions.include? :merge and cannot? :update, mo
-      @valid_user_actions.delete :move if @valid_user_actions.include? :move and cannot? :update, mo
+      @valid_user_actions.delete :move if @valid_user_actions.include? :move and cannot? :move, mo
       @valid_user_actions.delete :update_access_control if @valid_user_actions.include? :update_access_control and cannot? :update_access_control, mo
       @valid_user_actions.delete :intercom_push if @valid_user_actions.include? :intercom_push and cannot? :intercom_push, mo
     end
@@ -141,6 +144,32 @@ class BookmarksController < CatalogController
     bookmarks = token_or_current_or_guest_user.bookmarks
     bookmark_ids = bookmarks.collect { |b| b.document_id.to_s }
     search_service.fetch(bookmark_ids, rows: bookmark_ids.count)
+  end
+
+  # DELETE /bookmarks/remove_selected
+  def destroy_selected
+    ids = Array(params[:id])
+
+    if ids.empty?
+      flash[:error] = t('blacklight.bookmarks.remove_selected.no_selection')
+      redirect_to bookmarks_path and return
+    end
+
+    removed_count = 0
+    ids.each do |id|
+      bookmark = current_or_guest_user.bookmarks.find_by(document_id: id)
+      if bookmark&.destroy
+        removed_count += 1
+      end
+    end
+
+    if removed_count > 0
+      flash[:success] = t('blacklight.bookmarks.remove_selected.success', count: removed_count)
+    else
+      flash[:error] = t('blacklight.bookmarks.remove_selected.failure')
+    end
+
+    redirect_to bookmarks_path
   end
 
   def access_control_action documents
@@ -218,23 +247,29 @@ class BookmarksController < CatalogController
   end
 
   def move_action documents
-    collection = SpeedyAF::Proxy::Admin::Collection.find( params[:target_collection_id] )
+    collection = SpeedyAF::Proxy::Admin::Collection.find(params[:target_collection_id])
     if cannot? :read, collection
-      flash[:error] =  t("blacklight.move.error", collection_name: collection.name)
+      flash[:error] = t("blacklight.move.error", collection_name: collection.name)
     else
       errors = []
       success_ids = []
       Array(documents.map(&:id)).each do |id|
         media_object = SpeedyAF::Proxy::MediaObject.find(id)
-        if cannot? :update, media_object
+        if cannot? :move, media_object
           errors += ["#{media_object.title} (#{id}) #{t('blacklight.messages.permission_denied')}."]
         else
           success_ids << id
         end
       end
       flash[:success] = t("blacklight.move.success", count: success_ids.count, collection_name: collection.name) if success_ids.count > 0
+      # Upstream logic in Blacklight creates a success message if one is not already set:
+      # https://github.com/projectblacklight/blacklight/blob/main/app/builders/blacklight/action_builder.rb
+      # This causes the full success message hash to be generated in the flash message because a count is not
+      # available to be passed in. Flash.now temporarily sets the message so blacklight does not create
+      # one, but clears itself out before the page actually renders.
+      flash.now[:success] = "" if success_ids.count.zero?
       flash[:alert] = "#{t('blacklight.move.alert', count: errors.count)}</br> #{ errors.join('<br/> ') }".html_safe if errors.count > 0
-      BulkActionJobs::Move.perform_later success_ids, params.permit(:target_collection_id).to_h
+      BulkActionJobs::Move.perform_later success_ids, params.permit(:target_collection_id).to_h if success_ids.count.positive?
     end
   end
 
@@ -281,5 +316,10 @@ class BookmarksController < CatalogController
       BulkActionJobs::Merge.perform_later target.id, subject_ids.sort
       flash[:success] = t("blacklight.merge.success", count: subject_ids.count, item_link: media_object_path(target), item_title: target.title || target.id).html_safe
     end
+  end
+
+  # Ensure that current_ability is included in the search context
+  def search_service_context
+    super.merge({ current_ability: current_ability })
   end
 end

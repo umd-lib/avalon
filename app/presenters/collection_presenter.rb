@@ -1,4 +1,4 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -47,6 +47,15 @@ class CollectionPresenter
     Rails.application.routes.url_helpers.collection_url(id)
   end
 
+  def unit_id
+    document["heldBy_ssim"]&.first
+  end
+
+  def unit_url
+    return unless unit_id
+    Rails.application.routes.url_helpers.unit_url(unit_id)
+  end
+
   def contact_email
     document["contact_email_ssi"]
   end
@@ -56,18 +65,21 @@ class CollectionPresenter
     view_context.link_to label, document["website_url_ssi"] if document["website_url_ssi"].present?
   end
 
-  def as_json(_)
+  def as_json(*)
     {
       id: id,
       name: name,
       unit: unit,
+      unit_url: unit_url,
       description: description,
       poster_url: poster_url,
       url: collection_url
     }
   end
 
+  # UMD Customization
   def is_course_reserves?
     self.unit == Settings.streaming_reserves.unit_name
   end
+  # End UMD Customization
 end

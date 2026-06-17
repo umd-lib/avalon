@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -15,187 +15,251 @@
 require 'rails_helper'
 
 describe SupplementalFile do
-  let(:subject) { FactoryBot.create(:supplemental_file) }
+  let(:supplemental_file) { FactoryBot.create(:supplemental_file) }
 
   describe 'validations' do
     describe 'file type' do
       context 'non-caption file' do
-        let(:subject) { FactoryBot.create(:supplemental_file, :with_attached_file) }
+        let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_attached_file) }
         it 'should skip validation' do
-          expect(subject.valid?).to be_truthy
+          expect(supplemental_file.valid?).to be_truthy
         end
       end
-      context 'VTT caption file' do
-        let(:subject) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
-        it 'should validate' do
-          expect(subject.valid?).to be_truthy
-        end
-      end
-      context 'SRT caption file' do
-        let(:subject) { FactoryBot.create(:supplemental_file, :with_caption_srt_file, :with_caption_tag) }
-        it 'should validate' do
-          expect(subject.valid?).to be_truthy
-        end
-      end
-      context 'non-VTT/non-SRT caption file' do
-        let(:subject) { FactoryBot.build(:supplemental_file, :with_attached_file, :with_caption_tag) }
-        it 'should not validate' do
-          expect(subject.valid?).to be_falsey
-          expect(subject.errors[:file_type]).not_to be_empty
-        end
-      end
-    end
 
-    describe 'scopes' do
-      describe 'with_tag' do
-        let!(:subject) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated']) }
-        let!(:other_transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript']) }
-        let!(:another_file) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption']) }
-
-        it 'filters for a single tag' do
-          expect(SupplementalFile.with_tag('transcript')).to include(subject,other_transcript)
-          expect(SupplementalFile.with_tag('transcript').count).to eq 2
+      context 'caption files' do
+        let(:vtt) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
+        let(:srt) { FactoryBot.create(:supplemental_file, :with_caption_srt_file, :with_caption_tag) }
+        let(:file) { FactoryBot.build(:supplemental_file, :with_attached_file, :with_caption_tag) }
+        it 'should validate VTT' do
+          expect(vtt.valid?).to be_truthy
         end
+        it 'should validate SRT' do
+          expect(srt.valid?).to be_truthy
+        end
+        it 'should not validate non-SRT/VTT' do
+          expect(file.valid?).to be_falsey
+          expect(file.errors[:file_type]).not_to be_empty
+        end
+      end
 
-        it 'filters for multiple tags' do
-          expect(SupplementalFile.with_tag('transcript').with_tag('machine_generated').first).to eq subject
-          expect(SupplementalFile.with_tag('transcript').with_tag('machine_generated').count).to eq 1
+      context 'audio description files' do
+        let(:vtt) { FactoryBot.create(:supplemental_file, :with_description_file, :with_description_tag) }
+        let(:srt) { FactoryBot.create(:supplemental_file, :with_description_srt_file, :with_description_tag) }
+        let(:file) { FactoryBot.build(:supplemental_file, :with_attached_file, :with_caption_tag) }
+        it 'should validate VTT' do
+          expect(vtt.valid?).to be_truthy
+        end
+        it 'should validate SRT' do
+          expect(srt.valid?).to be_truthy
+        end
+        it 'should not validate non-SRT/VTT' do
+          expect(file.valid?).to be_falsey
+          expect(file.errors[:file_type]).not_to be_empty
         end
       end
     end
+  end
 
-    describe '#update_index' do
-      let(:transcript) { FactoryBot.build(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
-      context 'on create' do
-        it 'triggers callback' do
-          expect(transcript).to receive(:index_file)
-          transcript.save
-        end
+  describe 'scopes' do
+    describe 'with_tag' do
+      let!(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated']) }
+      let!(:other_transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript']) }
+      let!(:another_file) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption']) }
 
-        it 'indexes the transcript' do
-          transcript.save
-          solr_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-          expect(solr_doc["transcript_tsim"]).to eq ["00:00:03.500 --> 00:00:05.000 Example captions"]
-        end
+      it 'filters for a single tag' do
+        expect(SupplementalFile.with_tag('transcript')).to include(supplemental_file, other_transcript)
+        expect(SupplementalFile.with_tag('transcript').count).to eq 2
       end
 
-      context 'on update' do
-        let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
-        it 'triggers callback' do
-          transcript.file.attach(fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt'))
-          expect(transcript).to receive(:update_index)
-          transcript.save
-        end
+      it 'filters for multiple tags' do
+        expect(SupplementalFile.with_tag('transcript').with_tag('machine_generated').first).to eq supplemental_file
+        expect(SupplementalFile.with_tag('transcript').with_tag('machine_generated').count).to eq 1
+      end
+    end
+  end
 
-        it 'updates the indexed transcript' do
+  describe '#attach_file' do
+    subject { described_class.new }
+
+    context 'via file upload' do
+      let(:file) { fixture_file_upload(Rails.root.join('spec', 'fixtures', 'meow.wav')) }
+      before { subject.attach_file(file) }
+
+      it 'attaches the file and assigns metadata' do
+        expect(subject.file).to be_attached
+        expect(subject.file.content_type).to eq 'audio/x-wav'
+        expect(subject.label).to eq 'meow.wav'
+        expect(subject.language).to eq Settings.caption_default.language
+      end
+    end
+
+    context 'via io attachment' do
+      let(:io_file) { Rails.root.join('spec', 'fixtures', 'meow.wav').to_s }
+      before { subject.attach_file(FileLocator.new(io_file, filename: 'meow.wav'), io: true) }
+
+      it 'attaches the file and assigns metadata' do
+        expect(subject.file).to be_attached
+        expect(subject.file.content_type).to eq 'audio/x-wav'
+        expect(subject.label).to eq 'meow.wav'
+        expect(subject.language).to eq Settings.caption_default.language
+      end
+    end
+  end
+
+  describe '#update_index' do
+    let(:transcript) { FactoryBot.build(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
+    context 'on create' do
+      it 'triggers callback' do
+        expect(transcript).to receive(:index_file)
+        transcript.save
+      end
+
+      it 'indexes the transcript' do
+        transcript.save
+        solr_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
+        expect(solr_doc["transcript_tsim"]).to eq ["00:00:03.500 --> 00:00:05.000 Example captions"]
+      end
+    end
+
+    context 'on update' do
+      let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
+      it 'triggers callback' do
+        transcript.file.attach(fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt'))
+        expect(transcript).to receive(:update_index)
+        transcript.save
+      end
+
+      it 'updates the indexed transcript' do
+        before_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
+        expect(before_doc["transcript_tsim"].first).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
+        transcript.file.attach(fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt'))
+        transcript.save
+        after_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
+        expect(after_doc["transcript_tsim"].first).to eq("00:00:01.200 --> 00:00:21.000 [music]")
+      end
+
+      context 'caption as transcript' do
+        let(:transcript) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'transcript']) }
+
+        it 'removes the transcript_tsim content when transcript tag is removed' do
           before_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
           expect(before_doc["transcript_tsim"].first).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
-          transcript.file.attach(fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt'))
+          transcript.tags = ['caption']
           transcript.save
           after_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-          expect(after_doc["transcript_tsim"].first).to eq("00:00:01.200 --> 00:00:21.000 [music]")
-        end
-
-        context 'caption as transcript' do
-          let(:transcript) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'transcript']) }
-
-          it 'removes the transcript_tsim content when transcript tag is removed' do
-            before_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-            expect(before_doc["transcript_tsim"].first).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
-            transcript.tags = ['caption']
-            transcript.save
-            after_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-            expect(after_doc["transcript_tsim"]).to be_nil
-          end
+          expect(after_doc["transcript_tsim"]).to be_nil
         end
       end
-    end
 
-    describe "#remove_from_index" do
-      let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
+      context 'private transcript' do
+        let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
 
-      context 'on delete' do
-        it 'triggers callback' do
-          expect(transcript).to receive(:remove_from_index)
-          transcript.destroy
-        end
-
-        it 'removes the transcript from the index' do
+        it 'removes the transcript_tsim content when private tag is added' do
           before_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-          expect(before_doc['transcript_tsim']).to eq ["00:00:03.500 --> 00:00:05.000 Example captions"]
-          transcript.destroy
+          expect(before_doc["transcript_tsim"].first).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
+          transcript.tags = ['transcript', 'private']
+          transcript.save
           after_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
-          expect(after_doc).to be_nil
+          expect(after_doc["transcript_tsim"]).to be_nil
         end
       end
     end
+  end
 
-    describe '#to_solr' do
-      let(:caption) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
-      let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
-      let(:caption_transcript) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'transcript']) }
+  describe "#remove_from_index" do
+    let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
 
-      it "should solrize transcripts" do
-        expect(transcript.to_solr[ "transcript_tsim" ]).to be_a Array
-        expect(transcript.to_solr[ "transcript_tsim" ][0]).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
-        expect(caption_transcript.to_solr[ "transcript_tsim" ]).to be_a Array
-        expect(transcript.to_solr[ "transcript_tsim" ][0]).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
+    context 'on delete' do
+      it 'triggers callback' do
+        expect(transcript).to receive(:remove_from_index)
+        transcript.destroy
       end
 
-      it "should not solrize non-transcripts" do
-        expect(caption.to_solr[ "transcript_tsim" ]).to be nil
-      end
-    end
-
-    describe 'language' do
-      it 'should validate valid language' do
-        subject.language = 'eng'
-        expect(subject.valid?).to be_truthy
-      end
-      it 'should not validate invalid language' do
-        subject.language = 'engl'
-        expect(subject.valid?).to be_falsey
+      it 'removes the transcript from the index' do
+        before_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
+        expect(before_doc['transcript_tsim']).to eq ["00:00:03.500 --> 00:00:05.000 Example captions"]
+        transcript.destroy
+        after_doc = ActiveFedora::SolrService.query("id:#{RSolr.solr_escape(transcript.to_global_id.to_s)}").first
+        expect(after_doc).to be_nil
       end
     end
   end
 
-  it "stores no tags by default" do
-    expect(subject.tags).to match_array([])
-  end
+  describe '#to_solr' do
+    let(:caption) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag) }
+    let(:transcript) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag) }
+    let(:caption_transcript) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'transcript']) }
 
-  context "with valid tags" do
-    let(:subject) { FactoryBot.create(:supplemental_file, :with_caption_file)}
-    let(:tags) { ["transcript", "caption", "machine_generated"] }
+    it "should solrize transcripts" do
+      expect(transcript.to_solr["transcript_tsim"]).to be_a Array
+      expect(transcript.to_solr["transcript_tsim"][0]).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
+      expect(caption_transcript.to_solr["transcript_tsim"]).to be_a Array
+      expect(transcript.to_solr["transcript_tsim"][0]).to eq "00:00:03.500 --> 00:00:05.000 Example captions"
+    end
 
-    it "can store tags" do
-      subject.tags = tags
-      subject.save
-      expect(subject.reload.tags).to match_array(tags)
+    it "should not solrize non-transcripts" do
+      expect(caption.to_solr["transcript_tsim"]).to be nil
     end
   end
 
-  context "with invalid tags" do
-    let(:bad_tags) { ["unallowed"] }
-
-    it "does not store tags" do
-      subject.tags = bad_tags
-      expect(subject.save).to be_falsey
-      expect(subject.errors.messages[:tags]).to include("unallowed is not an allowed value")
+  describe 'label' do
+    it 'defaults to original file if blank' do
+      expect(supplemental_file.label).not_to be_blank
+      supplemental_file.label = nil
+      supplemental_file.save
+      expect(supplemental_file.label).to eq supplemental_file.file.filename.to_s
     end
   end
 
-  context 'language' do
+  describe 'language' do
+    it 'should validate valid language' do
+      supplemental_file.language = 'eng'
+      expect(supplemental_file.valid?).to be_truthy
+    end
+
+    it 'should not validate invalid language' do
+      supplemental_file.language = 'engl'
+      expect(supplemental_file.valid?).to be_falsey
+    end
+
     it "can be edited" do
-      subject.language = 'ger'
-      subject.save
-      expect(subject.reload.language).to eq "ger"
+      supplemental_file.language = 'ger'
+      supplemental_file.save
+      expect(supplemental_file.reload.language).to eq "ger"
+    end
+  end
+
+  describe 'tags' do
+    it "stores no tags by default" do
+      expect(supplemental_file.tags).to match_array([])
+    end
+
+    context "with valid tags" do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_caption_file) }
+      let(:tags) { ["transcript", "caption", "machine_generated", "description", "private", "forced"] }
+
+      it "can store tags" do
+        supplemental_file.tags = tags
+        supplemental_file.save
+        expect(supplemental_file.reload.tags).to match_array(tags)
+      end
+    end
+
+    context "with invalid tags" do
+      let(:bad_tags) { ["unallowed"] }
+
+      it "does not store tags" do
+        supplemental_file.tags = bad_tags
+        expect(supplemental_file.save).to be_falsey
+        expect(supplemental_file.errors.messages[:tags]).to include("unallowed is not an allowed value")
+      end
     end
   end
 
   describe '#as_json' do
     subject { supplemental_file.as_json }
     let(:supplemental_file) { FactoryBot.create(:supplemental_file, label: 'Test') }
-    
+
     context 'generic supplemental file' do
       it 'serializes the metadata' do
         expect(subject[:id]).to eq supplemental_file.id
@@ -226,12 +290,33 @@ describe SupplementalFile do
           expect(subject[:treat_as_transcript]).to eq true
         end
       end
+
+      context 'forced' do
+        let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'forced'], label: 'Test') }
+        it 'includes forced in JSON' do
+          expect(subject[:forced]).to eq true
+        end
+      end
     end
 
     context 'transcript file' do
       let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag, label: 'Test') }
       it 'sets the type properly' do
         expect(subject[:type]).to eq 'transcript'
+      end
+    end
+
+    context 'audio description file' do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_description_file, :with_description_tag, label: 'Test') }
+      it 'sets the type properly' do
+        expect(subject[:type]).to eq 'audio_description'
+      end
+    end
+
+    context 'private file' do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, tags: ['private'], label: 'Test') }
+      it 'includes "private" in JSON' do
+        expect(subject[:private]).to eq true
       end
     end
   end
@@ -269,21 +354,11 @@ describe SupplementalFile do
 
     context 'vtt file' do
       let(:file) { FactoryBot.create(:supplemental_file, file: fixture_file_upload(Rails.root.join('spec', 'fixtures', 'chunk_test.vtt'), 'text/vtt')) }
-      let(:parsed_text) { [
-        "00:00:01.200 --> 00:00:21.000 [music]",
-        "00:00:22.200 --> 00:00:26.600 Just before lunch one day, a puppet show was put on at school.",
-        '00:00:26.700 --> 00:00:31.500 It was called "Mister Bungle Goes to Lunch".',
-        "00:00:31.600 --> 00:00:34.500 It was fun to watch.",
-        "00:00:36.100 --> 00:00:41.300 In the puppet show, Mr. Bungle came to the boys' room on his way to lunch.",
-        "00:00:41.400 --> 00:00:46.200 He looked at his hands. His hands were dirty and his hair was messy.",
-        "00:00:46.300 --> 00:00:51.100 But Mr. Bungle didn't stop to wash his hands or comb his hair.",
-        "00:00:51.200 --> 00:00:54.900 He went right to lunch.",
-        "00:00:57.900 --> 00:01:05.700 Then, instead of getting into line at the lunchroom, Mr. Bungle pushed everyone aside and went right to the front.",
-        "00:01:06.000 --> 00:01:11.800 Even though this made the children laugh, no one thought that was a fair thing to do."
-      ] }
-      
       it 'splits the text by time cue' do
-        expect(subject).to match_array parsed_text
+        expect(subject).to be_a Array
+        expect(subject.length).to eq 10
+        expect(subject.all? { |s| s.is_a?(String) }).to eq true
+        expect(subject[0]).to eq "00:00:01.200 --> 00:00:21.000 [music]"
       end
     end
 
@@ -301,6 +376,40 @@ describe SupplementalFile do
       let(:file) { FactoryBot.create(:supplemental_file, :with_attached_file) }
       it 'returns nil' do
         expect(subject).to be nil
+      end
+    end
+  end
+
+  describe '#download_filename' do
+    context 'with machine generated file' do
+      let(:file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated']) }
+
+      it 'returns the filename with "(machine generated)" inserted' do
+        expect(file.download_filename).to eq "#{file.label} (machine generated).vtt"
+      end
+    end
+
+    context 'with no extension' do
+      let(:file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript'], label: 'test') }
+
+      it 'returns the filename' do
+        expect(file.download_filename).to eq "#{file.label}.vtt"
+      end
+    end
+
+    context 'with same extension' do
+      let(:file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript'], label: 'test.vtt') }
+
+      it 'returns the filename with the correct suffix not duplicated' do
+        expect(file.download_filename).to eq "#{file.label}"
+      end
+    end
+
+    context 'with different extension' do
+      let(:file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript'], label: 'test.jpg') }
+
+      it 'returns the filename with the correct suffix appended' do
+        expect(file.download_filename).to eq "#{file.label}.vtt"
       end
     end
   end

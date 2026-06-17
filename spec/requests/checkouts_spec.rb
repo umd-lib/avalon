@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -110,6 +110,23 @@ RSpec.describe "/checkouts", type: :request do
             parsed_body = JSON.parse(response.body)
             expect(parsed_body['data'].count).to eq(2)
           end
+
+          context "with deleted parent" do
+            before :each do
+              media_object = MediaObject.find(checkout.media_object.id)
+              media_object.destroy!
+            end
+            it "renders a successful JSON response" do
+              get checkouts_url(format: :json, params: { display_returned: true } )
+              expect(response).to be_successful
+              expect(response.content_type).to eq("application/json; charset=utf-8")
+            end
+            it "returns checkouts with existing parents" do
+              get checkouts_url(format: :json, params: { display_returned: true } )
+              parsed_body = JSON.parse(response.body)
+              expect(parsed_body['data'].count).to eq(1)
+            end
+          end
         end
 
         context "as an admin user" do
@@ -123,6 +140,23 @@ RSpec.describe "/checkouts", type: :request do
             get checkouts_url(format: :json, params: { display_returned: true } )
             parsed_body = JSON.parse(response.body)
             expect(parsed_body['data'].count).to eq(4)
+          end
+
+          context "with deleted parent" do
+            before :each do
+              media_object = MediaObject.find(checkout.media_object.id)
+              media_object.destroy!
+            end
+            it "renders a successful JSON response" do
+              get checkouts_url(format: :json, params: { display_returned: true } )
+              expect(response).to be_successful
+              expect(response.content_type).to eq("application/json; charset=utf-8")
+            end
+            it "returns checkouts with existing parents" do
+              get checkouts_url(format: :json, params: { display_returned: true } )
+              parsed_body = JSON.parse(response.body)
+              expect(parsed_body['data'].count).to eq(3)
+            end
           end
         end
       end
@@ -170,27 +204,33 @@ RSpec.describe "/checkouts", type: :request do
     end
 
     context "html request" do
-      it "creates a new checkout" do
+      it "creates a new checkout and redirects to the media_object_page" do
         expect {
           post checkouts_url, params: { checkout: valid_attributes }
         }.to change(Checkout, :count).by(1)
-      end
-      it "redirects to the media_object page" do
-        post checkouts_url, params: { checkout: valid_attributes }
         expect(response).to redirect_to(media_object_url(checkout.media_object))
       end
 
-      context "non-default lending period" do
+      context "with inherited lending period" do
         let(:media_object) { FactoryBot.create(:published_media_object, lending_period: 86400, visibility: 'public') }
         before { freeze_time }
         after { travel_back }
-        it "creates a new checkout" do
+        it "sets the return time based on the inherited lending period of the parent" do
           expect{
             post checkouts_url, params: { checkout: valid_attributes }
           }.to change(Checkout, :count).by(1)
+          expect(Checkout.find_by(media_object_id: media_object.id).return_time).to eq DateTime.current + 14.days
         end
-        it "sets the return time based on the given lending period" do
-          post checkouts_url, params: { checkout: valid_attributes }
+      end
+
+      context "with inheritance disabled" do
+        let(:media_object) { FactoryBot.create(:published_media_object, lending_period: 86400, visibility: 'public', disable_inheritance: true) }
+        before { freeze_time }
+        after { travel_back }
+        it "sets the return time based on the lending period of the object" do
+          expect{
+            post checkouts_url, params: { checkout: valid_attributes }
+          }.to change(Checkout, :count).by(1)
           # UMD Customization
           # Use "Time.zone.now" due to use of EST/EDT timezone in config/application.rb
           expect(Checkout.find_by(media_object_id: media_object.id).return_time).to eq Time.zone.now + 1.day

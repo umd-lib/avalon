@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -97,6 +97,14 @@ class Playlist < ActiveRecord::Base
 
   def valid_token?(token)
     access_token == token && visibility == Playlist::PRIVATE_WITH_TOKEN
+  end
+
+  def clips_with_section_proxies
+    cached_clips = clips.to_a
+    section_ids = cached_clips.collect(&:master_file_id).uniq
+    sections = SpeedyAF::Proxy::MasterFile.where("id:#{section_ids.join(' id:')}")
+    cached_clips.map {|c| c.master_file = sections.find { |mf| mf.id == c.master_file_id }}
+    cached_clips
   end
 
   class << self

@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -50,13 +50,37 @@ describe ObjectsController do
       get :show, params: { id: obj.id, urlappend: 'http://google.com' }
       expect(response).to redirect_to(media_object_path(obj))
     end
+
+    context 'read from solr' do
+      let(:obj) { FactoryBot.create(:media_object) }
+
+      before do
+        obj
+      end
+
+      it 'should not read from fedora' do
+        WebMock.reset_executed_requests!
+        get :show, params: { id: obj.id }
+        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
+    end
   end
 
   describe "#autocomplete" do
+    let!(:user) { FactoryBot.create(:user, email: "test@example.com") }
+
     it "should call autocomplete on the specified model" do
-      user = FactoryBot.create(:user, email: "test@example.com")
       get :autocomplete, params: { t: 'user', q: 'test' }
-      expect(response.body).to include user.user_key
+      expect(assigns(:results).first[:display]).to eq user.user_key
+    end
+
+    context 'json request' do
+      it 'should return a json response' do
+        get :autocomplete, format: :json, params: { t: 'user', q: 'test' }
+        expect(response.content_type).to eq("application/json; charset=utf-8")
+        result = JSON.parse(response.body)
+        expect(result).to eq([{ "display" => user.user_key, "id" => user.user_key }])
+      end
     end
   end
 end

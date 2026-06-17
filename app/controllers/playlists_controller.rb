@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -47,41 +47,12 @@ class PlaylistsController < ApplicationController
 
   # POST /playlists/paged_index
   def paged_index
-    # Playlists for index page are loaded dynamically by jquery datatables javascript which
-    # requests the html for only a limited set of rows at a time.
+    # Playlists for index page are loaded via /javascript/componenets/tables/PlaylistsTable.jsx
+    # which requests the json for all records on initial page load.
     recordsTotal = @playlists.count
-    columns = ['title','size','visibility','created_at','updated_at','tags','actions']
 
-    #Filter title
-    title_filter = params['search']['value']
-    @playlists = @playlists.title_like(title_filter) if title_filter.present?
-
-    # Apply tag filter if requested
-    tag_filter = params['columns']['5']['search']['value']
-    @playlists = @playlists.with_tag(tag_filter) if tag_filter.present?
-    playlistsFilteredTotal = @playlists.count
-
-    sort_column = params['order']['0']['column'].to_i rescue 0
-    sort_direction = params['order']['0']['dir'] rescue 'asc'
-    session[:playlist_sort] = [sort_column, sort_direction]
-    if columns[sort_column] == 'created_at' || columns[sort_column] == 'updated_at'
-      @playlists = @playlists.order("#{columns[sort_column].downcase} #{sort_direction}")
-      @playlists = @playlists.offset(params['start']).limit(params['length'])
-    elsif columns[sort_column] != 'size'
-      @playlists = @playlists.order("lower(#{columns[sort_column].downcase}) #{sort_direction}, #{columns[sort_column].downcase} #{sort_direction}")
-      @playlists = @playlists.offset(params['start']).limit(params['length'])
-    else
-      # sort by size (item count): decorate list with playlistitem count then sort and undecorate
-      decorated = @playlists.collect{|p| [ p.items.size, p ]}
-      decorated.sort!
-      @playlists = decorated.collect{|p| p[1]}
-      @playlists.reverse! if sort_direction=='desc'
-      @playlists = @playlists.slice(params['start'].to_i, params['length'].to_i)
-    end
     response = {
-      "draw": params['draw'],
       "recordsTotal": recordsTotal,
-      "recordsFiltered": playlistsFilteredTotal,
       "data": @playlists.collect do |playlist|
         copy_button = view_context.button_tag( type: 'button', data: { playlist: playlist },
           class: 'copy-playlist-button btn btn-outline btn-sm') do
@@ -90,16 +61,16 @@ class PlaylistsController < ApplicationController
         edit_button = view_context.link_to(edit_playlist_path(playlist), class: 'btn btn-outline btn-sm') do
           "<i class='fa fa-edit' aria-hidden='true'></i> Edit".html_safe
         end
-        delete_button = view_context.link_to(playlist_path(playlist), method: :delete, class: 'btn btn-sm btn-danger btn-confirmation', data: {placement: 'bottom'}) do
+        delete_button = view_context.link_to(playlist_path(playlist), method: :delete, class: 'btn btn-sm btn-danger btn-confirmation', data: {placement: 'bottom', testid: 'playlist-delete-table-view', confirm: "Are you sure?"}) do
           "<i class='fa fa-times' aria-hidden='true'></i> Delete".html_safe
         end
         [
-          view_context.link_to(playlist.title, playlist_path(playlist), title: playlist.comment),
+          view_context.link_to(playlist.title, playlist_path(playlist), title: playlist.comment, data: { testid: "playlist-name-table" }),
           "#{playlist.items.size} items",
           view_context.human_friendly_visibility(playlist.visibility),
           "<span title='#{playlist.created_at.utc.iso8601}'>#{view_context.time_ago_in_words(playlist.created_at)} ago</span>",
           "<span title='#{playlist.updated_at.utc.iso8601}'>#{view_context.time_ago_in_words(playlist.updated_at)} ago</span>",
-          playlist.tags.join(', '),
+          Array(playlist.tags).join(', '),
           "#{copy_button} #{edit_button} #{delete_button}"
         ]
       end
@@ -247,7 +218,7 @@ class PlaylistsController < ApplicationController
     authorize! :read, @playlist
 
     # Fetch all master files related to the playlist items in a single SpeedyAF::Base.where
-    master_file_ids = @playlist.items.collect { |item| item.clip.master_file_id }
+    master_file_ids = @playlist.clips.collect(&:master_file_id)
     master_files = []
     master_files = SpeedyAF::Proxy::MasterFile.where("id:#{master_file_ids.join(' id:')}", load_reflections: true) if master_file_ids.present?
     media_objects = master_files.collect(&:media_object).uniq(&:id)
@@ -362,6 +333,14 @@ class PlaylistsController < ApplicationController
     # items that have moved to another playlist
     changed_playlist.select {|item| item.playlist_id_was != item.playlist_id}.each do |item|
       item.position = nil
+    end
+  end
+
+  rescue_from ActiveRecord::RecordNotFound do |exception|
+    if request.format == :json
+      render json: { errors: ["#{params[:id]} could not be found"] }, status: :not_found
+    elsif request.format == :html
+      render '/errors/unknown_pid', status: :not_found
     end
   end
 end

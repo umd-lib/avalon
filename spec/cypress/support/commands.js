@@ -1,18 +1,18 @@
-/* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+/*
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
  *   specific language governing permissions and limitations under the License.
  * ---  END LICENSE_HEADER BLOCK  ---
-*/
+ */
 
 // ***********************************************
 // This example commands.js shows you how to
@@ -26,42 +26,67 @@
 //
 //
 // -- This is a parent command --
-Cypress.Commands.add("login", (role) => {
-  const email = Cypress.env('USERS_' + role.toUpperCase() + '_EMAIL')
-  const password = Cypress.env('USERS_' + role.toUpperCase() + '_PASSWORD')
+import 'cypress-file-upload';
+Cypress.Commands.add('login', (role) => {
+  cy.wait(1000);
+  cy.clearCookies();
+  cy.clearLocalStorage();
+  const normalizedRole = role.replace(/_/g, '').toUpperCase();
+  const email = Cypress.env('USERS_' + normalizedRole + '_EMAIL');
+  const password = Cypress.env('USERS_' + normalizedRole + '_PASSWORD');
 
   cy.request('/users/sign_in')
-  .its('body')
-  .then((body) => {
-    // we can use Cypress.$ to parse the string body
-    // thus enabling us to query into it easily
-    const $html = Cypress.$(body)
-    const csrfToken = $html.find('input[name=authenticity_token]').val()
+    .its('body')
+    .then((body) => {
+      // thus enabling us to query into it easily
+      const $html = Cypress.$(body);
+      const csrfToken = $html.find('input[name=authenticity_token]').val();
 
-    cy.request({
-      method: 'POST',
-      url: '/users/sign_in',
-      body: {
-        user: {
-          login: email,
-          password: password,
+      cy.request({
+        method: 'POST',
+        url: '/users/sign_in',
+        form: true,
+        body: {
+          user: {
+            login: email,
+            password: password,
+          },
+          authenticity_token: csrfToken,
         },
-        authenticity_token: csrfToken,
-      }
-    }).then((resp) => {
-      expect(resp.status).to.eq(200)
-    })
-  })
-})
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add("drag", { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add("dismiss", { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
+      }).then((resp) => {
+        expect(resp.status).to.eq(200);
+        cy.visit('/');
+      });
+    });
+});
+
+//waits for the media player to be loaded completely
+Cypress.Commands.add('waitForVideoReady', () => {
+  cy.get('[data-testid="media-player"]', { timeout: 30000 }).should(
+    'be.visible'
+  );
+  cy.wait(5000);
+  cy.get('[data-testid="media-player"]')
+    .find('video, audio')
+    .first()
+    .should(($el) => {
+      const media = $el[0];
+      expect(media.readyState, 'readyState').to.be.greaterThan(1);
+    });
+});
+
+Cypress.Commands.add('stubFullscreenAPI', () => {
+  cy.window().then((win) => {
+    win.HTMLElement.prototype.requestFullscreen = () => Promise.resolve();
+    win.HTMLElement.prototype.webkitRequestFullscreen = () => Promise.resolve();
+    win.document.exitFullscreen = () => Promise.resolve();
+    win.document.webkitExitFullscreen = () => Promise.resolve();
+    Object.defineProperty(win.document, 'fullscreenElement', {
+      get: function () {
+        return win._fakeFullscreenElement || null;
+      },
+      configurable: true,
+    });
+    win._fakeFullscreenElement = null;
+  });
+});

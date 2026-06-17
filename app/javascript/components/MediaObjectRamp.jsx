@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *
@@ -14,7 +14,12 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import {
   Transcript,
   IIIFPlayer,
@@ -35,20 +40,9 @@ import "@samvera/ramp/dist/ramp.css";
 import { Col, Row, Tab, Tabs } from 'react-bootstrap';
 import './Ramp.scss';
 
-const ExpandCollapseArrow = () => {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" className="expand-collapse-svg" fill="currentColor" viewBox="0 0 16 16">
-      <path
-        fillRule="evenodd"
-        d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z">
-      </path>
-    </svg>);
-};
-
-const Ramp = ({
+const MediaObjectRamp = ({
   urls,
-  sections_count,
-  has_structure,
+  has_sections,
   title,
   share,
   timeline,
@@ -60,18 +54,16 @@ const Ramp = ({
   aeon_request,
   master_file_downloads,
   umd_access_control,
-  umd_metadata
+  umd_metadata,
   // End UMD Customization
+  accessibility_text = '',
+  transcript_tab_title = 'Transcripts',
 }) => {
-  const [manifestUrl, setManifestUrl] = React.useState('');
-  const [startCanvasId, setStartCanvasId] = React.useState();
-  const [startCanvasTime, setStartCanvasTime] = React.useState();
-  const [isClosed, setIsClosed] = React.useState(false);
+  const [manifestUrl, setManifestUrl] = useState('');
+  const [startCanvasId, setStartCanvasId] = useState();
+  const [startCanvasTime, setStartCanvasTime] = useState();
 
-  let expandCollapseBtnRef = React.useRef();
-  let interval;
-
-  React.useEffect(() => {
+  useEffect(() => {
     const { base_url, fullpath_url } = urls;
     // UMD Customization
     // Access tokens are included in the URL passed to this method,
@@ -104,63 +96,11 @@ const Ramp = ({
         : undefined
     );
     setManifestUrl(url);
-
-    // Attach player event listeners when there's structure
-    if (has_structure) {
-      interval = setInterval(addPlayerEventListeners, 500);
-    }
-
-    // Clear interval upon component unmounting
-    return () => clearInterval(interval);
   }, []);
 
-  /**
-   * Listen to player's events to update the structure navigation
-   * UI
-   */
-  const addPlayerEventListeners = () => {
-    let player = document.getElementById('iiif-media-player');
-    if (player && player.player != undefined && !player.player.isDisposed()) {
-      let playerInst = player.player;
-      playerInst.on('loadedmetadata', () => {
-        playerInst.on('timeupdate', () => {
-          setIsClosed(false);
-        });
-      });
-      // Expand sections when a new Canvas is loaded into the player
-      playerInst.on('ready', () => {
-        setIsClosed(false);
-      });
-    }
-  };
-
-  React.useEffect(() => {
-    expandCollapseSections(isClosed);
-  }, [isClosed]);
-
-  const handleCollapseExpand = () => {
-    setIsClosed(isClosed => !isClosed);
-  };
-
-  const expandCollapseSections = (isClosing) => {
-    const allSections = $('div[class*="ramp--structured-nav__section"]');
-    allSections.each(function (index, section) {
-      let sectionUl = section.nextSibling;
-      if (sectionUl) {
-        if (isClosing) {
-          sectionUl.classList.remove('expanded');
-          sectionUl.classList.add('closed');
-          expandCollapseBtnRef.current.classList.remove('expanded');
-          expandCollapseBtnRef.current.classList.add('closed');
-        } else {
-          sectionUl.classList.remove('closed');
-          sectionUl.classList.add('expanded');
-          expandCollapseBtnRef.current.classList.remove('closed');
-          expandCollapseBtnRef.current.classList.add('expanded');
-        }
-      }
-    });
-  };
+  const a11yWithOnlyShare = useMemo(() => {
+    return accessibility_text && !(timeline.canCreate && playlist.canCreate);
+  }, [accessibility_text, timeline.canCreate, playlist.canCreate]);
 
   return (
     <IIIFPlayer manifestUrl={manifestUrl}
@@ -168,66 +108,69 @@ const Ramp = ({
       startCanvasId={startCanvasId}
       startCanvasTime={startCanvasTime}>
       <Row className="ramp--all-components ramp--itemview">
-        <Col sm={8}>
+        <Col sm={12} md={12} xl={8}>
           {(cdl.enabled && !cdl.can_stream)
-            ? (<React.Fragment>
-                <div dangerouslySetInnerHTML={{ __html: cdl.embed }} />
-                <div className="ramp--rails-title">
-                  {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
-                </div>
-              </React.Fragment>
-              )
-            : (<React.Fragment>
-              {sections_count > 0 &&
-                <React.Fragment>
+            ? (<Fragment>
+              <div dangerouslySetInnerHTML={{ __html: cdl.embed }} />
+              <div className="ramp--rails-title">
+                {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
+              </div>
+            </Fragment>
+            )
+            : (<Fragment>
+              {has_sections &&
+                <Fragment>
                   {/* UMD Customization */}
                   {umd_access_control.playback_restricted ?
                     <UmdRestrictedPlayback jim_hension_collection={umd_access_control.jim_hension_collection} />
-                    : <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} />
+                    : <MediaPlayer enableFileDownload={false} enablePlaybackRate={true} resumeCache={{ enable: true }} />
                   }
                   {/* End UMD Customization */}
                   <div className="ramp--rails-title">
                     {<div className="object-title" dangerouslySetInnerHTML={{ __html: title.content }} />}
                   </div>
-                  <div className="ramp--rails-content">
-                    <Col className="ramp-button-group-1">
+                  <div className={`ramp--rails-content ${a11yWithOnlyShare ? 'only-share' : ''}`}>
+                    <Col className="ramp-button-group-1" sm={accessibility_text ? 6 : 12} xs={a11yWithOnlyShare ? 4 : 12}>
                       {timeline.canCreate &&
                         <button
                           id="timelineBtn"
-                          className="btn btn-outline mr-1 text-nowrap"
+                          className="btn btn-outline me-1 text-nowrap"
                           type="button"
-                          data-toggle="modal"
-                          data-target="#timelineModal"
+                          data-bs-toggle="modal"
+                          data-bs-target="#timelineModal"
                           aria-expanded="false"
                           aria-controls="timelineModal"
                           disabled={true}
+                          data-testid="media-object-create-timeline-btn"
                         >
                           Create Timeline
                         </button>
                       }
                       {share.canShare &&
                         <button
-                          className="btn btn-outline mr-1 text-nowrap"
+                          className="btn btn-outline me-1 text-nowrap"
                           type="button"
-                          data-toggle="collapse"
-                          data-target="#shareResourcePanel"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#shareResourcePanel"
                           aria-expanded="false"
                           aria-controls="shareResourcePanel"
                           id="shareBtn"
+                          data-testid="media-object-share-btn"
                         >
                           <i className="fa fa-share-alt"></i>
                           Share
                         </button>
                       }
                       {playlist.canCreate &&
-                        <button className="btn btn-outline text-nowrap mr-1"
+                        <button className="btn btn-outline text-nowrap me-1"
                           id="addToPlaylistBtn"
                           type="button"
-                          data-toggle="collapse"
-                          data-target="#addToPlaylistPanel"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#addToPlaylistPanel"
                           aria-expanded="false"
                           aria-controls="addToPlaylistPanel"
                           disabled={true}
+                          data-testid="media-object-add-to-playlist-btn"
                         >
                           {/* Static SVG image in /app/assets/images/add_to_playlist_icon.svg */}
                           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
@@ -238,17 +181,9 @@ const Ramp = ({
                         </button>
                       }
                     </Col>
-                    {has_structure &&
-                      <Col className="ramp-button-group-2">
-                        <button
-                          className="btn btn-outline expand-collapse-toggle-button expanded"
-                          id="expand_all_btn"
-                          onClick={handleCollapseExpand}
-                          ref={expandCollapseBtnRef}
-                        >
-                          <ExpandCollapseArrow />
-                          {isClosed ? ' Expand' : ' Close'} {sections_count > 1 ? `${sections_count} Sections` : 'Section'}
-                        </button>
+                    {accessibility_text &&
+                      <Col className='accessibility-request text-end' sm={6} xs={a11yWithOnlyShare ? 8 : 12}>
+                        <span dangerouslySetInnerHTML={{ __html: accessibility_text }} />
                       </Col>
                     }
                   </div>
@@ -267,14 +202,14 @@ const Ramp = ({
                       </div>
                     </Col>
                   </Row>
-                  <StructuredNavigation />
-                </React.Fragment>
+                  <StructuredNavigation showAllSectionsButton={true} />
+                </Fragment>
               }
-            </React.Fragment>
+            </Fragment>
             )
           }
         </Col>
-        <Col sm={(sections_count == 0) ? 12 : 4} className="ramp--tabs-panel">
+        <Col sm={12} md={12} xl={4} className="ramp--tabs-panel">
           {cdl.enabled && <div dangerouslySetInnerHTML={{ __html: cdl.destroy }} />}
             {/* UMD Customization */}
             {/* Request from Special collections button and Copy Handle Button */}
@@ -289,14 +224,14 @@ const Ramp = ({
             </div>
             {/* End UMD Customization */}
           <Tabs>
-            <Tab eventKey="details" title="Details">
+            <Tab eventKey="details" title="Details" tabAttrs={{ 'data-testid': 'media-object-tab-details' }}>
               <MetadataDisplay showHeading={false} displayTitle={false} />
               {/* UMD Customization */}
               <UmdMetadataDisplay handleUrl={umd_metadata.handleUrl} />
               {/* End UMD Customization */}
             </Tab>
-            {(cdl.can_stream && sections_count != 0 && has_transcripts) &&
-              <Tab eventKey="transcripts" title="Transcripts" className="ramp--transcripts_tab">
+            {(cdl.can_stream && has_sections && has_transcripts) &&
+              <Tab eventKey="transcripts" title={transcript_tab_title} className="ramp--transcripts_tab" tabAttrs={{ 'data-testid': 'media-object-tab-transcripts' }}>
                 <Transcript
                   playerID="iiif-media-player"
                   manifestUrl={manifestUrl}
@@ -306,7 +241,7 @@ const Ramp = ({
             {/* UMD Customization */}
             {/* Include master files in "Files" tab */}
             {(has_files || master_file_downloads.canDownload) &&
-              <Tab eventKey="files" title="Files">
+              <Tab eventKey="files" title="Files" tabAttrs={{ 'data-testid': 'media-object-tab-files' }}>
                 {master_file_downloads.canDownload &&
                   <UmdMasterFiles masterFiles={master_file_downloads} />
                 }
@@ -323,4 +258,4 @@ const Ramp = ({
   );
 };
 
-export default Ramp;
+export default MediaObjectRamp;

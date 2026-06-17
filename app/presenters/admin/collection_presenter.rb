@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -44,24 +44,15 @@ class Admin::CollectionPresenter
   end
 
   def managers
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     @managers ||= Array(document["edit_access_person_ssim"]) & Array(document["collection_managers_ssim"])
-    # End UMD Customization
   end
 
   def editors
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     @editors ||= Array(document["edit_access_person_ssim"]) - managers
-    # End UMD Customization
   end
 
   def depositors
-    # UMD Customization
-    # Backport of Avalon 8.0 change
     Array(document["read_access_person_ssim"])
-    # End UMD Customization
   end
 
   def manager_count
@@ -90,4 +81,10 @@ class Admin::CollectionPresenter
       }
     }
   end
+
+  def to_proxy
+    SpeedyAF::Proxy::Admin::Collection.for(document.to_h.with_indifferent_access)
+  end
+
+  delegate :inherited_managers, :inherited_editors, :inherited_depositors, to: :to_proxy
 end

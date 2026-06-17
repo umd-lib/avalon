@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -72,18 +72,15 @@ end
 describe BulkActionJobs::ApplyCollectionAccessControl do
   let(:mo) { FactoryBot.create(:media_object) }
   let(:co) { mo.collection }
+  let(:unit) { co.unit }
 
   describe "perform" do
     before do
-      co.default_read_users = ["co_user"]
-      co.default_read_groups = ["co_group"]
       co.default_hidden = true
       co.default_visibility = 'public'
       co.default_lending_period = 129600
       co.save!
 
-      mo.read_users = ["mo_user"]
-      mo.read_groups = ["mo_group"]
       mo.hidden = false
       mo.visibility = 'restricted'
       mo.lending_period = 1209600
@@ -94,8 +91,6 @@ describe BulkActionJobs::ApplyCollectionAccessControl do
       BulkActionJobs::ApplyCollectionAccessControl.perform_now co.id, true, 'discovery'
       mo.reload
       expect(mo.hidden?).to be_truthy
-      expect(mo.read_users).to contain_exactly('mo_user')
-      expect(mo.read_groups).to contain_exactly('mo_group', 'registered')
       expect(mo.visibility).to eq('restricted')
       expect(mo.lending_period).to eq(1209600)
     end
@@ -104,8 +99,6 @@ describe BulkActionJobs::ApplyCollectionAccessControl do
       BulkActionJobs::ApplyCollectionAccessControl.perform_now co.id, true, 'visibility'
       mo.reload
       expect(mo.visibility).to eq('public')
-      expect(mo.read_users).to contain_exactly('mo_user')
-      expect(mo.read_groups).to contain_exactly('mo_group', 'public')
       expect(mo.hidden?).to be_falsey
       expect(mo.lending_period).to eq(1209600)
     end
@@ -118,8 +111,6 @@ describe BulkActionJobs::ApplyCollectionAccessControl do
         mo.reload
         expect(mo.lending_period).to eq(co.default_lending_period)
         expect(mo.hidden?).to be_falsey
-        expect(mo.read_users).to contain_exactly('mo_user')
-        expect(mo.read_groups).to contain_exactly('mo_group', 'registered')
         expect(mo.visibility).to eq('restricted')
       end
     end
@@ -131,40 +122,45 @@ describe BulkActionJobs::ApplyCollectionAccessControl do
         mo.reload
         expect(mo.lending_period).not_to eq(co.default_lending_period)
         expect(mo.hidden?).to be_falsey
-        expect(mo.read_users).to contain_exactly('mo_user')
-        expect(mo.read_groups).to contain_exactly('mo_group', 'registered')
         expect(mo.visibility).to eq('restricted')
       end
     end
+  end
+end
 
-    context "overwrite is true" do
-      it "replaces existing Special Access but affects no other fields" do
-        BulkActionJobs::ApplyCollectionAccessControl.perform_now co.id, true, 'special_access'
-        mo.reload
-        expect(mo.read_users).to contain_exactly("co_user")
-        expect(mo.read_groups).to contain_exactly("co_group", "registered")
-        expect(mo.hidden?).to be_falsey
-        expect(mo.visibility).to eq('restricted')
-        expect(mo.lending_period).to eq(1209600)
-        solr_doc = ActiveFedora::SolrService.query("id:#{mo.id}").first
-        expect(solr_doc["read_access_person_ssim"]).to contain_exactly("co_user")
-        expect(solr_doc["read_access_group_ssim"]).to contain_exactly("co_group", "registered")
-      end
-    end
+describe BulkActionJobs::ReturnCheckouts do
+  let(:collection_1) { FactoryBot.create(:collection, items: 2) }
+  let(:collection_2) { FactoryBot.create(:collection, items: 1) }
+  let!(:checkout_1) { FactoryBot.create(:checkout, media_object_id: collection_1.media_object_ids[0]) }
+  let!(:checkout_2) { FactoryBot.create(:checkout, media_object_id: collection_1.media_object_ids[1]) }
+  let!(:checkout_3) { FactoryBot.create(:checkout, media_object_id: collection_2.media_object_ids[0]) }
 
-    context "overwrite is false" do
-      it "adds to existing Special Access but affects no other fields" do
-        BulkActionJobs::ApplyCollectionAccessControl.perform_now co.id, false, 'special_access'
-        mo.reload
-        expect(mo.read_users).to contain_exactly("mo_user", "co_user")
-        expect(mo.read_groups).to contain_exactly("mo_group", "co_group", "registered")
-        expect(mo.hidden?).to be_falsey
-        expect(mo.visibility).to eq('restricted')
-        expect(mo.lending_period).to eq(1209600)
-        solr_doc = ActiveFedora::SolrService.query("id:#{mo.id}").first
-        expect(solr_doc["read_access_person_ssim"]).to contain_exactly("mo_user", "co_user")
-        expect(solr_doc["read_access_group_ssim"]).to contain_exactly("mo_group", "co_group", "registered")
-      end
-    end
+  it 'returns checkouts for the input collection' do
+    BulkActionJobs::ReturnCheckouts.perform_now(collection_1.id)
+    checkout_1.reload
+    checkout_2.reload
+    expect(checkout_1.return_time).to be < DateTime.current.to_time
+    expect(checkout_2.return_time).to be < DateTime.current.to_time
+  end
+
+  it 'does not return checkouts for other collections' do
+    BulkActionJobs::ReturnCheckouts.perform_now(collection_1.id)
+    checkout_3.reload
+    expect(checkout_3.return_time).to be >= DateTime.current.to_time
+  end
+end
+
+describe BulkActionJobs::RemoveManagers do
+  let(:users) { FactoryBot.create_list(:user, 2) }
+  let(:admin) { FactoryBot.create(:admin) }
+  let!(:collection1) { FactoryBot.create(:collection, managers: users.map(&:user_key)) }
+  let!(:collection2) { FactoryBot.create(:collection, managers: users.map(&:user_key) + [admin.user_key]) }
+
+  it 'removes provided users from collection management' do
+    BulkActionJobs::RemoveManagers.perform_now([users.first.user_key, admin.user_key])
+    collection1.reload
+    collection2.reload
+    expect(collection1.managers).to eq([users[1].user_key])
+    expect(collection2.managers).to eq([users[1].user_key])
   end
 end

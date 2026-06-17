@@ -1,4 +1,4 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #
@@ -14,17 +14,18 @@
 
 class MediaObject < ActiveFedora::Base
   include Hydra::AccessControls::Permissions
+  include DisableInheritance
   include Hidden
-  include VirtualGroups
   include ActiveFedora::Associations
   include MediaObjectMods
-  include Avalon::Workflow::WorkflowModelMixin
+  include WorkflowModelMixin
   include Permalink
   include Identifier
   include MigrationTarget
   include SpeedyAF::OrderedAggregationIndex
   include MediaObjectIntercom
-  include SupplementalFileBehavior
+  include SupplementalFileReadBehavior
+  include SupplementalFileWriteBehavior
   include MediaObjectBehavior
   require 'avalon/controlled_vocabulary'
 
@@ -99,7 +100,7 @@ class MediaObject < ActiveFedora::Base
   end
 
   def validate_language
-    Array(language).each{|i|errors.add(:language, "Language not recognized (#{i[:code]})") unless LanguageTerm::map[i[:code]] }
+    Array(language).each{|i|errors.add(:language, "Language not recognized (#{i[:code]})") unless LanguageTerm::Iso6392.map[i[:code]] }
   end
 
   def validate_related_items
@@ -142,6 +143,9 @@ class MediaObject < ActiveFedora::Base
   property :lending_period, predicate: ::RDF::Vocab::SCHEMA.eligibleDuration, multiple: false do |index|
     index.as :stored_sortable
   end
+  property :override_accessibility, predicate: ::RDF::Vocab::EBUCore.RightsClearance, multiple: false do |index|
+    index.as ActiveFedora::Indexing::Descriptor.new(:boolean, :stored, :indexed)
+  end
 
   #TODO: get rid of all ordered_* and indexed_* references, after everything is migrated then convert from `ordered_aggregation` to `has_many`
   # OR possibly remove the master_files relationship entirely?
@@ -168,8 +172,14 @@ class MediaObject < ActiveFedora::Base
     @sections = mfs
   end
 
-  def sections
-    @sections ||= MasterFile.find(self.section_ids)
+  def sections(safe_load: false)
+    if safe_load
+      # Trick ActiveFedora to use solr so it doesn't raise an exception when a section has already been deleted
+      # In this case return all sections that were found in both solr and fedora
+      @sections = MasterFile.where("has_model_ssim:MasterFile").find(self.section_ids).compact
+    else
+      @sections ||= MasterFile.find(self.section_ids)
+    end
   end
 
   def section_ids
@@ -181,16 +191,24 @@ class MediaObject < ActiveFedora::Base
     return [] if self.section_list.nil?
     @section_ids = JSON.parse(self.section_list)
   end
+  
+  def published?
+    !avalon_publisher.blank?
+  end
 
   def destroy
+    # Ignore sections that have already been deleted (or don't appear in solr)
+    existing_sections = self.sections(safe_load: true)
+
     # attempt to stop the matterhorn processing job
-    self.sections.each(&:stop_processing!)
+    existing_sections.each(&:stop_processing!)
     # avoid calling destroy on each section since it calls save on parent media object
     # UMD Customization
-    self.sections.each(&:delete_archived_master_file)
+    existing_sections.each(&:delete_archived_master_file)
     # End UMD Customization
-    self.sections.each(&:delete)
+    existing_sections.each(&:delete)
     Bookmark.where(document_id: self.id).destroy_all
+    Checkout.where(media_object_id: self.id).destroy_all
     super
   end
 
@@ -200,22 +218,19 @@ class MediaObject < ActiveFedora::Base
   def collection= co
     old_collection = self.collection
     self._collection= co
-    self.governing_policies.delete(old_collection) if old_collection
+    self.governing_policies -= [old_collection] if old_collection
     self.governing_policies += [co]
-    if self.new_record?
-      self.hidden = co.default_hidden
-      self.visibility = co.default_visibility
-      self.read_users = co.default_read_users.to_a
-      self.read_groups = co.default_read_groups.to_a + self.read_groups #Make sure to include any groups added by visibility
-      self.lending_period = co.default_lending_period
-    end
   end
 
   # Sets the publication status. To unpublish an object set it to nil or
   # omit the status which will default to unpublished. This makes the act
   # of publishing _explicit_ instead of an accidental side effect.
   def publish!(user_key, validate: true)
-    self.avalon_publisher = user_key.blank? ? nil : user_key
+    if user_key.present? && !is_accessible?
+      raise Avalon::PublishingError.new(I18n.t('errors.accessibility_enforcement_error'))
+    end
+
+    self.avalon_publisher = user_key.presence
     if validate
       save!
     else
@@ -275,7 +290,9 @@ class MediaObject < ActiveFedora::Base
   end
 
   def section_labels
-    all_labels = sections.collect{ |section| section.structural_metadata_labels << section.title}
+    # Need to add both title and display_title to avoid a regression because it is possible to have a title different than
+    # the section's structrualMetadata.section_title which is preferred in display_title
+    all_labels = sections.collect { |section| (section.structural_metadata_labels << section.title << section.display_title).uniq }
     all_labels.flatten.uniq.compact
   end
 
@@ -303,6 +320,13 @@ class MediaObject < ActiveFedora::Base
     solr_doc['all_comments_ssim'] = all_comments
   end
 
+  def fill_in_solr_fields_needing_leases(solr_doc)
+    solr_doc['read_access_virtual_group_ssim'] = virtual_read_groups + leases('external').map(&:inherited_read_groups).flatten
+    solr_doc['read_access_ip_group_ssim'] = collect_ips_for_index(ip_read_groups + leases('ip').map(&:inherited_read_groups).flatten)
+    solr_doc[Hydra.config.permissions.read.group] ||= []
+    solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
+  end
+
   # Enqueue background job to do a full indexing including more costly fields that read from children
   def enqueue_long_indexing
     MediaObjectIndexingJob.perform_later(id)
@@ -312,8 +336,6 @@ class MediaObject < ActiveFedora::Base
     descMetadata.to_solr(super).tap do |solr_doc|
       solr_doc[ActiveFedora.index_field_mapper.solr_name("workflow_published", :facetable, type: :string)] = published? ? 'Published' : 'Unpublished'
       solr_doc[ActiveFedora.index_field_mapper.solr_name("collection", :symbol, type: :string)] = collection.name if collection.present?
-      solr_doc[ActiveFedora.index_field_mapper.solr_name("unit", :symbol, type: :string)] = collection.unit if collection.present?
-      solr_doc['read_access_virtual_group_ssim'] = virtual_read_groups + leases('external').map(&:inherited_read_groups).flatten
       # UMD Customization
       solr_doc['course_title_ssim'] = (
                 virtual_read_groups +
@@ -321,15 +343,11 @@ class MediaObject < ActiveFedora::Base
               ).filter_map do |group|
         Course.find_by(context_id: group)&.title
       end
-      # End UMD Customization
-      solr_doc['read_access_ip_group_ssim'] = collect_ips_for_index(ip_read_groups + leases('ip').map(&:inherited_read_groups).flatten)
-      solr_doc[Hydra.config.permissions.read.group] ||= []
-      solr_doc[Hydra.config.permissions.read.group] += solr_doc['read_access_ip_group_ssim']
-      # UMD Customization
       solr_doc[Hydra.config.permissions.discover.group] ||= [] # Customization for LIBAVALON-168
        # Customization for LIBAVALON-168, LIBAVALON-498
       solr_doc[Hydra.config.permissions.discover.group] += ['public'] unless is_streaming_reserve?
       # End UMD Customization
+      solr_doc[ActiveFedora.index_field_mapper.solr_name("unit", :symbol, type: :string)] = collection.unit.name if collection.present?
       solr_doc["title_ssort"] = self.title
       solr_doc["creator_ssort"] = Array(self.creator).join(', ')
       solr_doc["date_ingested_ssim"] = self.create_date.strftime "%F" if self.create_date.present?
@@ -337,20 +355,24 @@ class MediaObject < ActiveFedora::Base
       # Downcasing identifier allows for case-insensitive searching but has the side effect of causing all identiiers to be lower case in JSON responses
       solr_doc['identifier_ssim'] = self.identifier.map(&:downcase)
       solr_doc['note_ssm'] = self.note.collect { |n| n.to_json }
+      solr_doc['donor_ssim'] = self.note.collect { |n| n[:note] if n[:type] == 'acquisition' }
       solr_doc['other_identifier_ssm'] = self.other_identifier.collect { |oi| oi.to_json }
       solr_doc['related_item_url_ssm'] = self.related_item_url.collect { |r| r.to_json }
+      solr_doc['is_accessible_bsi'] = self.is_accessible?
       solr_doc['section_id_ssim'] = section_ids
       if include_child_fields
         fill_in_solr_fields_that_need_sections(solr_doc)
+        fill_in_solr_fields_needing_leases(solr_doc)
       elsif id.present? # avoid error in test suite
         # Fill in other identifier so these values aren't stripped from the solr doc while waiting for the background job
-        mf_docs = ActiveFedora::SolrService.query("isPartOf_ssim:#{id}", rows: 1_000_000)
+        mf_docs = ActiveFedora::SolrService.query("isPartOf_ssim:#{id}", rows: 100_000)
         solr_doc["other_identifier_sim"] +=  mf_docs.collect { |h| h['identifier_ssim'] }.flatten
       end
 
       #Add all searchable fields to the all_text_timv field
       all_text_values = []
       all_text_values << solr_doc["title_tesi"]
+      all_text_values << solr_doc["alternative_title_ssim"]
       all_text_values << solr_doc["creator_ssim"]
       all_text_values << solr_doc["contributor_ssim"]
       all_text_values << solr_doc["unit_ssim"]
@@ -437,11 +459,6 @@ class MediaObject < ActiveFedora::Base
     [mergeds, faileds]
   end
 
-  alias_method :'_lending_period', :'lending_period'
-  def lending_period
-    self._lending_period || collection&.default_lending_period
-  end
-
   # Override to reset memoized fields
   def reload
     @section_docs = nil
@@ -456,7 +473,7 @@ class MediaObject < ActiveFedora::Base
     # To take advantage of solr automagically escaping characters the query has to be in single quotes.
     # This runs counter to ruby's string interpolation which requires the string to be in double quotes.
     # We can get around this by using the format_string construction.
-    solr_query = { q: 'unit_ssim:"%{collection_unit}"' % { collection_unit: collection_unit } }
+    solr_query = { q: 'unit_ssim:"%{collection_unit}"' % { collection_unit: collection_unit.name } }
     query_params = {
       fl: ["series_ssim"],
       facet: "on",
@@ -479,7 +496,7 @@ class MediaObject < ActiveFedora::Base
   
   # UMD Customization
   def is_streaming_reserve?
-    collection&.unit == Settings.streaming_reserves.unit_name
+    collection&.unit&.name == Settings.streaming_reserves.unit_name
   end
   # End UMD Customization
 
@@ -491,7 +508,7 @@ class MediaObject < ActiveFedora::Base
       # in the section_list
       return [] unless section_ids.present?
       query = "id:" + section_ids.join(" id:")
-      @section_docs ||= ActiveFedora::SolrService.query(query, rows: 1_000_000)
+      @section_docs ||= ActiveFedora::SolrService.query(query, rows: 100_000)
     end
 
     def calculate_duration
@@ -510,4 +527,9 @@ class MediaObject < ActiveFedora::Base
       # TODO: Optimize this into a single solr query?
       section_ids.select { |m| SpeedyAF::Proxy::MasterFile.find(m).supplemental_files(tag: tag).present? }
     end
+
+    def sections_with_rendering_files?(tags)
+      tags.any? { |t| sections_with_files(tag: t).present? }
+    end
+
 end

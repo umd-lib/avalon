@@ -1,11 +1,11 @@
-# Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+# Copyright 2011-2026, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -92,8 +92,20 @@ describe User do
     end
 
     it "should find undeleted users by email" do
-      found_user = User.find_or_create_by_username_or_email(user.username, nil)
+      found_user = User.find_or_create_by_username_or_email(nil, user.email)
       expect(found_user).to eq(user)
+    end
+
+    context 'case insensitive' do
+      it "should find undeleted users by usernames" do
+        found_user = User.find_or_create_by_username_or_email(user.username.upcase, nil)
+        expect(found_user).to eq(user)
+      end
+
+      it "should find undeleted users by email" do
+        found_user = User.find_or_create_by_username_or_email(nil, user.email.upcase)
+        expect(found_user).to eq(user)
+      end
     end
   end
 
@@ -136,30 +148,30 @@ describe User do
 
   describe "#destroy" do
     it 'removes bookmarks for user' do
-      user = FactoryBot.create(:public)
+      user = FactoryBot.create(:user)
       bookmark = Bookmark.create(document_id: Faker::Number.digit, user: user)
       expect { user.destroy }.to change { Bookmark.exists? bookmark.id }.from( true ).to( false )
     end
     it 'removes checkouts for user' do
-      user = FactoryBot.create(:public)
+      user = FactoryBot.create(:user)
       active_checkout = FactoryBot.create(:checkout, user_id: user.id)
       returned_checkout = FactoryBot.create(:checkout, user_id: user.id, return_time: DateTime.current - 1.day)
       expect { user.destroy }.to change { Checkout.all.count }.from(2).to(0)
     end
     it 'removes playlists for user' do
-      user = FactoryBot.create(:public)
+      user = FactoryBot.create(:user)
       playlist = FactoryBot.create(:playlist, user_id: user.id)
       expect { user.destroy }.to change { Playlist.exists? playlist.id }.from( true ).to( false )
     end
     it 'removes timelines for user' do
-      user = FactoryBot.create(:public)
+      user = FactoryBot.create(:user)
       timeline = FactoryBot.create(:timeline, user_id: user.id)
       expect { user.destroy }.to change { Timeline.exists? timeline.id }.from( true ).to( false )
     end
   end
 
   describe '#timeline_tags' do
-    let(:user) { FactoryBot.create(:public) }
+    let(:user) { FactoryBot.create(:user) }
 
     it 'is empty when the user has no timeline tags' do
       expect(user.timeline_tags).to be_empty

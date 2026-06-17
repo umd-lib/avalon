@@ -1,12 +1,12 @@
 /* 
- * Copyright 2011-2024, The Trustees of Indiana University and Northwestern
+ * Copyright 2011-2026, The Trustees of Indiana University and Northwestern
  *   University.  Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
- * 
+ *
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed
  *   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  *   CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -14,7 +14,7 @@
  * ---  END LICENSE_HEADER BLOCK  ---
 */
 
-import React from 'react';
+import { Fragment }from 'react';
 import PropTypes from 'prop-types';
 import CollectionCardShell from '../CollectionCardShell';
 import CollectionCardThumbnail from '../CollectionCardThumbnail';
@@ -31,10 +31,10 @@ const CardMetaData = ({ doc, fieldLabel, fieldName }) => {
 
   if (doc.attributes[fieldName]) {
     return (
-      <React.Fragment>
+      <Fragment>
         <dt>{fieldLabel}</dt>
         <dd dangerouslySetInnerHTML={{ __html: metaData }}></dd>
-      </React.Fragment>
+      </Fragment>
     );
   }
   return null;
@@ -80,7 +80,7 @@ const SearchResultsCard = props => {
   return (
     <CollectionCardShell>
       <CollectionCardThumbnail>
-        <span className="timestamp badge badge-dark">
+        <span className="timestamp badge bg-dark">
           {duration(doc.attributes['duration_ssi'].attributes.value)}
         </span>
         <a href={baseUrl + 'media_objects/' + doc['id']}>
