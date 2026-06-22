@@ -16,7 +16,7 @@ const UmdCopyHandleUrlButton = ({ handleUrl = '' }) => {
 
   return (
     <button className="request-and-handle-button" type="button" onClick={copyToClipboard}>
-    COPY PERMANENT LINK
+    Copy Permanent Link
     </button>
   );
 }
