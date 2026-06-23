@@ -76,7 +76,7 @@ Unless required by applicable law or agreed to in writing, software distributed
             callNumber: (@media_object.other_identifier.pluck(:id).join(', ') || ""),
             referenceNumber: (@media_object.permalink || ""),
             aeonURL: 'https://aeon.lib.umd.edu/Logon/?Action=10&Form=23',
-            permitted: ! @media_object.is_streaming_reserve?
+            permitted: @media_object.allow_aeon_request?
           },
           master_file_downloads: { 
             canDownload: @master_file_download_allowed,
