@@ -498,6 +498,12 @@ class MediaObject < ActiveFedora::Base
   def is_streaming_reserve?
     collection&.unit&.name == Settings.streaming_reserves.unit_name
   end
+
+  def allow_aeon_request?
+    return false if Settings.disallow_aeon_request.collections.include?(collection&.name)
+    return false if Settings.disallow_aeon_request.units.include?(collection&.unit&.name)
+    true
+  end
   # End UMD Customization
 
   private

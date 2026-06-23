@@ -177,6 +177,11 @@ derivative:
 # UMD Customization
 streaming_reserves:
   unit_name: 'Streaming Reserves'
+disallow_aeon_request:
+  collections:
+    - Films@UM
+  units:
+    - Streaming Reserves
 # End UMD Customization
 
 # Enable read-only mode for disabling all save interactions with fedora and solr
