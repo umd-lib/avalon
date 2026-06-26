@@ -16,14 +16,14 @@ Unless required by applicable law or agreed to in writing, software distributed
 
 <%# locals: (model:, id: 'undefined', field_id: nil, field_name:, for_field: field_name, value: nil, data: nil, disabled: false, placeholder: nil) %>
 
-<auto-complete class='typeahead' src='/autocomplete?t=<%= "#{model}" %>&id=<%= "#{id}" %>&format=html' for=<%= "#{for_field}-popup" %>>
-  <%= text_field_tag field_name, value,
-    id: field_id,
-    class: "form-control typeahead-input",
-    data: data,
-    data: { testid: "#{for_field}-user-input" },
-    disabled: disabled,
-    placeholder: placeholder %>
-  <ul class='autocomplete_popup' data-testid=<%= "#{for_field}-popup" %> id=<%= "#{for_field}-popup" %>></ul>
-  <div class='visually-hidden autocomplete_feedback'id=<%= "#{for_field}-popup-feedback" %>></div>
+<auto-complete class='typeahead' src='/autocomplete?t=<%= model %>&id=<%= id %>&format=html' for="<%= for_field %>-popup">
+  <%= text_field_tag "#{field_name}_display", nil,
+      id: field_id,
+      class: "form-control typeahead-input",
+      data: data,
+      disabled: disabled,
+      placeholder: placeholder %>
+  <%= hidden_field_tag field_name, value %>
+  <ul class='autocomplete_popup' data-testid="<%= for_field %>-popup" id="<%= for_field %>-popup"></ul>
+  <div class='visually-hidden autocomplete_feedback' id="<%= for_field %>-popup-feedback"></div>
 </auto-complete>
