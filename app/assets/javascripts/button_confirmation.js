@@ -29,7 +29,13 @@ window.apply_button_confirmation = function () {
       trigger: 'manual',
       html: true,
       sanitize: false,
-      container: '#main-content',
+      // UMD Customization
+      // Due to LIBAVALON-108, the #main-content element is not present on all
+      // pages (e.g. Timelines, Playlist). We fall back to 'main' as the
+      // container selector, which targets the semantic <main> element that is
+      // consistently available across the application.
+      container: 'main',
+      // End UMD Customization
       content: function () {
         let button;
         if (typeof this.getAttribute('form') === "undefined" || this.getAttribute('form') === null) {
