@@ -13,10 +13,11 @@ Unless required by applicable law or agreed to in writing, software distributed
   specific language governing permissions and limitations under the License.
 ---  END LICENSE_HEADER BLOCK  ---
 %>
+<%# UMD Customization %>
+<%# locals: (model:, id: 'undefined', field_id: nil, field_name:, for_field: field_name, value: nil, data: nil, disabled: false, placeholder: nil, display_helper: nil) %>
 
-<%# locals: (model:, id: 'undefined', field_id: nil, field_name:, for_field: field_name, value: nil, data: nil, disabled: false, placeholder: nil) %>
-
-<auto-complete class='typeahead' src='/autocomplete?t=<%= model %>&id=<%= id %>&format=html' for="<%= for_field %>-popup">
+<% if defined?(display_helper) && display_helper.present? %>
+<auto-complete class='typeahead' src='/autocomplete?t=<%= model %>&id=<%= id %>&format=html&display_helper=true' for="<%= for_field %>-popup">
   <%= text_field_tag "#{field_name}_display", nil,
       id: field_id,
       class: "form-control typeahead-input",
@@ -27,3 +28,17 @@ Unless required by applicable law or agreed to in writing, software distributed
   <ul class='autocomplete_popup' data-testid="<%= for_field %>-popup" id="<%= for_field %>-popup"></ul>
   <div class='visually-hidden autocomplete_feedback' id="<%= for_field %>-popup-feedback"></div>
 </auto-complete>
+<% else %>
+<auto-complete class='typeahead' src='/autocomplete?t=<%= "#{model}" %>&id=<%= "#{id}" %>&format=html' for=<%= "#{for_field}-popup" %>>
+  <%= text_field_tag field_name, value,
+    id: field_id,
+    class: "form-control typeahead-input",
+    data: data,
+    data: { testid: "#{for_field}-user-input" },
+    disabled: disabled,
+    placeholder: placeholder %>
+  <ul class='autocomplete_popup' data-testid=<%= "#{for_field}-popup" %> id=<%= "#{for_field}-popup" %>></ul>
+  <div class='visually-hidden autocomplete_feedback'id=<%= "#{for_field}-popup-feedback" %>></div>
+</auto-complete>
+<% end %>
+<%# End UMD Customization %>
