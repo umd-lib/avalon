@@ -14,6 +14,16 @@ Unless required by applicable law or agreed to in writing, software distributed
 ---  END LICENSE_HEADER BLOCK  ---
 %>
 
-<% @results.each do |result| %>
-  <li role="option"><span><%= result[:display] %></span></li>
+<%# UMD Customization %>
+<% if params[:display_helper].present? %>
+  <% @results.each do |result| %>
+    <li role="option" data-autocomplete-value="<%= result[:id] %>" data-display-value="<%= result[:display] %>">
+      <span><%= result[:display] %></span>
+    </li>
+  <% end %>
+<% else %>
+  <% @results.each do |result| %>
+    <li role="option"><span><%= result[:display] %></span></li>
+  <% end %>
 <% end %>
+<%# End UMD Customization %>

@@ -196,50 +196,134 @@ steps is *not* displayed (as it is not an active token). Change the
 "Filter by status" dropdown to "revoked" and left-click the "Go" button.
 Verify that the access token added in the previous steps is in the list.
 
-### 6) robots.txt
+### 6) LTI Flow
 
-**Note:** This step cannot be tested in the local development environment.
+**Note:** Steps 6.1 and 6.2 require access to a running Docker environment or
+Kubernetes namespace. The rake task provisions a test course and user.
 
-6.1) In a web browser go to
+6.1) In a terminal, run the following rake task to provision a test LTI course
+and user:
 
-<https://av-test.lib.umd.edu/robots.txt>
+```bash
+docker compose exec avalon bash -c "rails umd:provision_test_lti_course_and_user"
+```
 
-Verify the contents of a "robots.txt" file is displayed.
+The task defaults to `context_id=test-course-context-id` and
+`title=Test Course Title`. To customise, set the `TEST_LTI_COURSE_CONTEXT_ID`
+and `TEST_LTI_COURSE_TITLE` environment variables.
 
-### 7) sitemap.xml
+6.2) From the navigation bar, select "Manage | Manage Content" to go to the
+Manage Content page. Create a new unit named **Streaming Reserves** and
+within it create a new collection named **Digitized Items**:
+
+  a) Left-click the "+ Create Unit" button. On the "New unit" page, enter
+     **Streaming Reserves** in the Name field, then left-click "Create Unit".
+     The unit detail page for "Streaming Reserves" will be displayed.
+
+  b) On the "Streaming Reserves" unit page, left-click the "Create Collection"
+     button. On the "New collection" page, fill out the following fields:
+
+     | Field | Value |
+     | ----- | ----- |
+     | Name  | Digitized Items |
+     | Unit  | Streaming Reserves (pre-filled) |
+
+  then left-click the "Create Collection" button. Verify that the collection
+  is created successfully.
+
+6.3) On the "Digitized Items" collection page, left-click the
+"Create an Item" button and create a new item following the same steps as
+section 4 (upload a video file, add a title and publication date, continue
+through Structure, and reach the "Access Control" step).
+
+6.4) On the "Edit Media Object > Access Control" page, add the test course as
+an external group:
+
+  a) In the **External Groups** field, start typing `Test Course` (or the
+     title used in step 6.1). An autocomplete dropdown will appear with
+     formatted values (Eg. 1: Test Course Title).
+
+  b) Left-clicking on the test course entry in the dropdown should fill the
+     formatted value in the External Groups field, then left-click the "Add"
+     button.
+
+  c) Verify that the page reloads and the formatted course title is listed
+     under the **External Groups** section (Eg. _1:_ Test Course Title).
+
+Left-click the "Save and continue" button. The item detail page will be
+displayed.
+
+6.5) Publish the item by left-clicking the "Publish" button on the item detail
+page and verify that a success notification is displayed.
+
+6.6) From the navigation bar, select "Manage | View Courses". The "Courses"
+page will be displayed. Locate the test course created in step 6.1 and
+left-click the "Browse Course Items" button next to it. 
+
+6.7) Verify that the browse page is displayed, that the item created in step 6.3
+is listed in the results, and that the left facet panel shows **Test Course
+Title** (or the title used in step 6.1) pre-selected under the **Course Name**
+facet.
+
+6.8) From the navigation bar, select "Manage | View Courses". The "Courses"
+page will be displayed. Locate the test course created in step 6.1 and
+left-click the "Impersonate" button next to it.
+
+6.9) Verify that the course view is displayed and that the item created in step
+6.3 is listed in the course view.
+
+6.10) In the browser, navigate to
+
+<http://av-local:3000>
+
+Verify that the home page renders correctly within the LTI session. Then
+left-click the "Sign out" link and verify that the LTI session is ended
+successfully.
+
+### 7) robots.txt
 
 **Note:** This step cannot be tested in the local development environment.
 
 7.1) In a web browser go to
 
+<https://av-test.lib.umd.edu/robots.txt>
+
+Verify the contents of a "robots.txt" file is displayed.
+
+### 8) sitemap.xml
+
+**Note:** This step cannot be tested in the local development environment.
+
+8.1) In a web browser go to
+
 <https://av-test.lib.umd.edu/sitemap.xml>
 
 Verify that a "sitemap" file is returned.
 
-### 8) Item Deletion
+### 9) Item Deletion
 
-8.1) Go back to the item detail page of the item added in the previous steps.
+9.1) Go back to the item detail page of the item added in the previous steps.
 
-8.2) On the item detail page, left-click the "Edit" button. The
+9.2) On the item detail page, left-click the "Edit" button. The
 "Edit Media Object > Access Control" page will be displayed.
 
-8.3) On the "Edit Media Object > Access Control" page, left-click the
+9.3) On the "Edit Media Object > Access Control" page, left-click the
 "Delete this item" button at the bottom of the left sidebar. A confirmation
 page will be displayed.
 
-8.4) On the confirmation page, left-click the "Yes, I am sure" button. The
+9.4) On the confirmation page, left-click the "Yes, I am sure" button. The
 Avalon home page will be displayed with a notification indicating that the
 media object was deleted.
 
-### 9) Collection Deletion
+### 10) Collection Deletion
 
-9.1) From the navigation bar, select "Manage | Manage Content" from the
+10.1) From the navigation bar, select "Manage | Manage Content" from the
 navigation bar. The "My Collections" page will be displayed.
 
-9.2) On the "My Collections" page, find the "SSDR Test Collection" entry in the
+10.2) On the "My Collections" page, find the "SSDR Test Collection" entry in the
 list and left-click the "Delete" button. A confirmation
 page will be displayed.
 
-9.3) On the confirmation page, left-click the "Yes, I am sure" button. The
+10.3) On the confirmation page, left-click the "Yes, I am sure" button. The
 "My Collections"" page will be displayed. Verify that the "SSDR Test Collection"
 no longer appears in the list of collections.

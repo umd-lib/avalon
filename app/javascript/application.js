@@ -36,6 +36,7 @@ import UsersTable from './components/tables/UsersTable';
 import Dashboard from './components/dashboard/Dashboard';
 import './auto-complete-open.js';
 // UMD Customization
+import './autocomplete-id-value.js';
 import UMDFacetFilter from './components/UMDFacetFilter';
 // End UMD Customization
 import '@github/auto-complete-element';
