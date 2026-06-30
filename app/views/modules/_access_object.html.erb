@@ -80,6 +80,7 @@ Unless required by applicable law or agreed to in writing, software distributed
             <%= render 'modules/access_object_member', object: object, 
                   member_object: member_object, access_object: access_object,
                   display_helper: defined?(display_helper) ? display_helper : nil,
+                  access_object_remove_helper: defined?(access_object_remove_helper) ? access_object_remove_helper : nil,
                   input_disabled: input_disabled, inherited: true %>
             <%# End UMD Customization %>
          <% end %>
@@ -94,6 +95,7 @@ Unless required by applicable law or agreed to in writing, software distributed
                 <%= render 'modules/access_object_member', object: object, 
                       member_object: member_object, access_object: access_object,
                       display_helper: defined?(display_helper) ? display_helper : nil,
+                      access_object_remove_helper: defined?(access_object_remove_helper) ? access_object_remove_helper : nil,
                       input_disabled: input_disabled, inherited: inherited %>
                 <%# End UMD Customization %>
               <% end %>
@@ -104,6 +106,7 @@ Unless required by applicable law or agreed to in writing, software distributed
               <%= render 'modules/access_object_member', object: object, 
                     member_object: member_object, access_object: access_object,
                     display_helper: defined?(display_helper) ? display_helper : nil,
+                    access_object_remove_helper: defined?(access_object_remove_helper) ? access_object_remove_helper : nil,
                     input_disabled: input_disabled, inherited: false %>
               <%# End UMD Customization %>
             <% end %>
