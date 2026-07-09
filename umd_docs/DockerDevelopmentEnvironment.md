@@ -17,6 +17,15 @@ of Avalon using Docker.
     127.0.0.1 av-local
     ```
 
+3) Install and configure the Minio Client
+
+    ```zsh
+    brew install minio-mc
+
+    # Set up Minio alias for the avalon Minio server running in Docker
+    mc alias set minio http://localhost:9000 minio minio123;
+    ```
+
 ### Setup Instructions
 
 1) Checkout the application and switch to the directory:
@@ -77,7 +86,13 @@ of Avalon using Docker.
    docker-compose build
    ```
 
-8) Start the server
+8) Create Minio buckets
+
+   ```zsh
+   docker-compose run createbuckets
+   ```
+
+9) Start the server
 
     ```zsh
     docker-compose up avalon worker
@@ -92,6 +107,8 @@ of Avalon using Docker.
    ```
 
    Avalon should be available at: [http://av-local:3000](http://av-local:3000)
+
+   The MinIO browser should be accessible at <http://localhost:9090/browser>
 
 ### Loading Sample Data
 
@@ -117,49 +134,44 @@ in the folder for a description of each dataset.
 
    then left-click the "Create Collection" button in the dialog. Once created,
    the "Manage Content" page with the collection will be displayed. Also, a
-   "masterfiles/dropbox/Test_Collection/" subdirectory will be created in the
-   Avalon project directory.
+   "dropbox/Test_Collection/" folder will be created in the masterfiles bucket.
 
 3) In a terminal, add a `sample-data@example.com` admin user (which is the
-   email address of the submitter in the sample datasets) by executing a Bash
-   shell in the "avalon-avalon-1" Docker container:
+   email address of the submitter in the sample datasets) by running the
+   following command:
 
    ```zsh
-   docker exec -it avalon-avalon-1 /bin/bash
-   ```
-
-   and running the following command:
-
-   ```zsh
-   rails avalon:user:create \
-     avalon_username=sample-data@example.com avalon_password=PASSWORD \
-     avalon_groups=administrator
-   ```
-
-   then exit the Docker container:
-
-   ```zsh
-   exit
+   docker exec -it avalon-avalon-1 /bin/bash -c \
+      'rails avalon:user:create \
+        avalon_username=sample-data@example.com avalon_password=PASSWORD \
+        avalon_groups=administrator'
    ```
 
 4) Download the "Sample_Audio_and_Video" folder (as a Zip file) from
-   <https://umd.app.box.com/folder/156055839002> and place it in the
-   "masterfiles/dropbox/Test_Collection/" folder. In a terminal,
-   switch to the "masterfiles/dropbox/Test_Collection/" subdirectory:
+   <https://umd.app.box.com/folder/156055839002> and place it in a
+   temporary folder. In a terminal, switch to the directory containing
+   the download and extract the file.
 
    ```zsh
-   cd masterfiles/dropbox/Test_Collection/
-   ```
-
-   and extract the file:
-
-   ```zsh
+   cd <FOLDER_CONTAINING_THE_DOWNLOAD>
    unzip Sample_Audio_and_Video.zip
    ```
 
-   and extract the file.
+   Copy the files to the masterfiles bucket dropbox folder. In the following
+   the "UPLOAD_DIR" environment variable contains the name of the extracted
+   folder from the Zip file (to simplify uploading different sample datasets).
 
-5) The "avalon-worker" container scans the "masterfiles/dropbox" directory
+   ```sh
+   export UPLOAD_DIR=Sample_Audio_and_Video
+   mc mirror --exclude "*.xlsx" $UPLOAD_DIR minio/masterfiles/dropbox/Test_Collection/$UPLOAD_DIR/
+   mc cp -r $UPLOAD_DIR/*.xlsx minio/masterfiles/dropbox/Test_Collection/$UPLOAD_DIR/
+   ```
+
+   **Note:** Uploading the assets and the "xlsx" manifest file separately is a
+   best practice, because it ensures that the Avalon "worker" process won't
+   start the import before the asset files are available.
+
+5) The "avalon-worker" container scans the "masterfiles/dropbox" bucket
    once a minute, and ingests any new items found. Depending on the size
    of the dataset, and the need to transcode the content, the ingest may
    take several minutes.

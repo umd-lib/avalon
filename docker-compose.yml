@@ -1,14 +1,8 @@
 volumes:
-  # UMD Customization
-  streaming:
-  # End UMD Customization
   database:
   solr:
   npms:
-  # UMD Customization
-  # data:
-  work:
-  # End UMD Customization
+  data:
 
 networks:
   internal:
@@ -16,7 +10,9 @@ networks:
 
 services:
   db: &db-avalon
-    image: postgres:17-alpine
+    # UMD Customization
+    image: postgres:18-alpine
+    # End UMD Customization
     volumes:
       - database:/data
     environment:
@@ -31,16 +27,13 @@ services:
     volumes: []
 
   fedora: &fedora
+    # UMD Customization
     image: fcrepo/fcrepo:7-tomcat10
-    # UMD Customization - local OCFL storage from F4→F6 migration
-    environment:
-      - >-
-       CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false
-       -Dfcrepo.storage=ocfl-fs
-       -Dfcrepo.home=/fcrepo-home
-    volumes:
-      - ./ocfl-home:/fcrepo-home
     # End UMD Customization
+    depends_on:
+      - createbuckets
+    environment:
+      - CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false -Dfcrepo.aws.access-key=minio -Dfcrepo.aws.secret-key=minio123 -Dfcrepo.storage=ocfl-s3 -Dfcrepo.ocfl.s3.bucket=fcrepo -Dfcrepo.s3.endpoint=http://minio:9000 -Dfcrepo.aws.region=us-east-1 -Dfcrepo.s3.path.style.access=true
     networks:
       internal:
     ulimits:
@@ -52,7 +45,6 @@ services:
     depends_on: []
     environment:
       - CATALINA_OPTS=-Dfcrepo.autoversioning.enabled=false
-    volumes: []
 
   solr: &solr
     image: solr:9
@@ -78,23 +70,22 @@ services:
 
   hls:
     # UMD Customization
-    image: docker.lib.umd.edu/nginx:avalon-7.8.0-umd-0
-    platform: linux/amd64
+    image: docker.lib.umd.edu/nginx:avalon-8.2.0-umd-0-rc-6
     # End UMD Customization
     environment:
       - AVALON_DOMAIN=http://avalon:3000
-    # UMD Customization
       - AVALON_STREAMING_BASE_URL=http://localhost:8880
-      # - AVALON_STREAMING_BUCKET_URL=http://minio:9000/derivatives/
-      # - VOD_MODE=remote
-      # - S3_BUCKET_NAME=derivatives
-      # - AWS_ACCESS_KEY_ID=minio
-      # - AWS_SECRET_ACCESS_KEY=minio123
-      # - S3_SERVER=localhost:9000
+      - AVALON_STREAMING_BUCKET_URL=http://minio:9000/derivatives/
+      - VOD_MODE=remote
+      - S3_BUCKET_NAME=derivatives
+      - AWS_ACCESS_KEY_ID=minio
+      - AWS_SECRET_ACCESS_KEY=minio123
+      - S3_SERVER=localhost:9000
     volumes:
-      - streaming:/data
-    # End UMD Customization
       - ./log/nginx:/var/log/nginx
+      # UMD Customization
+      - /var/cache/nginx/auth_cache
+      # End UMD Customization
     ports:
       - '8880:80'
     networks:
@@ -109,9 +100,7 @@ services:
     <<: *redis
 
   avalon: &avalon
-    # UMD Customization
-    image: docker.lib.umd.edu/avalon:8.2-umd-0
-    # End UMD Customization
+    image: avalonmediasystem/avalon:develop
     build:
       context: .
       target: dev
@@ -122,17 +111,15 @@ services:
       - solr
       - redis
       - hls
-      # UMD Customization
-      # - minio
-      # End UMD Customization
+      - minio
     environment:
       - APP_NAME=avalon
       - BUNDLE_FLAGS=--with development postgres --without production test
+      - ENCODE_WORK_DIR=/tmp
         # UMD Customization
       - SETTINGS__DOMAIN__PROTOCOL=http
       - SETTINGS__DOMAIN__HOST=av-local
       - SETTINGS__DOMAIN__PORT=3000
-      - ENCODE_WORK_DIR=/streamfiles
       - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
         # End UMD Customization
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
@@ -145,24 +132,24 @@ services:
       - SETTINGS__REDIS__URL=redis://redis:6379/0
       - SECRET_KEY_BASE=abcd
       - SOLR_URL=http://solr:8983/solr/avalon
-      # UMD Customization - S3/minio settings (used in staging; overridden by env in production)
-      # - AWS_REGION=us-east-1
-      # - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
-      # - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
-      # - SETTINGS__MINIO__ENDPOINT=http://minio:9000
-      # - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
-      # - SETTINGS__MINIO__ACCESS=minio
-      # - SETTINGS__MINIO__SECRET=minio123
-      # - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
-      # - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
-      # - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
-      # - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
-      # - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
-      # - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
-      - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
-      # End UMD Customization
+      - AWS_REGION=us-east-1
+      - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
+      - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
+      - SETTINGS__MINIO__ENDPOINT=http://minio:9000
+      - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
+      - SETTINGS__MINIO__ACCESS=minio
+      - SETTINGS__MINIO__SECRET=minio123
+      - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
+      - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
+      - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
+      - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
+      - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
+      - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
+      - SETTINGS__STREAMING__CONTENT_PATH=/
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
-      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
+      # UMD Customization
+      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/s3-avalon
+      # End UMD Customization
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=primarykey1234
@@ -181,12 +168,8 @@ services:
       - ENVIRONMENT_BANNER_BACKGROUND=#008000
       # End UMD Customization
     volumes:
-      # UMD Customization
       - .:/home/app/avalon
-      - ./masterfiles:/masterfiles
-      - streaming:/streamfiles
       - npms:/home/app/avalon/node_modules
-      # End UMD Customization
     ports:
       - '3000:3000'
     networks:
@@ -232,15 +215,21 @@ services:
       context: .
       target: prod
     command: bash -c "bundle exec rake db:migrate && bundle exec rails server -b 0.0.0.0"
-    # UMD Customization
+    depends_on:
+      - db
+      - fedora
+      - solr
+      - redis
+      - hls
+      - minio
     environment:
       - APP_NAME=avalon
-      - BUNDLE_FLAGS=--with development postgres --without production test
+      - BUNDLE_FLAGS=--with production postgres --without development test
+      - ENCODE_WORK_DIR=/tmp
         # UMD Customization
       - SETTINGS__DOMAIN__PROTOCOL=http
       - SETTINGS__DOMAIN__HOST=av-local
       - SETTINGS__DOMAIN__PORT=3000
-      - ENCODE_WORK_DIR=/streamfiles
       - DIGITAL_COLLECTIONS_URL=https://digital.lib.umd.edu/
         # End UMD Customization
       - CONTROLLED_VOCABULARY=config/controlled_vocabulary.yml
@@ -253,24 +242,26 @@ services:
       - SETTINGS__REDIS__URL=redis://redis:6379/0
       - SECRET_KEY_BASE=abcd
       - SOLR_URL=http://solr:8983/solr/avalon
-      # UMD Customization - S3/minio settings (used in staging; overridden by env in production)
-      # - AWS_REGION=us-east-1
-      # - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
-      # - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
-      # - SETTINGS__MINIO__ENDPOINT=http://minio:9000
-      # - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
-      # - SETTINGS__MINIO__ACCESS=minio
-      # - SETTINGS__MINIO__SECRET=minio123
-      # - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
-      # - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
-      # - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
-      # - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
-      # - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
-      # - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
-      - SETTINGS__STREAMING__CONTENT_PATH=/streamfiles
-      # End UMD Customization
+      - AWS_REGION=us-east-1
+      - RAILS_SERVE_STATIC_FILES=true
+      - SETTINGS__ACTIVE_STORAGE__BUCKET=supplementalfiles
+      - SETTINGS__ACTIVE_STORAGE__SERVICE=generic_s3
+      - SETTINGS__DOMAIN=http://localhost/
+      - SETTINGS__MINIO__ENDPOINT=http://minio:9000
+      - SETTINGS__MINIO__PUBLIC_HOST=http://localhost:9000
+      - SETTINGS__MINIO__ACCESS=minio
+      - SETTINGS__MINIO__SECRET=minio123
+      - SETTINGS__ENCODING__MASTERFILE_BUCKET=masterfiles
+      - SETTINGS__ENCODING__DERIVATIVE_BUCKET=derivatives
+      - SETTINGS__DROPBOX__PATH=s3://masterfiles/dropbox/
+      - SETTINGS__DROPBOX__UPLOAD_URI=s3://masterfiles/dropbox/
+      - SETTINGS__MASTER_FILE_MANAGEMENT__PATH=s3://preserves/
+      - SETTINGS__MASTER_FILE_MANAGEMENT__STRATEGY=move
+      - SETTINGS__STREAMING__CONTENT_PATH=/
       - SETTINGS__STREAMING__STREAM_DEFAULT_QUALITY=medium
-      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/avalon
+      # UMD Customization
+      - SETTINGS__STREAMING__HTTP_BASE=http://localhost:8880/s3-avalon
+      # End UMD Customization
       - SETTINGS__STREAMING__SERVER=nginx
       - SETTINGS__STREAMING__STREAM_TOKEN_TTL=20
       - SYSTEM_GROUPS=administrator,group_manager,manager
@@ -286,15 +277,14 @@ services:
       - ENVIRONMENT_BANNER_BACKGROUND=#008000
       # End UMD Customization
     volumes:
-      # UMD Customization
       - .:/home/app/avalon
-      - ./masterfiles:/masterfiles
-      - streaming:/streamfiles
-      - npms:/home/app/avalon/node_modules
-      # End UMD Customization
     ports:
       - '80:3000'
-    # End UMD Customization
+    networks:
+      internal:
+      external:
+    stdin_open: true
+    tty: true
 
   worker:
     <<: *avalon
@@ -307,42 +297,40 @@ services:
     command: dumb-init -- bash -c "bundle install && bundle exec sidekiq -C config/sidekiq.yml"
     ports: []
 
-  # UMD Customization
-  # minio:
-  #   image: minio/minio
-  #   command: minio server /data --console-address ":9090"
-  #   environment:
-  #     MINIO_ROOT_USER: minio
-  #     MINIO_ROOT_PASSWORD: minio123
-  #   volumes:
-  #     - data:/data
-  #   ports:
-  #     - 9000:9000
-  #     - 9090:9090
-  #   networks:
-  #     internal:
-  #     external:
-  #   healthcheck:
-  #     test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-  #     interval: 30s
-  #     timeout: 20s
-  #     retries: 3
+  minio:
+    image: minio/minio
+    command: minio server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    volumes:
+      - data:/data
+    ports:
+      - 9000:9000
+      - 9090:9090
+    networks:
+      internal:
+      external:
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
-  # createbuckets:
-  #   image: minio/mc
-  #   depends_on:
-  #     minio:
-  #       condition: service_healthy
-  #   entrypoint: >
-  #     /bin/sh -c "
-  #     /usr/bin/mc alias set myminio http://minio:9000 minio minio123;
-  #     /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
-  #     /usr/bin/mc anonymous set download myminio/supplementalfiles;
-  #     exit 0;
-  #     "
-  #   networks:
-  #     internal:+
-  # End UMD Customization
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minio minio123;
+      /usr/bin/mc mb -p myminio/fcrepo myminio/masterfiles myminio/derivatives myminio/supplementalfiles myminio/preserves;
+      /usr/bin/mc anonymous set download myminio/supplementalfiles;
+      exit 0;
+      "
+    networks:
+      internal:
 
   cypress:
     network_mode: host
