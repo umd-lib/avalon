@@ -57,6 +57,15 @@ class CatalogController < ApplicationController
     ## Default parameters to send to solr for all search-like requests. See also SearchBuilder#processed_parameters
     config.default_solr_params = {
       qt: 'search',
+      # UMD Customization
+      # Fix 500 response (caused by Solr 400 response) when connecting trying to access Avalon
+      # home page with a active LTI session. This most likely due to Solr query changes for the
+      # new permission inheritance feature.
+      # See https://umd-dit.atlassian.net/browse/LIBAVALON-437 for details
+      'defType' => 'edismax',
+      'q.alt' => '*:*',
+      'df' => 'all_text_timv',
+      # End UMD Customization
       rows: 10
     }
 

@@ -132,6 +132,17 @@ namespace :umd do
       end
     end
   end
+
+  desc "Provision a LTI course and user for testing purposes"
+  task provision_test_lti_course_and_user: :environment do
+    # Provision a test LTI course and user
+    context_id = ENV['TEST_LTI_COURSE_CONTEXT_ID'] || 'test-course-context-id'
+    title = ENV['TEST_LTI_COURSE_TITLE'] || 'Test Course Title'
+    email = "#{context_id}@#{ENV['SETTINGS__DOMAIN__HOST']}"
+    Course.create(context_id: context_id, label: title, title: title) unless Course.exists?(context_id: context_id)
+    User.find_or_create_by_username_or_email(title, email, 'lti')
+    Rails.logger.info("Provisioned test LTI course and user for testing purposes.")
+  end
 end
 
 def process_encode(encode)
