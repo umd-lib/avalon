@@ -108,7 +108,10 @@ of Avalon using Docker.
 
    Avalon should be available at: [http://av-local:3000](http://av-local:3000)
 
-   The MinIO browser should be accessible at <http://localhost:9090/browser>
+   The MinIO browser should be accessible at <http://localhost:9090/browser>.
+
+     * See `SETTINGS__MINIO__ACCESS` and `SETTINGS__MINIO__SECRET` for
+       username/password.
 
 ### Loading Sample Data
 
