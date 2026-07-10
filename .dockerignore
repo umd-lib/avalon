@@ -13,5 +13,4 @@ public/packs-test
 tmp
 # UMD Customization
 log/*
-masterfiles
 # End UMD Customiztion

@@ -75,7 +75,21 @@ corner of the page, along with a notification indicating a successful login.
 ### 3) Collection Creation
 
 3.1) From the navigation bar, select "Manage | Manage Content" from the
-navigation bar. The "My Collections" page will be displayed.
+navigation bar. The page will with units and collections will be displayed.
+
+----
+
+**Local Development Environment** <!-- markdownlint-disable-line MD036-->
+
+When running in the local development environment, there may be no units
+displayed on the page. If so, create a new unit,
+`Special Collections in Performing Arts`, using the "Create New Unit" button
+before proceeding to the next step.
+
+After creating the unit, left-click  "Manage | Manage Content" from the
+navigation bar to return to the page.
+
+----
 
 3.2) Create a new collection by left-clicking the "Create Collection" button.
 The "New collection" page will be displayed.
@@ -89,16 +103,16 @@ The "New collection" page will be displayed.
 
 then left-click the "Create Collection" button. A notification will display
 indicating that the collection was successfully created.  A
-"Manage Content | SSDR Test Community" page will be displayed.
+"Manage Collection | SSDR Test Collection" page will be displayed.
 
 ### 4) Item Submission
 
-4.1) On the "Manage Content | SSDR Test Community" page, left-click the
+4.1) On the "Manage Collection | SSDR Test Collection" page, left-click the
 "Create an Item" button. The "Edit Media Object > Manage files" page will be
 displayed.
 
 4.2) On the “Edit Media Object > Manage files” page, left-click the
-“Select file” button in the “Section files” section. In the resulting file
+“Browse...” button in the “Section files” section. In the resulting file
 dialog, select a video file, and then left-click the “Upload” button. Once the
 upload is complete, verify that that a notification is displayed indicating that
 the uploaded content is a video file. Left-click the “Continue” button at the
@@ -140,8 +154,8 @@ For example, for the Kubernetes "test" namespace the URL should have the form:
 where <HANDLE_SUFFIX> is a simple integer.
 
 4.8) On the item detail page, verify that there is a
-"Request from Special Collections" button above the right sidebar. Left-click
-the "Request from Special Collections" anf verify that a new browser tab is
+"Request This Item" button above the right sidebar. Left-click
+the "Request This Item" button and verify that a new browser tab is
 opened on the Aeon website. After logging in to Aeon, verify that
 "New Duplication Request" page is displayed with the following fields
 populated:
