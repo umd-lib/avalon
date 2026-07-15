@@ -47,7 +47,10 @@ class SearchBuilder < Blacklight::SearchBuilder
     read_access_clauses = []
     read_access_clauses += ["read_access_person_ssim:#{RSolr.solr_escape(current_user)}"] if current_user.present?
     read_access_clauses += ["_query_:\"{!terms f=read_access_group_ssim}#{RSolr.solr_escape(user_groups.join(','))}\""] if user_groups.present?
-    [policy_clauses(permission_types: [:edit]), "(*:* AND NOT disable_inheritance_bsi:true AND (#{(Array(policy_clauses(permission_types: [:read])) + read_access_clauses).join(" OR ")}))", "(disable_inheritance_bsi:true AND (#{(read_access_clauses + ["read_access_group_ssim:(#{user_visibility_groups.join(" OR ")})"]).join(" OR ")}))"].compact.join(" OR ")
+    # UMD Customization
+    discover_visibility_clauses = user_visibility_groups.map { |g| "discover_access_group_ssim:(#{g})" }
+    [policy_clauses(permission_types: [:edit]), "(*:* AND NOT disable_inheritance_bsi:true AND (#{(Array(policy_clauses(permission_types: [:read])) + read_access_clauses).join(" OR ")}))", "(disable_inheritance_bsi:true AND (#{(read_access_clauses + ["read_access_group_ssim:(#{user_visibility_groups.join(" OR ")})"] + discover_visibility_clauses).join(" OR ")}))"].compact.join(" OR ")
+    # End UMD Customization
   end
 
   # Overridden to skip for admin users
