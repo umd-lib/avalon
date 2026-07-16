@@ -261,6 +261,49 @@ describe Admin::Collection do
      expect(collection.to_solr[ "name_uniq_si" ]).to eq("hermanb.wellscollection")
      expect(collection.to_solr[ "has_poster_bsi" ]).to eq false
     end
+
+    # UMD Customization
+    describe 'inheritable_discover_access_group_ssim' do
+      context 'when collection is a course reserves collection' do
+        let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
+        let(:collection) { FactoryBot.create(:collection, unit: streaming_reserves_unit) }
+
+        it 'does not include public in inheritable_discover_access_group_ssim' do
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).not_to include('public')
+        end
+
+        it 'sets inheritable_discover_access_group_ssim to default_read_groups' do
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).to eq(collection.default_read_groups)
+        end
+
+        it 'includes any configured default_read_groups but not public' do
+          collection.default_read_groups = ['some_group']
+          collection.save!
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).to eq(['some_group'])
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).not_to include('public')
+        end
+      end
+
+      context 'when collection is not a course reserves collection' do
+        # Default factory creates a unit with a sequential name, not the streaming reserves unit
+        let(:collection) { FactoryBot.create(:collection) }
+
+        it 'includes public in inheritable_discover_access_group_ssim' do
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).to include('public')
+        end
+
+        it 'sets inheritable_discover_access_group_ssim to default_read_groups plus public' do
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).to eq(collection.default_read_groups | ['public'])
+        end
+
+        it 'includes both configured default_read_groups and public' do
+          collection.default_read_groups = ['some_group']
+          collection.save!
+          expect(collection.to_solr['inheritable_discover_access_group_ssim']).to include('some_group', 'public')
+        end
+      end
+    end
+    # End UMD Customization
   end
 
   describe "managers" do
@@ -796,11 +839,12 @@ describe Admin::Collection do
 
   # UMD Customization
   describe '#is_course_reserves?' do
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let(:course_reserves_collection) do
-      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+      FactoryBot.create(:collection, unit: streaming_reserves_unit)
     end
     let(:regular_collection) do
-      FactoryBot.create(:collection, unit: 'Default Unit')
+      FactoryBot.create(:collection)
     end
 
     it 'returns true for course reserves collections' do
@@ -813,8 +857,9 @@ describe Admin::Collection do
   end
 
   describe 'course reserves collection cache clearing' do
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let(:course_reserves_collection) do
-      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+      FactoryBot.create(:collection, unit: streaming_reserves_unit)
     end
 
     context 'after_save callback' do
@@ -822,10 +867,10 @@ describe Admin::Collection do
         # Allow during setup, then expect during the actual save
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
         course_reserves_collection # Create the collection (triggers callback)
-        
+
         # Populate the cache
         Ability.course_reserves_collection
-        
+
         # Now expect the callback on the update
         expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
         course_reserves_collection.name = 'Updated Name'
@@ -835,22 +880,20 @@ describe Admin::Collection do
       it 'does not clear the cache when a non-course reserves collection is saved' do
         # Non-course reserves collections should not trigger the callback at all
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
-        
+        regular_collection = FactoryBot.create(:collection)
+
         expect(Ability).not_to receive(:clear_course_reserves_collection_cache)
         regular_collection.name = 'Updated Name'
         regular_collection.save!
       end
 
       it 'clears the cache when unit changes to streaming reserves' do
-        # Allow during initial creation
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        let!(:default_unit) { FactoryBot.create(:unit, name: 'Default Unit') }
-        regular_collection = FactoryBot.create(:collection, unit: :default_unit)
-        
+        regular_collection = FactoryBot.create(:collection)
+
         # Expect when changing to course reserves unit
         expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        let!(:cs_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
+        cs_unit = FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name)
         regular_collection.unit = cs_unit
         regular_collection.save!
       end
@@ -861,10 +904,10 @@ describe Admin::Collection do
         # Allow during setup
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
         course_reserves_collection # Create the collection
-        
+
         # Populate the cache
         Ability.course_reserves_collection
-        
+
         # Expect on destroy
         expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
         course_reserves_collection.destroy
@@ -872,8 +915,8 @@ describe Admin::Collection do
 
       it 'does not clear the cache when a non-course reserves collection is destroyed' do
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        regular_collection = FactoryBot.create(:collection, unit: 'Default Unit')
-        
+        regular_collection = FactoryBot.create(:collection)
+
         expect(Ability).not_to receive(:clear_course_reserves_collection_cache)
         regular_collection.destroy
       end
@@ -881,10 +924,10 @@ describe Admin::Collection do
       it 'checks is_course_reserves? state before destroy' do
         # Allow during setup
         allow(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
-        
+
         # The callback should check the unit before destruction
         expect(course_reserves_collection.is_course_reserves?).to be true
-        
+
         # Expect on destroy
         expect(Ability).to receive(:clear_course_reserves_collection_cache).and_call_original
         course_reserves_collection.destroy

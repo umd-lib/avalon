@@ -190,6 +190,17 @@ class Admin::Collection < ActiveFedora::Base
       solr_doc["has_poster_bsi"] = !(poster.content.nil? || poster.content == '')
       solr_doc["inheritable_read_access_person_ssim"] = default_read_users
       solr_doc["inheritable_read_access_group_ssim"] = default_read_groups
+      # UMD Customization
+      # UMD Customization: collection-based discoverability
+      if is_course_reserves?
+        # This collection’s items should not inherit public discoverability
+        solr_doc["inheritable_discover_access_group_ssim"] = default_read_groups
+      else
+        # Default: items in this collection are discoverable to public,
+        # plus any groups configured at the collection level
+        solr_doc["inheritable_discover_access_group_ssim"] = (default_read_groups | ['public'])
+      end
+      # End UMD Customization
     end
   end
 
