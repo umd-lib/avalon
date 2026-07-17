@@ -381,7 +381,8 @@ describe Ability, type: :model do
   # UMD Customization
   describe "read Ability for streaming reserve items" do
     context 'when media object is a streaming reserve' do
-      let(:streaming_collection) { FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name) }
+      let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
+      let(:streaming_collection) { FactoryBot.create(:collection, unit: streaming_reserves_unit) }
 
       context 'and the media object is published' do
         let(:media_object) do
@@ -394,7 +395,7 @@ describe Ability, type: :model do
         end
 
         it 'is not readable by ordinary logged in users without read access' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to_not be_able_to(:read, media_object)
         end
 
@@ -441,7 +442,7 @@ describe Ability, type: :model do
         end
 
         it 'is not readable by ordinary logged in users without read access' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to_not be_able_to(:read, media_object)
         end
 
@@ -471,7 +472,7 @@ describe Ability, type: :model do
         end
 
         it 'is readable by ordinary logged in users without read access' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to be_able_to(:read, media_object)
         end
       end
@@ -489,7 +490,7 @@ describe Ability, type: :model do
       end
 
       it 'is not streamable by ordinary logged in users' do
-        ability = Ability.new(FactoryBot.create(:public))
+        ability = Ability.new(FactoryBot.create(:user))
         expect(ability).to_not be_able_to(:stream, unpublished_media_object)
       end
 
@@ -538,7 +539,7 @@ describe Ability, type: :model do
         end
 
         it 'is not streamable by ordinary logged in users' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to_not be_able_to(:stream, published_media_object)
         end
 
@@ -595,7 +596,7 @@ describe Ability, type: :model do
         end
 
         it 'is streamable by ordinary logged in users' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to be_able_to(:stream, published_media_object)
         end
 
@@ -652,7 +653,7 @@ describe Ability, type: :model do
         end
 
         it 'is streamable by ordinary logged in users' do
-          ability = Ability.new(FactoryBot.create(:public))
+          ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to be_able_to(:stream, published_media_object)
         end
 
@@ -698,10 +699,11 @@ describe Ability, type: :model do
   end
 
   describe '.course_reserves_collection' do
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let!(:course_reserves_collection) do
-      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+      FactoryBot.create(:collection, unit: streaming_reserves_unit)
     end
-    let!(:regular_collection) { FactoryBot.create(:collection, unit: 'Default Unit') }
+    let!(:regular_collection) { FactoryBot.create(:collection) }
 
     it 'returns the collection with streaming_reserves unit' do
       expect(Ability.course_reserves_collection).to eq(course_reserves_collection)
@@ -725,8 +727,9 @@ describe Ability, type: :model do
   end
 
   describe '.clear_course_reserves_collection_cache' do
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let!(:course_reserves_collection) do
-      FactoryBot.create(:collection, unit: Settings.streaming_reserves.unit_name)
+      FactoryBot.create(:collection, unit: streaming_reserves_unit)
     end
 
     it 'clears the cached course reserves collection' do
@@ -751,8 +754,8 @@ describe Ability, type: :model do
       
       # Create a new course reserves collection with different name
       course_reserves_collection.destroy
-      new_course_reserves_collection = FactoryBot.create(:collection, 
-        unit: Settings.streaming_reserves.unit_name, 
+      new_course_reserves_collection = FactoryBot.create(:collection,
+        unit: streaming_reserves_unit,
         name: 'New Course Reserves')
       
       # Should return the new collection
@@ -765,9 +768,10 @@ describe Ability, type: :model do
   describe '#is_course_reserves_manager?' do
     let(:user) { FactoryBot.create(:user) }
     let(:manager) { FactoryBot.create(:manager) }
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let!(:course_reserves_collection) do
-      FactoryBot.create(:collection, 
-        unit: Settings.streaming_reserves.unit_name,
+      FactoryBot.create(:collection,
+        unit: streaming_reserves_unit,
         managers: [manager.user_key])
     end
 
@@ -794,9 +798,10 @@ describe Ability, type: :model do
     let(:manager) { FactoryBot.create(:manager) }
     let(:editor) { FactoryBot.create(:user) }
     let(:depositor) { FactoryBot.create(:user) }
+    let(:streaming_reserves_unit) { FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name) }
     let!(:course_reserves_collection) do
       FactoryBot.create(:collection,
-        unit: Settings.streaming_reserves.unit_name,
+        unit: streaming_reserves_unit,
         managers: [manager.user_key],
         editors: [editor.user_key],
         depositors: [depositor.user_key])
@@ -833,6 +838,70 @@ describe Ability, type: :model do
       admin = FactoryBot.create(:admin)
       ability = Ability.new(admin)
       expect(ability.is_course_reserves_member?).to be true
+    end
+  end
+
+  describe 'full_read Ability with disable_inheritance (UMD Customization)' do
+    # UMD changed `cannot :read` to `cannot :full_read` so that users who are
+    # exclusively inherited from a parent collection (and whose access is blocked
+    # by disable_inheritance) can still :read (discover/view) a published item,
+    # while being denied the more permissive :full_read (supplemental files, etc.).
+    let(:collection) { FactoryBot.create(:collection) }
+    let(:user) { FactoryBot.create(:user) }
+
+    let(:media_object) do
+      mo = FactoryBot.create(:published_media_object, collection: collection)
+      mo.disable_inheritance = true
+      mo.save!
+      mo
+    end
+
+    before do
+      # Add the user to the collection's default_read_users so they appear in
+      # media_object.inherited_read_users but NOT in media_object.read_users.
+      # The user is deliberately NOT added as a manager/editor/depositor.
+      collection.default_read_users += [user.user_key]
+      collection.save!
+    end
+
+    context 'when the media object is published and disable_inheritance is set' do
+      it 'allows :read for a user with only inherited access (UMD: not blocked like upstream)' do
+        ability = Ability.new(user)
+        expect(ability).to be_able_to(:read, media_object)
+      end
+
+      it 'denies :full_read for a user with only inherited access' do
+        ability = Ability.new(user)
+        expect(ability).not_to be_able_to(:full_read, media_object)
+      end
+
+      it 'allows :full_read for a collection manager even with disable_inheritance' do
+        manager_user = User.find_by(username: collection.managers.first)
+        ability = Ability.new(manager_user)
+        expect(ability).to be_able_to(:full_read, media_object)
+      end
+
+      it 'allows :full_read for an admin regardless of disable_inheritance' do
+        admin = FactoryBot.create(:admin)
+        ability = Ability.new(admin)
+        expect(ability).to be_able_to(:full_read, media_object)
+      end
+    end
+
+    context 'when disable_inheritance is not set' do
+      let(:media_object_without_flag) do
+        FactoryBot.create(:published_media_object, collection: collection)
+      end
+
+      it 'allows :full_read because the cannot block does not apply' do
+        # With disable_inheritance false, Hydra checks the governing policy
+        # (collection), finds the user in inheritable_read_access_person_ssim,
+        # and grants read access. The cannot :full_read block short-circuits on
+        # disable_inheritance? being false and does not restrict access.
+        ability = Ability.new(user)
+        expect(media_object_without_flag.disable_inheritance?).to be false
+        expect(ability).to be_able_to(:full_read, media_object_without_flag)
+      end
     end
   end
   # End UMD Customization

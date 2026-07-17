@@ -281,7 +281,9 @@ class Ability
       #   can :manage, Avalon::ControlledVocabulary
       # end
 
-      cannot :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+      # UMD Customization
+      cannot :full_read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+      # End UMD Customization
         media_object.disable_inheritance? && is_exclusively_inherited_from_parent?(media_object) && !is_member_of?(media_object.collection)
       end
 
