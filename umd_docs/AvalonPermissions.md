@@ -79,34 +79,48 @@ For published items:
 
 ### Item Access
 
-For published items, controls whether an item is streamable:
+For published items, Item Access controls whether an item is streamable:
 
-* ​Available to the general public - Streamable by anyone, even anonymous users
-* Logged in users only - Streamable by logged-in users
-* Collection staff only - Streamable by collection staff
+* Available to the general public – Streamable by anyone, even anonymous users
+* Logged in users only – Streamable by logged-in users
+* Collection staff only – Streamable by collection staff
 
-    ----
-    **Note for developers**
+By default, an item's Item Access setting inherits from its parent collection.
+For most collections, the collection-level setting is configured to match the
+intended behavior for the majority of items, and those items simply inherit that
+collection-level access. When mixed access is needed within a collection,
+individual items can override inheritance (via “Disable parent permissions”) and
+use their own Item Access setting instead.
 
-    Item Access is implemented using the "visibility" field on MediaObject,
-    which has the following values:
+----
+**Note for developers**
 
-    |"visibility" field value|Item Access|
-    | ---------------------- | --------- |
-    |​public                  | Available to the general public |
-    |restricted              | Streamable by logged-in users |
-    |private                 | Streamable by collection staff |
-    ----
+Item Access is implemented using the "visibility" field on MediaObject, which
+has the following values:
+
+|"visibility" field value|Item Access|
+| ---------------------- | --------- |
+|public                  | Available to the general public |
+|restricted              | Streamable by logged-in users |
+|private                 | Streamable by collection staff |
+
+Under the inheritance model, the effective visibility used for streaming is
+derived from the collection-level setting unless the item has explicitly
+disabled parent permissions and set its own visibility.
+
+----
 
 ### Assign Special Access
 
 For published items, the set of users allowed to stream an item can be expanded
-using the "Assign special access" criteria:
+using the "Assign special access" criteria. Special access is additive on top of
+the effective Item Access (whether inherited from the collection or overridden
+at the item level):
 
-* ​Avalon User - Named Avalon user can stream item
-* External Group - Member of external group can stream item
-* IP Address or Range - User from IP address in given range can stream item
-* UMD IP Manager - User with an IP address matching an IP Manager group can
+* Avalon User – Named Avalon user can stream item
+* External Group – Member of external group can stream item
+* IP Address or Range – User from IP address in given range can stream item
+* UMD IP Manager – User with an IP address matching an IP Manager group can
   stream item
 
 ### Access Token
