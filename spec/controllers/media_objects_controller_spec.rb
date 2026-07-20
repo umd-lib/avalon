@@ -728,6 +728,23 @@ describe MediaObjectsController, type: :controller do
         expect { put 'update', params: { id: mo.id, step: 'access-control', donot_advance: 'true', add_user: user, add_user_display: user, submit_add_user: 'Add' } }
           .not_to change { MediaObject.find(mo.id).disable_inheritance? }
       end
+
+      it 'clears item read_groups when disable inheritance is unchecked' do
+        mo.disable_inheritance = true
+        mo.read_groups = ['public', 'test_group']
+        mo.save!
+
+        put 'update', params: {
+          id: mo.id,
+          step: 'access-control',
+          donot_advance: 'true',
+          disable_inheritance: '0'
+        }
+
+        mo.reload
+        expect(mo.disable_inheritance?).to be false
+        expect(mo.read_groups).to eq([])
+      end
     end
   end
 
