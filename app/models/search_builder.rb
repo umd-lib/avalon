@@ -48,8 +48,28 @@ class SearchBuilder < Blacklight::SearchBuilder
     read_access_clauses += ["read_access_person_ssim:#{RSolr.solr_escape(current_user)}"] if current_user.present?
     read_access_clauses += ["_query_:\"{!terms f=read_access_group_ssim}#{RSolr.solr_escape(user_groups.join(','))}\""] if user_groups.present?
     # UMD Customization
-    discover_visibility_clauses = user_visibility_groups.map { |g| "discover_access_group_ssim:(#{g})" }
-    [policy_clauses(permission_types: [:edit]), "(*:* AND NOT disable_inheritance_bsi:true AND (#{(Array(policy_clauses(permission_types: [:read])) + read_access_clauses).join(" OR ")}))", "(disable_inheritance_bsi:true AND (#{(read_access_clauses + ["read_access_group_ssim:(#{user_visibility_groups.join(" OR ")})"] + discover_visibility_clauses).join(" OR ")}))"].compact.join(" OR ")
+    inherited_discover_visibility_clauses = user_visibility_groups.map { |group| "{!join from=id to=isGovernedBy_ssim}inheritable_discover_access_group_ssim:#{RSolr.solr_escape(group)}" }
+    override_discover_visibility_clauses = user_visibility_groups.map { |group| "discover_access_group_ssim:#{RSolr.solr_escape(group)}" }
+    inherited_policy_clauses = Array(policy_clauses(permission_types: discovery_permissions))
+
+    # Inherited branch: collection policy/read rules + discoverability visibility.
+    inherited_conditions = (inherited_policy_clauses + read_access_clauses + inherited_discover_visibility_clauses).join(' OR ')
+    inheritance_branch = "(*:* AND NOT disable_inheritance_bsi:true AND (#{inherited_conditions}))"
+
+    # Override branch: item-level read/special-access rules + discoverability visibility.
+    override_conditions = (
+            read_access_clauses +
+          ["read_access_group_ssim:(#{user_visibility_groups.map { |group| RSolr.solr_escape(group) }.join(' OR ')})"] +
+      override_discover_visibility_clauses
+    ).join(' OR ')
+    override_branch = "(disable_inheritance_bsi:true AND (#{override_conditions}))"
+
+    combined_read_clause = "(#{inheritance_branch} OR #{override_branch})"
+
+    [
+      policy_clauses(permission_types: [:edit]),
+      combined_read_clause
+    ].compact.join(' OR ')
     # End UMD Customization
   end
 

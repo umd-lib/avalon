@@ -120,7 +120,7 @@ class Ability
         if media_object.is_streaming_reserve?
           (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
         else
-          media_object.published? || test_edit(media_object.id)
+          (media_object.published? && discoverability_allows_read?(media_object)) || test_edit(media_object.id)
         end
       end
 
@@ -468,6 +468,14 @@ class Ability
     end
 
     allowed
+  end
+
+  def discoverability_allows_read?(media_object)
+    if media_object.disable_inheritance?
+      !media_object.hidden?
+    else
+      !media_object.inherited_hidden?
+    end
   end
 
   def is_course_reserves_manager?

@@ -341,3 +341,203 @@ page will be displayed.
 10.3) On the confirmation page, left-click the "Yes, I am sure" button. The
 "My Collections"" page will be displayed. Verify that the "SSDR Test Collection"
 no longer appears in the list of collections.
+
+### 11) Collection-Level Discoverability for Restricted Streaming Items
+
+This section verifies that items with restricted streaming access are still
+discoverable to public (anonymous) users when discoverability is inherited
+from a standard (non-Course-Reserves) collection.
+
+11.1) Log in to Avalon via CAS as an administrator (see section 2). From the
+navigation bar, select "Manage | Manage Content". The page with units and
+collections will be displayed.
+
+11.2) Create or identify a published item in a standard (non-Course-Reserves)
+collection with the following access settings:
+
+11.2.1) On the parent collection:
+
+* Verify the collection belongs to a unit that is **not** “Streaming Reserves”
+  (confirming this is a standard collection, not a Course Reserves collection).
+* On the collection detail page, verify that public
+  discoverability is **not** suppressed. Under “Item Discovery”, verify that
+  “Hide this item from search results” is **not** checked.
+* Verify that no "Assign special access" options are configured for the collection.
+
+11.2.2) On the item:
+
+* Go to the item detail page and verify that the item is published. If it
+  is not yet published, left-click the “Publish” button and verify that a
+  success notification is displayed.
+* Left-click the “Edit” button to go to the “Edit Media Object > Access
+  Control” page.
+* On the access control page, verify that “Disable parent permissions” is
+  **not** checked, so the item inherits discoverability from the collection.
+* Verify that no "Assign special access" options are configured for the item.
+* Left-click “Save” if any changes were made.
+
+11.2.3) Return to the item detail page and verify that:
+
+* The item metadata (title, description, etc.) is visible.
+* The item is published and appears in browse/search results when logged
+  in as an authorized user.
+
+11.3) On the item detail page, verify that the media player is visible and that
+the item can be streamed when logged in as an authorized user.
+
+11.4) In a private/incognito browser window (not logged in and not connected to
+VPN), go to
+
+<https://av-test.lib.umd.edu/catalog>
+
+Verify that the browse page is displayed and that you are **not** logged in.
+
+11.5) In the same private/incognito window, search for the title of the
+restricted item identified in step 11.2. Verify that the item appears in the
+browse/search results.
+
+11.6) In the private/incognito window, go to the item detail URL for the
+restricted item.
+
+11.7) Verify that:
+
+* The item metadata (title, description, etc.) is displayed.
+* A "Playback Restricted" panel or equivalent restricted playback message is
+  displayed in place of the media player.
+
+### 12) Item-Level Override Restricts Access
+
+This section verifies that item-level override can restrict discoverability
+within a publicly discoverable standard (non-Course-Reserves) collection.
+
+12.1) Reuse the same published item from section 11. From the item detail page,
+left-click the “Edit” button to go to the “Edit Media Object > Access Control”
+page.
+
+12.2) On the access control page:
+
+* Check “Disable parent permissions”, then left-click “Save”.
+* After saving, verify that the “Item Discovery” and “Item Access” edit options
+  are visible.
+* Under “Item Discovery”, verify that “Hide this item from search results” is
+  checked. If it is not checked, check it and left-click “Save”.
+* Verify that no UMD IP Manager or other special access are configured on the item.
+
+12.3) In a private/incognito browser window (not logged in and not connected to
+VPN), go to
+
+<https://av-test.lib.umd.edu/catalog>
+
+Verify that the browse page is displayed and that you are **not** logged in.
+
+12.4) In the same private/incognito window, search for the title of the item.
+Verify that the item does **not** appear in the browse/search results.
+
+12.5) In the private/incognito window, go directly to the item detail URL.
+
+Verify that:
+
+* The item detail page is not viewable by the anonymous user (for example,
+  an authorization error page, "not found" page, or redirect away from the
+  item detail page is shown).
+* The item metadata (title, description, etc.) is **not** displayed.
+
+### 13) UMD IP Manager Group-Based Access
+
+13.1) Log in to Avalon via CAS as an administrator (see section 2). From the
+navigation bar, select "Manage | Manage Content". The page with units and
+collections will be displayed.
+
+13.2) Create or identify a collection that will be used to test IP-based access
+control (for example, a collection intended for campus/VPN-only streaming).
+
+13.3) Create a new item in this collection following the same steps as section 4
+(upload a video file, add a title and publication date, continue through
+Structure, and reach the "Access Control" step). Publish the item and verify
+that a success notification is displayed on the item detail page.
+
+13.4) On the “Edit Media Object > Access Control” page for the item, verify that
+the “UMD IP Manager” dropdown is populated with one or more entries
+
+13.5) Configure the item so that:
+
+* The item is discoverable to public users.
+* Streaming access is restricted to an IP Manager group (for example, select
+  a group from the “UMD IP Manager” dropdown and save).
+
+13.6) In a private/incognito browser window (not logged in and not connected to
+VPN), go to
+
+<https://av-test.lib.umd.edu/catalog>
+
+Search for the title of the item created in step 13.3 and verify that the item
+appears in the browse/search results.
+
+13.7) In the same private/incognito window, go to the item detail URL.
+
+Verify that:
+
+* The item metadata (title, description, etc.) is displayed.
+* A "Playback Restricted" panel or equivalent restricted playback message is
+  displayed in place of the media player.
+
+13.8) Connect to the UMD VPN (or ensure you are on a campus IP that belongs to
+the IP Manager group selected in step 13.5), then refresh the item detail page.
+
+Verify that:
+
+* The media player is displayed.
+* The item can be streamed successfully as an anonymous user connecting from
+  an IP address in the configured IP Manager group.
+
+### 14) Course Reserves Items Not Discoverable to Public Users
+
+This section verifies that items in a Course Reserves collection (a collection
+belonging to the "Streaming Reserves" unit) are not publicly discoverable.
+The Course Reserves collection does not propagate public discoverability to
+its items, so anonymous users should not find those items via browse or search.
+
+14.1) Log in to Avalon via CAS as an administrator (see section 2). From the
+navigation bar, select "Manage | Manage Content". The page with units and
+collections will be displayed.
+
+14.2) Create or identify a published item in the Course Reserves collection
+(the collection belonging to the "Streaming Reserves" unit) with the following
+access settings:
+
+14.2.1) On the Course Reserves collection:
+
+* Go to the collection detail page and confirm the collection belongs to the
+  "Streaming Reserves" unit.
+* Left-click the "Edit" button. On the collection access control/settings
+  page, verify that no UMD IP Manager groups are configured on the collection.
+
+14.2.2) On the item:
+
+* Go to the item detail page and verify that the item is published. If it
+  is not yet published, left-click the "Publish" button and verify that a
+  success notification is displayed.
+* Left-click the "Edit" button to go to the "Edit Media Object > Access
+  Control" page.
+* Verify that "Disable parent permissions" is **not** checked, so the item
+  inherits access settings from the collection.
+* Left-click "Save" if any changes were made.
+
+14.3) In a private/incognito browser window (not logged in and not connected to
+VPN), go to
+
+<https://av-test.lib.umd.edu/catalog>
+
+Verify that the browse page is displayed and that you are **not** logged in.
+
+14.4) In the same private/incognito window, search for the title of the Course
+Reserves item identified in step 14.2. Verify that the item does **not** appear
+in the browse/search results.
+
+14.5) In the private/incognito window, go directly to the item detail URL for
+the Course Reserves item.
+
+Verify that:
+
+* The item metadata is **not** displayed, and instead the user is directed to
+  sign in.

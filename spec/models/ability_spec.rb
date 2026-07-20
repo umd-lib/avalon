@@ -459,7 +459,7 @@ describe Ability, type: :model do
     end
 
     context 'when media object is NOT a streaming reserve (regression)' do
-      let(:regular_collection) { FactoryBot.create(:collection, unit: 'Default Unit') }
+      let(:regular_collection) { FactoryBot.create(:collection) }
 
       context 'and the media object is published' do
         let(:media_object) do
@@ -474,6 +474,41 @@ describe Ability, type: :model do
         it 'is readable by ordinary logged in users without read access' do
           ability = Ability.new(FactoryBot.create(:user))
           expect(ability).to be_able_to(:read, media_object)
+        end
+      end
+
+      context 'and discoverability is suppressed via item-level override' do
+        let(:media_object) do
+          mo = FactoryBot.create(:published_media_object, collection: regular_collection, visibility: 'private')
+          mo.disable_inheritance = true
+          mo.hidden = true
+          mo.save!
+          mo
+        end
+
+        it 'is not readable by non-logged in users' do
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by ordinary logged in users without read access' do
+          ability = Ability.new(FactoryBot.create(:user))
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is still readable by admin users' do
+          ability = Ability.new(FactoryBot.create(:admin))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is still readable by managers, editors, and depositors of the collection' do
+          collection_users = media_object.collection.managers +
+                            media_object.collection.editors +
+                            media_object.collection.depositors
+          collection_users.each do |user_name|
+            ability = Ability.new(User.find_by(username: user_name))
+            expect(ability).to be_able_to(:read, media_object)
+          end
         end
       end
     end

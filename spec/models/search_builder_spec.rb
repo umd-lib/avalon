@@ -13,6 +13,7 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 require 'rails_helper'
+require 'ostruct'
 
 RSpec.describe SearchBuilder do
   subject(:builder) { described_class.new(processor_chain, scope) }
@@ -29,6 +30,33 @@ RSpec.describe SearchBuilder do
       expect(subject.only_published_items({})).to eq "test:clause OR workflow_published_sim:\"Published\""
     end
   end
+
+  # UMD Customization
+  describe '#limit_to_inheritance_enabled_items', :umd do
+    let(:anonymous_ability) do
+      instance_double(
+        Ability,
+        current_user: OpenStruct.new(username: nil),
+        user_groups: ['public']
+      )
+    end
+
+    before do
+      allow(subject).to receive(:discovery_permissions).and_return(%w[discover read])
+      allow(subject).to receive(:policy_clauses).with(permission_types: %w[discover read]).and_return('policy_discovery_clause')
+      allow(subject).to receive(:policy_clauses).with(permission_types: [:edit]).and_return('policy_edit_clause')
+    end
+
+    it 'includes discoverability visibility clause when inheritance is enabled' do
+      clause = subject.limit_to_inheritance_enabled_items({}, anonymous_ability)
+
+      expect(clause).to include('policy_edit_clause OR')
+      expect(clause).to include('(*:* AND NOT disable_inheritance_bsi:true')
+      expect(clause).to include('policy_discovery_clause')
+      expect(clause).to include('{!join from=id to=isGovernedBy_ssim}inheritable_discover_access_group_ssim:public')
+    end
+  end
+  # End UMD Customization
 
   describe "#search_section_transcripts" do
     let(:solr_parameters) { { q: 'Example' } }
