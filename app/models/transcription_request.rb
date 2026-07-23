@@ -48,7 +48,11 @@ class TranscriptionRequest < ApplicationRecord
   validates :master_file_id, presence: true
   validate :master_file_must_exist
   validates :provider, presence: true, inclusion: { in: PROVIDERS }
+  validates :language, inclusion: { in: LanguageTerm::Iso6392.map.keys }, allow_nil: true
   validate :only_one_active_request_per_master_file, on: :create
+
+  before_validation :set_default_language, on: :create
+  before_validation :set_media_object_id, on: :create
 
   scope :active, -> { where(status: ACTIVE_STATUSES) }
   scope :terminal, -> { where(status: TERMINAL_STATUSES) }
@@ -88,6 +92,17 @@ class TranscriptionRequest < ApplicationRecord
   def master_file_must_exist
     return if master_file_id.blank?
     errors.add(:master_file_id, 'not found') unless MasterFile.exists?(master_file_id)
+  end
+
+  def set_default_language
+    self.language ||= Settings.caption_default.language
+  end
+
+  def set_media_object_id
+    return if master_file_id.blank? || media_object_id.present?
+    return unless MasterFile.exists?(master_file_id)
+
+    self.media_object_id = MasterFile.find(master_file_id).media_object_id
   end
 
   def only_one_active_request_per_master_file

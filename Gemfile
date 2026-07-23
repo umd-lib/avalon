@@ -184,6 +184,7 @@ group :aws, optional: true do
   gem 'aws-sdk-mediaconvert', ">= 1.157.0"
   gem 'aws-sdk-s3'
   gem 'aws-sdk-sqs'
+  gem 'aws-sdk-transcribeservice'
   gem 'aws-sigv4'
   gem 'cloudfront-signer'
   gem 'zk'

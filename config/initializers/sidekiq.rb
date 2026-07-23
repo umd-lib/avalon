@@ -27,6 +27,7 @@ Rails.application.config.to_prepare do
     Sidekiq::Cron::Job.create(name: 'Clean up access tokens that have past their expiration date - every 1day', cron: '0 1 * * *', class: 'CleanupAccessTokenJob')
     Sidekiq::Cron::Job.create(name: 'Delete old encode files - every 1day', cron: '0 1 * * *', class: 'DeleteOldEncodeFilesJob')
     # End UMD Customization
+    Sidekiq::Cron::Job.create(name: 'Poll active transcription requests - every 1min', cron: '*/1 * * * *', class: 'TranscriptionJobs::PollTranscriptionRequestsJob')
   rescue Redis::CannotConnectError => e
     Rails.logger.warn "Cannot create sidekiq-cron jobs: #{e.message}"
   end
