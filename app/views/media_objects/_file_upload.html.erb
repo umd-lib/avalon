@@ -17,8 +17,15 @@ Unless required by applicable law or agreed to in writing, software distributed
 <%= hidden_field_tag :step, 'file-upload' %>
 <div id="associated_files">
   <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
       <h3 class="card-title">Section files</h3>
+      <% if can?(:manage, TranscriptionRequest) && @masterFiles.present? %>
+        <%= link_to 'Transcribe All Sections', create_for_media_object_transcription_requests_path(media_object_id: @media_object.id),
+          title: 'Generate machine transcripts/captions for all eligible sections',
+          class: 'btn btn-sm btn-outline',
+          data: { testid: 'media-object-transcribe-all-button', confirm: 'Enqueue transcription for all eligible sections? Sections that already have a caption/transcript or an in-progress transcription will be skipped.' },
+          method: :post %>
+      <% end %>
     </div>
     <div class="card-body">
       <% unless @masterFiles.blank? %>
@@ -94,6 +101,15 @@ Unless required by applicable law or agreed to in writing, software distributed
                     <% if Settings.derivative.allow_download && (current_ability.can? :download, section) %>
                     <span>
                       <%= link_to "Download", download_derivative_master_file_path(section.id), class: 'btn btn-sm btn-outline', target: '_self' %>
+                    </span>
+                    <% end %>
+                    <% if can?(:manage, TranscriptionRequest) && section.supplemental_files(tag: 'caption').blank? && section.supplemental_files(tag: 'transcript').blank? && !TranscriptionRequest.active.exists?(master_file_id: section.id) %>
+                    <span>
+                      <%= link_to 'Transcribe', transcription_requests_path(master_file_id: section.id),
+                        title: 'Generate a machine transcript/captions for this section',
+                        class: 'btn btn-sm btn-outline',
+                        data: { testid: 'media-object-transcribe-button' },
+                        method: :post %>
                     </span>
                     <% end %>
                     <span>
