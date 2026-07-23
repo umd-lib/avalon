@@ -836,4 +836,29 @@ describe Ability, type: :model do
     end
   end
   # End UMD Customization
+
+  describe 'transcription dashboard permissions' do
+    let(:admin) { FactoryBot.create(:administrator) }
+    let(:user) { FactoryBot.create(:user) }
+
+    it 'allows administrators to read the transcription dashboard' do
+      ability = Ability.new(admin)
+      expect(ability.can?(:read, :transcription_dashboard)).to be true
+    end
+
+    it 'allows administrators to manage TranscriptionRequest records' do
+      ability = Ability.new(admin)
+      expect(ability.can?(:manage, TranscriptionRequest)).to be true
+    end
+
+    it 'does not allow non-administrators to read the transcription dashboard' do
+      ability = Ability.new(user)
+      expect(ability.can?(:read, :transcription_dashboard)).to be false
+    end
+
+    it 'does not allow non-administrators to manage TranscriptionRequest records' do
+      ability = Ability.new(user)
+      expect(ability.can?(:manage, TranscriptionRequest)).to be false
+    end
+  end
 end

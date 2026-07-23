@@ -21,6 +21,7 @@ class Ability
                          :playlist_item_permissions,
                          :marker_permissions,
                          :encode_dashboard_permissions,
+                         :transcription_dashboard_permissions,
                          :timeline_permissions,
                          :checkout_permissions,
                          :administrative_permissions,
@@ -45,6 +46,11 @@ class Ability
 
   def encode_dashboard_permissions
     can :read, :encode_dashboard if is_administrator?
+  end
+
+  def transcription_dashboard_permissions
+    can :read, :transcription_dashboard if is_administrator?
+    can :manage, TranscriptionRequest if is_administrator?
   end
 
   # UMD Customization

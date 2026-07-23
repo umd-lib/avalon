@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_18_195618) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_23_205709) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -270,6 +270,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_195618) do
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.index ["user_id"], name: "index_timelines_on_user_id"
+  end
+
+  create_table "transcription_requests", force: :cascade do |t|
+    t.string "master_file_id", null: false
+    t.string "media_object_id"
+    t.string "status", default: "pending", null: false
+    t.string "provider", null: false
+    t.string "provider_job_id"
+    t.string "language"
+    t.text "raw_response"
+    t.text "transcript_text"
+    t.text "error_message"
+    t.datetime "submitted_at"
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["master_file_id"], name: "index_transcription_requests_on_active_master_file_id", unique: true, where: "((status)::text <> ALL ((ARRAY['completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))"
+    t.index ["master_file_id"], name: "index_transcription_requests_on_master_file_id"
+    t.index ["media_object_id"], name: "index_transcription_requests_on_media_object_id"
+    t.index ["provider_job_id"], name: "index_transcription_requests_on_provider_job_id"
   end
 
   create_table "users", force: :cascade do |t|
