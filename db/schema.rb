@@ -286,7 +286,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_23_205709) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["master_file_id"], name: "index_transcription_requests_on_active_master_file_id", unique: true, where: "((status)::text <> ALL ((ARRAY['completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))"
+    t.index ["master_file_id"], name: "index_transcription_requests_on_active_master_file_id", unique: true, where: "((status)::text <> ALL (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text]))"
     t.index ["master_file_id"], name: "index_transcription_requests_on_master_file_id"
     t.index ["media_object_id"], name: "index_transcription_requests_on_media_object_id"
     t.index ["provider_job_id"], name: "index_transcription_requests_on_provider_job_id"

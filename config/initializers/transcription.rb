@@ -15,15 +15,12 @@
 # Fail fast on boot if transcription is enabled but misconfigured, rather
 # than discovering it the first time an admin clicks "Transcribe" (or the
 # first sidekiq-cron poll sweep runs). No-op when the feature flag is off.
-if Settings.transcription&.enabled
-  provider = Settings.transcription.default_provider.to_s
-
-  unless TranscriptionRequest::PROVIDERS.include?(provider)
-    raise "Invalid Settings.transcription.default_provider: #{provider.inspect}. " \
-          "Must be one of: #{TranscriptionRequest::PROVIDERS.join(', ')}"
-  end
-
-  if provider == 'aws_transcribe' && Settings.transcription.aws.output_bucket.blank?
-    raise 'Settings.transcription.aws.output_bucket must be set when transcription is enabled with the aws_transcribe provider'
-  end
+#
+# Wrapped in to_prepare (same pattern as the sidekiq-cron registration in
+# config/initializers/sidekiq.rb) rather than run directly here: app classes
+# like TranscriptionRequest aren't guaranteed autoloadable yet at plain
+# initializer-load time, and referencing them directly here intermittently
+# raises "NameError: uninitialized constant TranscriptionRequest" at boot.
+Rails.application.config.to_prepare do
+  TranscriptionConfiguration.validate!
 end
