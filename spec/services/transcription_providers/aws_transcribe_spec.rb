@@ -51,6 +51,24 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
       expect(client).to receive(:start_transcription_job).with(hash_including(subtitles: { formats: ['vtt'] })).and_call_original
       adapter.submit(master_file: master_file, language: 'eng')
     end
+
+    it 'does not set output_key when no output_prefix is configured' do
+      allow(Settings.transcription.aws).to receive(:output_prefix).and_return(nil)
+      expect(client).to receive(:start_transcription_job).with(hash_excluding(:output_key)).and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
+    it 'sets output_key to the configured prefix, segmenting Transcribe output within a shared bucket' do
+      allow(Settings.transcription.aws).to receive(:output_prefix).and_return('transcribe-output')
+      expect(client).to receive(:start_transcription_job).with(hash_including(output_key: 'transcribe-output/')).and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
+    it 'does not add a second trailing slash if the configured prefix already has one' do
+      allow(Settings.transcription.aws).to receive(:output_prefix).and_return('transcribe-output/')
+      expect(client).to receive(:start_transcription_job).with(hash_including(output_key: 'transcribe-output/')).and_call_original
+      adapter.submit(master_file: master_file)
+    end
   end
 
   describe '#fetch_status' do
@@ -84,7 +102,7 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
     before do
       allow(Settings.transcription.aws).to receive(:output_bucket).and_return('avalon-transcribe-output')
       s3_client.stub_responses(:get_object, lambda { |context|
-        context.params[:key] == 'job-1.json' ? { body: transcript_json.to_json } : { body: vtt_body }
+        context.params[:key].end_with?('.json') ? { body: transcript_json.to_json } : { body: vtt_body }
       })
     end
 
@@ -126,6 +144,24 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
     it 'raises TranscriptNotAvailable when no transcript uri is present' do
       client.stub_responses(:get_transcription_job, transcription_job: {})
       expect { adapter.fetch_transcript('job-1') }.to raise_error(TranscriptionProviders::TranscriptNotAvailable)
+    end
+
+    context 'when output_prefix segments the output within a shared bucket' do
+      let(:transcript_uri) { 'https://s3.amazonaws.com/avalon-transcribe-output/transcribe-output/job-1.json' }
+      let(:vtt_uri) { 'https://s3.amazonaws.com/avalon-transcribe-output/transcribe-output/job-1.vtt' }
+
+      before do
+        client.stub_responses(:get_transcription_job, transcription_job: {
+                                 transcript: { transcript_file_uri: transcript_uri },
+                                 subtitles: { subtitle_file_uris: [vtt_uri] }
+                               })
+      end
+
+      it 'still resolves the correct key, prefix included, from the returned URI' do
+        expect(s3_client).to receive(:get_object).with(bucket: 'avalon-transcribe-output', key: 'transcribe-output/job-1.json').and_call_original
+        expect(s3_client).to receive(:get_object).with(bucket: 'avalon-transcribe-output', key: 'transcribe-output/job-1.vtt').and_call_original
+        adapter.fetch_transcript('job-1')
+      end
     end
   end
 

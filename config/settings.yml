@@ -160,6 +160,13 @@ transcription:
   aws:
     # S3 bucket AWS Transcribe writes job output to. Required to use the aws_transcribe provider.
     output_bucket:
+    # Optional S3 key prefix (within output_bucket) to segment Transcribe's
+    # job output (transcript JSON + VTT) from other content in the same
+    # bucket, e.g. if reusing the bucket already configured for
+    # SupplementalFile storage (see config/storage.yml). Leave blank to let
+    # Transcribe write to the bucket root. A trailing slash is added
+    # automatically if omitted.
+    output_prefix:
 recaptcha:
   site_key: # Setting a site_key will enable recaptcha on the comments form
   secret_key: # Required along with site_key

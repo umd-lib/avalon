@@ -57,6 +57,7 @@ module TranscriptionProviders
         # word-level output ourselves.
         subtitles: { formats: ['vtt'] }
       }
+      params[:output_key] = output_key_prefix if output_key_prefix
       language_code = LANGUAGE_CODE_MAP[language]
       language_code ? params[:language_code] = language_code : params[:identify_language] = true
 
@@ -99,6 +100,19 @@ module TranscriptionProviders
 
     def job_name_for(master_file)
       "avalon-#{master_file.id}-#{SecureRandom.hex(4)}"
+    end
+
+    # When output_bucket is shared with other content (e.g. reused from
+    # SupplementalFile's own S3 storage), output_prefix keeps Transcribe's
+    # job output (transcript JSON + VTT) segmented under its own "directory"
+    # instead of landing at the bucket root. A prefix ending in "/" tells
+    # Transcribe to auto-name the output file under it; nil/blank leaves the
+    # bucket root behavior unchanged.
+    def output_key_prefix
+      prefix = Settings.transcription.aws.output_prefix
+      return nil if prefix.blank?
+
+      "#{prefix.chomp('/')}/"
     end
 
     def media_file_uri(master_file)

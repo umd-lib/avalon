@@ -15,6 +15,9 @@ transcription:
   default_provider: aws_transcribe
   aws:
     output_bucket: your-transcribe-output-bucket
+    # Optional: segment Transcribe's output under a prefix instead of the
+    # bucket root — see "Sharing a bucket with other content" below.
+    output_prefix:
 ```
 
 or via environment variables:
@@ -77,6 +80,17 @@ The IAM role/user Avalon uses for AWS API calls needs:
    }
    ```
 
+   If `output_prefix` is set, scope this down to just that prefix instead
+   of the whole bucket (see "Sharing a bucket with other content" below):
+
+   ```json
+   {
+     "Effect": "Allow",
+     "Action": ["s3:GetObject", "s3:PutObject"],
+     "Resource": "arn:aws:s3:::<output-bucket>/<output_prefix>/*"
+   }
+   ```
+
 Do not grant broader `transcribe:*` or account-wide `s3:*` — the above is
 sufficient for this adapter's full lifecycle (submit, poll, fetch, cancel).
 
@@ -90,6 +104,20 @@ URLs (unlike the default AWS-managed output location, which does return
 temporary pre-signed URLs). Fetching them requires the caller's own
 SigV4-signed request, which is why `AwsTranscribe#fetch_transcript` uses an
 `Aws::S3::Client` rather than a raw HTTP GET.
+
+### Sharing a bucket with other content
+
+`output_bucket` doesn't have to be dedicated to Transcribe — for example,
+you might reuse the bucket already configured for `SupplementalFile`
+storage (`config/storage.yml`'s `amazon`/`generic_s3` services, driven by
+`SETTINGS__ACTIVE_STORAGE__BUCKET`). If you do, set `output_prefix` (e.g.
+`transcribe-output`) so Transcribe's job output lands under
+`<output_prefix>/<job-name>.json` / `.vtt` instead of the bucket root,
+keeping it clearly separated from ActiveStorage's own key layout for
+SupplementalFile attachments. A trailing slash is added automatically if
+you omit one. Leaving `output_prefix` blank writes to the bucket root,
+matching the adapter's original (pre-prefix) behavior — existing
+deployments don't need to set anything to keep working as before.
 
 ## Retry/failure behavior
 
