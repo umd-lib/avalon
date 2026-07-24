@@ -99,7 +99,15 @@ module TranscriptionProviders
     private
 
     def job_name_for(master_file)
-      "avalon-#{master_file.id}-#{SecureRandom.hex(4)}"
+      "#{job_name_prefix}-#{master_file.id}-#{SecureRandom.hex(4)}"
+    end
+
+    # Lets deployments sharing one AWS account across multiple environments
+    # (e.g. sandbox/test/qa on the same EKS cluster) scope each environment's
+    # IAM policy Resource pattern to only the jobs it creates. Defaults to
+    # "avalon" — the original, unprefixed-by-environment behavior.
+    def job_name_prefix
+      Settings.transcription.aws.job_name_prefix.presence || 'avalon'
     end
 
     # When output_bucket is shared with other content (e.g. reused from

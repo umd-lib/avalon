@@ -52,6 +52,22 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
       adapter.submit(master_file: master_file, language: 'eng')
     end
 
+    it 'names the job using the default "avalon" prefix when job_name_prefix is not configured' do
+      allow(Settings.transcription.aws).to receive(:job_name_prefix).and_return(nil)
+      expect(client).to receive(:start_transcription_job)
+        .with(hash_including(transcription_job_name: a_string_matching(/\Aavalon-abc123-[0-9a-f]{8}\z/)))
+        .and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
+    it 'names the job using a configured job_name_prefix, e.g. to scope IAM policies per environment' do
+      allow(Settings.transcription.aws).to receive(:job_name_prefix).and_return('avalon-sandbox')
+      expect(client).to receive(:start_transcription_job)
+        .with(hash_including(transcription_job_name: a_string_matching(/\Aavalon-sandbox-abc123-[0-9a-f]{8}\z/)))
+        .and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
     it 'does not set output_key when no output_prefix is configured' do
       allow(Settings.transcription.aws).to receive(:output_prefix).and_return(nil)
       expect(client).to receive(:start_transcription_job).with(hash_excluding(:output_key)).and_call_original

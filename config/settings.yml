@@ -167,6 +167,11 @@ transcription:
     # Transcribe write to the bucket root. A trailing slash is added
     # automatically if omitted.
     output_prefix:
+    # Prefix for Transcribe job names ("<job_name_prefix>-<master_file_id>-<random>").
+    # Lets an IAM policy's Resource pattern (transcription-job/<prefix>-*)
+    # scope one environment's role to only the jobs it creates, e.g. when
+    # sandbox/test/qa share one AWS account. Defaults to "avalon".
+    job_name_prefix: avalon
 recaptcha:
   site_key: # Setting a site_key will enable recaptcha on the comments form
   secret_key: # Required along with site_key

@@ -18,6 +18,8 @@ transcription:
     # Optional: segment Transcribe's output under a prefix instead of the
     # bucket root — see "Sharing a bucket with other content" below.
     output_prefix:
+    # Prefix for Transcribe job names — see "Scoping IAM per environment" below.
+    job_name_prefix: avalon
 ```
 
 or via environment variables:
@@ -25,6 +27,7 @@ or via environment variables:
 ```
 SETTINGS__TRANSCRIPTION__ENABLED=true
 SETTINGS__TRANSCRIPTION__AWS__OUTPUT_BUCKET=your-transcribe-output-bucket
+SETTINGS__TRANSCRIPTION__AWS__JOB_NAME_PREFIX=avalon-sandbox
 ```
 
 `config/initializers/transcription.rb` validates this on boot — the app will
@@ -39,8 +42,9 @@ source raises `TranscriptionProviders::UnsupportedMediaSource` when submitted.
 
 The IAM role/user Avalon uses for AWS API calls needs:
 
-1. **Transcribe job lifecycle**, scoped to jobs this app creates (all job
-   names are prefixed `avalon-`, see `AwsTranscribe#job_name_for`):
+1. **Transcribe job lifecycle**, scoped to jobs this app creates (job names
+   are `<job_name_prefix>-<master_file_id>-<random>`, default prefix
+   `avalon`, see `AwsTranscribe#job_name_for`):
 
    ```json
    {
@@ -50,9 +54,13 @@ The IAM role/user Avalon uses for AWS API calls needs:
        "transcribe:GetTranscriptionJob",
        "transcribe:DeleteTranscriptionJob"
      ],
-     "Resource": "arn:aws:transcribe:<region>:<account-id>:transcription-job/avalon-*"
+     "Resource": "arn:aws:transcribe:<region>:*:transcription-job/avalon-*"
    }
    ```
+
+   Note that account-id is intentionally left as `*` here rather than a
+   specific account — see "Scoping IAM per environment" below for why that's
+   inert in practice and region is the field actually worth pinning.
 
 2. **Read the source media** from wherever Avalon's master files live in S3:
 
@@ -118,6 +126,35 @@ SupplementalFile attachments. A trailing slash is added automatically if
 you omit one. Leaving `output_prefix` blank writes to the bucket root,
 matching the adapter's original (pre-prefix) behavior — existing
 deployments don't need to set anything to keep working as before.
+
+### Scoping IAM per environment
+
+If multiple environments (e.g. sandbox/test/qa) share one AWS account and
+each gets its own IRSA role, set a distinct `job_name_prefix` per
+environment (e.g. `avalon-sandbox`, `avalon-test`, `avalon-qa`) and match
+each role's Transcribe policy `Resource` pattern to it
+(`transcription-job/avalon-sandbox-*`, etc.). This is defense-in-depth, not
+the primary isolation boundary — that's the IRSA role's OIDC trust
+condition (e.g. `oidc_subjects_with_wildcards = ["system:serviceaccount:sandbox:avalon"]`),
+which already prevents one environment's pods from assuming another
+environment's role at all, regardless of job naming. Without a per-environment
+prefix, all environments' jobs share the plain `avalon-*` pattern, which is
+fine as long as each environment's role isn't otherwise compromised (and even
+then, doesn't grant `transcribe:ListTranscriptionJobs`, so a compromised role
+still can't enumerate another environment's job names to act on them — only
+guess ones it already knows). The main non-security reason to set it anyway:
+without it, jobs from every environment show up under the same `avalon-*`
+prefix in the AWS Console/CLI with no way to tell which environment created
+which one.
+
+An IAM policy `Resource` ARN's account-id and region fields are worth
+distinguishing when scoping this: leaving account-id as `*` costs nothing,
+since IRSA credentials only ever belong to one account and Transcribe has no
+resource-based (cross-account sharing) policies — a wildcard there can never
+actually reach another account's resources. Region is different: IAM roles
+aren't region-scoped, so pinning `${data.aws_region.current.name}` instead of
+`*` for region is a real (if narrow) reduction in blast radius, not just
+cosmetic precision.
 
 ## Retry/failure behavior
 
