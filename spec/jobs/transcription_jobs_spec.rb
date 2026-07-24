@@ -57,6 +57,32 @@ RSpec.describe TranscriptionJobs do
       expect(provider).not_to receive(:submit)
       expect { described_class.perform_now(-1) }.not_to raise_error
     end
+
+    it 'does not mark the request failed on a transient provider error — ActiveJob retries it instead' do
+      allow(provider).to receive(:submit).and_raise(Aws::TranscribeService::Errors::InternalFailureException.new(nil, 'try again'))
+
+      expect { described_class.perform_now(request.id) }.to have_enqueued_job(described_class).with(request.id)
+      expect(request.reload.status).to eq('pending')
+    end
+
+    describe '.fail_after_retries' do
+      it 'marks the request failed once ActiveJob gives up retrying' do
+        described_class.fail_after_retries(request.id, StandardError.new('network still down'))
+
+        request.reload
+        expect(request.status).to eq('failed')
+        expect(request.error_message).to include('Gave up after retries')
+        expect(request.error_message).to include('network still down')
+      end
+
+      it 'does nothing if the request is already terminal' do
+        request.transition_to!('submitted', provider_job_id: 'x')
+        request.transition_to!('cancelled')
+
+        expect { described_class.fail_after_retries(request.id, StandardError.new('boom')) }.not_to raise_error
+        expect(request.reload.status).to eq('cancelled')
+      end
+    end
   end
 
   describe TranscriptionJobs::PollTranscriptionRequestsJob do
@@ -98,11 +124,19 @@ RSpec.describe TranscriptionJobs do
       described_class.perform_now
     end
 
-    it 'logs and continues if fetching status for one request raises' do
+    it 'marks the request failed when a permanent error occurs while polling' do
       allow(provider).to receive(:fetch_status).and_raise(StandardError, 'boom')
-      expect(Rails.logger).to receive(:error)
 
       expect { described_class.perform_now }.not_to raise_error
+      expect(request.reload.status).to eq('failed')
+      expect(request.error_message).to eq('boom')
+    end
+
+    it 'leaves the request untouched when a transient error occurs while polling (retried next sweep)' do
+      allow(provider).to receive(:fetch_status).and_raise(Aws::TranscribeService::Errors::InternalFailureException.new(nil, 'try again'))
+
+      expect { described_class.perform_now }.not_to raise_error
+      expect(request.reload.status).to eq('submitted')
     end
   end
 
@@ -157,6 +191,21 @@ RSpec.describe TranscriptionJobs do
         request.reload
         expect(request.status).to eq('failed')
         expect(request.error_message).to eq('boom')
+      end
+
+      it 'does not mark the request failed on a transient provider error — ActiveJob retries it instead' do
+        allow(provider).to receive(:fetch_transcript).and_raise(Aws::TranscribeService::Errors::InternalFailureException.new(nil, 'try again'))
+
+        expect { described_class.perform_now(request.id) }.to have_enqueued_job(described_class).with(request.id)
+        expect(request.reload.status).to eq('submitted')
+      end
+
+      it '.fail_after_retries marks the request failed once ActiveJob gives up retrying' do
+        described_class.fail_after_retries(request.id, StandardError.new('network still down'))
+
+        request.reload
+        expect(request.status).to eq('failed')
+        expect(request.error_message).to include('Gave up after retries')
       end
     end
 

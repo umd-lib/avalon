@@ -22,6 +22,7 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
 
   before do
     sign_in user
+    allow(Settings.transcription).to receive(:enabled).and_return(true)
   end
 
   describe 'GET #index' do
@@ -108,6 +109,17 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
         expect(response).to render_template('errors/restricted_pid')
       end
     end
+
+    context 'when transcription is disabled' do
+      before { allow(Settings.transcription).to receive(:enabled).and_return(false) }
+
+      it 'redirects with an alert and does not create a TranscriptionRequest' do
+        post :create, params: { master_file_id: master_file.id }, session: valid_session
+
+        expect(flash[:alert]).to eq('Transcription is currently disabled.')
+        expect(TranscriptionRequest.where(master_file_id: master_file.id)).not_to exist
+      end
+    end
   end
 
   describe 'POST #retry' do
@@ -120,6 +132,18 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
         end.to have_enqueued_job(TranscriptionJobs::SubmitTranscriptionRequestJob)
 
         expect(TranscriptionRequest.where(master_file_id: master_file.id).count).to eq(2)
+      end
+
+      context 'when transcription is disabled' do
+        before { allow(Settings.transcription).to receive(:enabled).and_return(false) }
+
+        it 'does not create a new TranscriptionRequest' do
+          expect do
+            post :retry, params: { id: transcription_request.to_param }, session: valid_session
+          end.not_to have_enqueued_job(TranscriptionJobs::SubmitTranscriptionRequestJob)
+
+          expect(TranscriptionRequest.where(master_file_id: master_file.id).count).to eq(1)
+        end
       end
     end
 
@@ -178,6 +202,16 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
       it 'redirects to restricted content page' do
         post :create_for_media_object, params: { media_object_id: media_object.id }, session: valid_session
         expect(response).to render_template('errors/restricted_pid')
+      end
+    end
+
+    context 'when transcription is disabled' do
+      before { allow(Settings.transcription).to receive(:enabled).and_return(false) }
+
+      it 'does not create any TranscriptionRequests' do
+        post :create_for_media_object, params: { media_object_id: media_object.id }, session: valid_session
+
+        expect(TranscriptionRequest.where(master_file_id: eligible_master_file.id)).not_to exist
       end
     end
   end

@@ -13,6 +13,8 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 require 'aws-sdk-transcribeservice'
+require 'aws-sdk-s3'
+require 'addressable/uri'
 
 module TranscriptionProviders
   # AWS Transcribe adapter. AWS Transcribe reads media directly from S3, so
@@ -40,8 +42,9 @@ module TranscriptionProviders
       'ara' => 'ar-SA'
     }.freeze
 
-    def initialize(client: Aws::TranscribeService::Client.new)
+    def initialize(client: Aws::TranscribeService::Client.new, s3_client: Aws::S3::Client.new)
       @client = client
+      @s3_client = s3_client
     end
 
     def submit(master_file:, language: nil)
@@ -78,12 +81,12 @@ module TranscriptionProviders
       transcript_uri = job.transcript&.transcript_file_uri
       raise TranscriptNotAvailable, "No transcript file available for #{provider_job_id}" unless transcript_uri
 
-      transcript_json = JSON.parse(URI.parse(transcript_uri).open.read)
+      transcript_json = JSON.parse(download_from_output_bucket(transcript_uri))
       vtt_uri = job.subtitles&.subtitle_file_uris&.first
 
       TranscriptResult.new(
         transcript_text: extract_transcript_text(transcript_json),
-        caption_vtt: vtt_uri ? URI.parse(vtt_uri).open.read : nil,
+        caption_vtt: vtt_uri ? download_from_output_bucket(vtt_uri) : nil,
         raw_response: transcript_json
       )
     end
@@ -109,6 +112,20 @@ module TranscriptionProviders
 
     def extract_transcript_text(transcript_json)
       transcript_json.dig('results', 'transcripts', 0, 'transcript').to_s
+    end
+
+    # AWS Transcribe writes job output (transcript JSON, subtitle files) to
+    # our own S3 bucket, not an AWS-managed one, so the URIs it returns are
+    # plain https://s3.<region>.amazonaws.com/<bucket>/<key> links — NOT
+    # pre-signed. Fetching them with a raw unauthenticated HTTP GET would
+    # 403 against any bucket that isn't publicly readable, so we resolve the
+    # key from the URI and fetch it via our own S3 credentials instead.
+    def download_from_output_bucket(https_uri)
+      bucket = Settings.transcription.aws.output_bucket
+      path = Addressable::URI.parse(https_uri).path
+      key = path.sub(%r{\A/#{Regexp.escape(bucket)}/}, '')
+
+      @s3_client.get_object(bucket: bucket, key: key).body.read
     end
   end
 end

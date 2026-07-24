@@ -152,6 +152,10 @@ caption_default:
   language: 'eng'
   name: 'English'
 transcription:
+  # Feature flag: when false, the enqueue controller actions and the
+  # "Transcribe" / "Transcribe All Sections" buttons are disabled. Existing
+  # TranscriptionRequests and the dashboard remain visible either way.
+  enabled: false
   default_provider: aws_transcribe
   aws:
     # S3 bucket AWS Transcribe writes job output to. Required to use the aws_transcribe provider.

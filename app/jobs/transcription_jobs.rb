@@ -12,10 +12,38 @@
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
+require 'aws-sdk-transcribeservice'
+require 'aws-sdk-s3'
+
 module TranscriptionJobs
+  # Errors worth retrying automatically (network blips, provider throttling/
+  # internal errors) as opposed to permanent failures (unsupported media,
+  # unknown provider, validation errors, access/config errors) that will
+  # never succeed on retry and should fail the TranscriptionRequest
+  # immediately instead.
+  #
+  # Deliberately narrower than Aws::TranscribeService::Errors::ServiceError /
+  # Aws::S3::Errors::ServiceError — those base classes also cover permanent
+  # errors (BadRequestException, AccessDenied, NoSuchKey, ...) that would
+  # otherwise get misclassified as transient and retried pointlessly.
+  TRANSIENT_ERRORS = [
+    Seahorse::Client::NetworkingError,
+    Aws::TranscribeService::Errors::InternalFailureException,
+    Aws::TranscribeService::Errors::LimitExceededException,
+    Net::OpenTimeout,
+    Net::ReadTimeout,
+    Errno::ECONNRESET,
+    Errno::ETIMEDOUT
+  ].freeze
+
   # Submits a pending TranscriptionRequest to its provider.
   class SubmitTranscriptionRequestJob < ApplicationJob
+    include TranscriptionJobs::Logging
+
     queue_as :transcription
+    retry_on(*TRANSIENT_ERRORS, wait: :polynomially_longer, attempts: 5) do |job, error|
+      job.class.fail_after_retries(job.arguments.first, error)
+    end
 
     def perform(transcription_request_id)
       request = TranscriptionRequest.find_by(id: transcription_request_id)
@@ -25,9 +53,20 @@ module TranscriptionJobs
       provider_job_id = provider.submit(master_file: request.master_file, language: request.language)
 
       request.transition_to!('submitted', provider_job_id: provider_job_id)
+    rescue *TRANSIENT_ERRORS => e
+      log_transcription(:warn, 'transient error submitting, will retry', request: request, error: "#{e.class}: #{e.message}")
+      raise
     rescue StandardError => e
-      Rails.logger.error("[TranscriptionJobs::SubmitTranscriptionRequestJob] transcription_request_id=#{transcription_request_id} error=#{e.class}: #{e.message}")
+      log_transcription(:error, 'permanent failure submitting', request: request, error: "#{e.class}: #{e.message}")
       request.transition_to!('failed', error_message: e.message) if request && !request.terminal?
+    end
+
+    def self.fail_after_retries(transcription_request_id, error)
+      request = TranscriptionRequest.find_by(id: transcription_request_id)
+      return unless request && !request.terminal?
+
+      Rails.logger.error("[TranscriptionJobs] job=#{name} transcription_request_id=#{transcription_request_id} error=gave up after retries: #{error.class}: #{error.message}")
+      request.transition_to!('failed', error_message: "Gave up after retries: #{error.message}")
     end
   end
 
@@ -35,6 +74,8 @@ module TranscriptionJobs
   # grouped by provider, checking each one's status and dispatching
   # completion materialization once a provider job finishes.
   class PollTranscriptionRequestsJob < ApplicationJob
+    include TranscriptionJobs::Logging
+
     queue_as :transcription
 
     def perform
@@ -57,8 +98,13 @@ module TranscriptionJobs
       when :failed
         request.transition_to!('failed', raw_response: result.raw_response.to_json, error_message: 'Provider reported job failure')
       end
+    rescue *TRANSIENT_ERRORS => e
+      # Cron re-runs every minute, so a transient blip just gets picked up
+      # again on the next sweep — no need to fail the request over it.
+      log_transcription(:warn, 'transient error polling status, will retry next sweep', request: request, error: "#{e.class}: #{e.message}")
     rescue StandardError => e
-      Rails.logger.error("[TranscriptionJobs::PollTranscriptionRequestsJob] transcription_request_id=#{request.id} provider_job_id=#{request.provider_job_id} error=#{e.class}: #{e.message}")
+      log_transcription(:error, 'permanent failure polling status', request: request, error: "#{e.class}: #{e.message}")
+      request.transition_to!('failed', error_message: e.message) unless request.terminal?
     end
   end
 
@@ -66,7 +112,12 @@ module TranscriptionJobs
   # caption (.vtt) and transcript (.txt) SupplementalFile artifacts, and
   # marks the TranscriptionRequest completed.
   class CompleteTranscriptionRequestJob < ApplicationJob
+    include TranscriptionJobs::Logging
+
     queue_as :transcription
+    retry_on(*TRANSIENT_ERRORS, wait: :polynomially_longer, attempts: 5) do |job, error|
+      job.class.fail_after_retries(job.arguments.first, error)
+    end
 
     ARTIFACTS = {
       caption: { tags: %w[caption machine_generated], extension: 'vtt', content_type: 'text/vtt', label: 'Machine-generated Caption' },
@@ -86,9 +137,20 @@ module TranscriptionJobs
       request.transition_to!('completed', transcript_text: result.transcript_text, raw_response: result.raw_response.to_json)
 
       MediaObjectIndexingJob.perform_later(request.media_object_id) if request.media_object_id.present?
+    rescue *TRANSIENT_ERRORS => e
+      log_transcription(:warn, 'transient error completing, will retry', request: request, error: "#{e.class}: #{e.message}")
+      raise
     rescue StandardError => e
-      Rails.logger.error("[TranscriptionJobs::CompleteTranscriptionRequestJob] transcription_request_id=#{transcription_request_id} error=#{e.class}: #{e.message}")
+      log_transcription(:error, 'permanent failure completing', request: request, error: "#{e.class}: #{e.message}")
       request.transition_to!('failed', error_message: e.message) if request && !request.terminal?
+    end
+
+    def self.fail_after_retries(transcription_request_id, error)
+      request = TranscriptionRequest.find_by(id: transcription_request_id)
+      return unless request && !request.terminal?
+
+      Rails.logger.error("[TranscriptionJobs] job=#{name} transcription_request_id=#{transcription_request_id} error=gave up after retries: #{error.class}: #{error.message}")
+      request.transition_to!('failed', error_message: "Gave up after retries: #{error.message}")
     end
 
     private
@@ -116,6 +178,8 @@ module TranscriptionJobs
   # (if one was ever submitted), then marks the request cancelled locally
   # regardless of whether the provider-side cancel succeeded.
   class CancelTranscriptionRequestJob < ApplicationJob
+    include TranscriptionJobs::Logging
+
     queue_as :transcription
 
     def perform(transcription_request_id)
@@ -126,7 +190,7 @@ module TranscriptionJobs
         begin
           TranscriptionProviders::Registry.for(request.provider).cancel(request.provider_job_id)
         rescue StandardError => e
-          Rails.logger.warn("[TranscriptionJobs::CancelTranscriptionRequestJob] provider cancel failed transcription_request_id=#{transcription_request_id} error=#{e.class}: #{e.message}")
+          log_transcription(:warn, 'provider cancel failed, cancelling locally anyway', request: request, error: "#{e.class}: #{e.message}")
         end
       end
 

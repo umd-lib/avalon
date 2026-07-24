@@ -16,7 +16,8 @@ require 'rails_helper'
 
 RSpec.describe TranscriptionProviders::AwsTranscribe do
   let(:client) { Aws::TranscribeService::Client.new(stub_responses: true, region: 'us-east-1') }
-  let(:adapter) { described_class.new(client: client) }
+  let(:s3_client) { Aws::S3::Client.new(stub_responses: true, region: 'us-east-1') }
+  let(:adapter) { described_class.new(client: client, s3_client: s3_client) }
   let(:master_file) { FactoryBot.build(:master_file, id: 'abc123') }
 
   before do
@@ -70,6 +71,9 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
   end
 
   describe '#fetch_transcript' do
+    # AWS Transcribe returns plain (non-presigned) https://s3.../<bucket>/<key>
+    # links when writing to a customer-owned output bucket, so the adapter
+    # must fetch them via its own authenticated S3 client, not a raw HTTP GET.
     let(:transcript_uri) { 'https://s3.amazonaws.com/avalon-transcribe-output/job-1.json' }
     let(:vtt_uri) { 'https://s3.amazonaws.com/avalon-transcribe-output/job-1.vtt' }
     let(:transcript_json) do
@@ -78,7 +82,10 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
     let(:vtt_body) { "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello world.\n" }
 
     before do
-      stub_request(:get, transcript_uri).to_return(body: transcript_json.to_json)
+      allow(Settings.transcription.aws).to receive(:output_bucket).and_return('avalon-transcribe-output')
+      s3_client.stub_responses(:get_object, lambda { |context|
+        context.params[:key] == 'job-1.json' ? { body: transcript_json.to_json } : { body: vtt_body }
+      })
     end
 
     context 'when AWS Transcribe generated a subtitle file' do
@@ -87,7 +94,6 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
                                  transcript: { transcript_file_uri: transcript_uri },
                                  subtitles: { subtitle_file_uris: [vtt_uri] }
                                })
-        stub_request(:get, vtt_uri).to_return(body: vtt_body)
       end
 
       it 'returns the normalized transcript text' do
@@ -96,6 +102,12 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
 
       it 'downloads the AWS-generated VTT as-is, without building its own cues' do
         expect(adapter.fetch_transcript('job-1').caption_vtt).to eq(vtt_body)
+      end
+
+      it 'fetches the transcript via the S3 client using the bucket and key, not a raw HTTP request' do
+        expect(s3_client).to receive(:get_object).with(bucket: 'avalon-transcribe-output', key: 'job-1.json').and_call_original
+        expect(s3_client).to receive(:get_object).with(bucket: 'avalon-transcribe-output', key: 'job-1.vtt').and_call_original
+        adapter.fetch_transcript('job-1')
       end
     end
 

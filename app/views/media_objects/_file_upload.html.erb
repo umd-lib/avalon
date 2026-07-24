@@ -19,7 +19,7 @@ Unless required by applicable law or agreed to in writing, software distributed
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h3 class="card-title">Section files</h3>
-      <% if can?(:manage, TranscriptionRequest) && @masterFiles.present? %>
+      <% if Settings.transcription.enabled && can?(:manage, TranscriptionRequest) && @masterFiles.present? %>
         <%= link_to 'Transcribe All Sections', create_for_media_object_transcription_requests_path(media_object_id: @media_object.id),
           title: 'Generate machine transcripts/captions for all eligible sections',
           class: 'btn btn-sm btn-outline',
@@ -103,7 +103,7 @@ Unless required by applicable law or agreed to in writing, software distributed
                       <%= link_to "Download", download_derivative_master_file_path(section.id), class: 'btn btn-sm btn-outline', target: '_self' %>
                     </span>
                     <% end %>
-                    <% if can?(:manage, TranscriptionRequest) && section.supplemental_files(tag: 'caption').blank? && section.supplemental_files(tag: 'transcript').blank? && !TranscriptionRequest.active.exists?(master_file_id: section.id) %>
+                    <% if Settings.transcription.enabled && can?(:manage, TranscriptionRequest) && section.supplemental_files(tag: 'caption').blank? && section.supplemental_files(tag: 'transcript').blank? && !TranscriptionRequest.active.exists?(master_file_id: section.id) %>
                     <span>
                       <%= link_to 'Transcribe', transcription_requests_path(master_file_id: section.id),
                         title: 'Generate a machine transcript/captions for this section',

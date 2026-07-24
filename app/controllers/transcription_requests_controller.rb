@@ -14,6 +14,7 @@
 
 class TranscriptionRequestsController < ApplicationController
   before_action :set_transcription_request, only: [:show, :retry, :cancel]
+  before_action :ensure_transcription_enabled, only: [:create, :create_for_media_object, :retry]
   skip_before_action :verify_authenticity_token, only: [:progress]
 
   # GET /transcription_requests
@@ -134,6 +135,12 @@ class TranscriptionRequestsController < ApplicationController
 
     def set_transcription_request
       @transcription_request = TranscriptionRequest.find(params[:id])
+    end
+
+    def ensure_transcription_enabled
+      return if Settings.transcription.enabled
+
+      redirect_back fallback_location: transcription_requests_path, alert: 'Transcription is currently disabled.'
     end
 
     def enqueue_if_eligible(master_file_id)
