@@ -172,6 +172,12 @@ transcription:
     # scope one environment's role to only the jobs it creates, e.g. when
     # sandbox/test/qa share one AWS account. Defaults to "avalon".
     job_name_prefix: avalon
+    diarization:
+      # Ask AWS Transcribe to label distinct speakers in the transcript/VTT.
+      enabled: false
+      # Upper bound on distinct speakers Transcribe should try to identify.
+      # Required by the AWS API when diarization is enabled (2-30).
+      max_speakers: 10
 recaptcha:
   site_key: # Setting a site_key will enable recaptcha on the comments form
   secret_key: # Required along with site_key

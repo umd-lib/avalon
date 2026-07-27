@@ -85,6 +85,52 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
       expect(client).to receive(:start_transcription_job).with(hash_including(output_key: 'transcribe-output/')).and_call_original
       adapter.submit(master_file: master_file)
     end
+
+    it 'does not request speaker diarization when disabled (the default)' do
+      expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
+    it 'requests speaker diarization with the configured max_speakers when enabled' do
+      allow(Settings.transcription.aws.diarization).to receive_messages(enabled: true, max_speakers: 6)
+      expect(client).to receive(:start_transcription_job)
+        .with(hash_including(settings: { show_speaker_labels: true, max_speaker_labels: 6 }))
+        .and_call_original
+      adapter.submit(master_file: master_file)
+    end
+
+    context 'when the master file belongs to a collection with its own diarization override' do
+      let(:collection) { instance_double(Admin::Collection) }
+      let(:media_object) { instance_double(MediaObject, collection: collection) }
+
+      before { allow(master_file).to receive(:media_object).and_return(media_object) }
+
+      it "uses the collection's max_speakers even when it differs from the global default" do
+        allow(collection).to receive_messages(diarization_enabled?: true, diarization_max_speakers: 4)
+
+        expect(client).to receive(:start_transcription_job)
+          .with(hash_including(settings: { show_speaker_labels: true, max_speaker_labels: 4 }))
+          .and_call_original
+        adapter.submit(master_file: master_file)
+      end
+
+      it 'lets the collection disable diarization even when the global default is enabled' do
+        allow(Settings.transcription.aws.diarization).to receive_messages(enabled: true, max_speakers: 6)
+        allow(collection).to receive(:diarization_enabled?).and_return(false)
+
+        expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+        adapter.submit(master_file: master_file)
+      end
+
+      it "lets the collection enable diarization even when the global default is disabled" do
+        allow(collection).to receive_messages(diarization_enabled?: true, diarization_max_speakers: 3)
+
+        expect(client).to receive(:start_transcription_job)
+          .with(hash_including(settings: { show_speaker_labels: true, max_speaker_labels: 3 }))
+          .and_call_original
+        adapter.submit(master_file: master_file)
+      end
+    end
   end
 
   describe '#fetch_status' do

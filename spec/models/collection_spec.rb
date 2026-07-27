@@ -787,6 +787,59 @@ describe Admin::Collection do
     end
   end
 
+  describe 'diarization_max_speakers' do
+    context 'a custom value has not been set' do
+      it 'equals the system default' do
+        expect(collection.diarization_max_speakers).to eq Settings.transcription.aws.diarization.max_speakers
+      end
+    end
+    context 'a custom value has been set' do
+      let(:collection) { FactoryBot.create(:collection, diarization_max_speakers: 4) }
+      it 'leaves the value equal to the custom value' do
+        expect(collection.diarization_max_speakers).to eq 4
+      end
+    end
+    context 'an out-of-range value is set' do
+      it 'is invalid' do
+        collection.diarization_max_speakers = 1
+        expect(collection).not_to be_valid
+        collection.diarization_max_speakers = 31
+        expect(collection).not_to be_valid
+      end
+    end
+  end
+
+  describe 'diarization_enabled' do
+    context 'diarization disabled at the application level' do
+      before { allow(Settings.transcription.aws.diarization).to receive(:enabled).and_return(false) }
+      it 'sets collection diarization to be disabled by default' do
+        expect(collection.diarization_enabled?).to be false
+      end
+      context 'turned on for collection' do
+        let(:collection2) { FactoryBot.create(:collection) }
+        it 'does not affect other collections' do
+          collection.diarization_enabled = true
+          expect(collection.diarization_enabled?).to be true
+          expect(collection2.diarization_enabled?).to be false
+        end
+      end
+    end
+    context 'diarization enabled at the application level' do
+      before { allow(Settings.transcription.aws.diarization).to receive(:enabled).and_return(true) }
+      it 'sets collection diarization to be enabled by default' do
+        expect(collection.diarization_enabled?).to be true
+      end
+      context 'turned off for collection' do
+        let(:collection2) { FactoryBot.create(:collection) }
+        it 'does not affect other collections' do
+          collection.diarization_enabled = false
+          expect(collection.diarization_enabled?).to be false
+          expect(collection2.diarization_enabled?).to be true
+        end
+      end
+    end
+  end
+
   describe '#unit=' do
     it 'sets governing_policy as well' do
       new_unit = FactoryBot.create(:unit)

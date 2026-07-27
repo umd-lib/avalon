@@ -58,6 +58,8 @@ module TranscriptionProviders
         subtitles: { formats: ['vtt'] }
       }
       params[:output_key] = output_key_prefix if output_key_prefix
+      settings = diarization_settings(master_file)
+      params[:settings] = settings if settings
       language_code = LANGUAGE_CODE_MAP[language]
       language_code ? params[:language_code] = language_code : params[:identify_language] = true
 
@@ -121,6 +123,24 @@ module TranscriptionProviders
       return nil if prefix.blank?
 
       "#{prefix.chomp('/')}/"
+    end
+
+    # AWS Transcribe's speaker diarization — labels distinct speakers in the
+    # transcript/VTT it generates. Off by default; max_speakers is a required
+    # companion parameter when enabled (an upper bound, not an exact count).
+    #
+    # The owning Admin::Collection can override both the enabled flag and
+    # max_speakers (Admin::Collection#diarization_enabled?/#diarization_max_speakers
+    # already fall back to Settings.transcription.aws.diarization.* when the
+    # collection hasn't set its own value) — falls back to the global Settings
+    # directly if the master file has no collection (e.g. orphaned record).
+    def diarization_settings(master_file)
+      collection = master_file.media_object&.collection
+      enabled = collection ? collection.diarization_enabled? : Settings.transcription.aws.diarization&.enabled
+      return nil unless enabled
+
+      max_speakers = collection ? collection.diarization_max_speakers : Settings.transcription.aws.diarization&.max_speakers
+      { show_speaker_labels: true, max_speaker_labels: max_speakers }
     end
 
     def media_file_uri(master_file)

@@ -20,6 +20,10 @@ transcription:
     output_prefix:
     # Prefix for Transcribe job names — see "Scoping IAM per environment" below.
     job_name_prefix: avalon
+    # Optional: label distinct speakers — see "Speaker diarization" below.
+    diarization:
+      enabled: false
+      max_speakers: 10
 ```
 
 or via environment variables:
@@ -28,6 +32,7 @@ or via environment variables:
 SETTINGS__TRANSCRIPTION__ENABLED=true
 SETTINGS__TRANSCRIPTION__AWS__OUTPUT_BUCKET=your-transcribe-output-bucket
 SETTINGS__TRANSCRIPTION__AWS__JOB_NAME_PREFIX=avalon-sandbox
+SETTINGS__TRANSCRIPTION__AWS__DIARIZATION__ENABLED=true
 ```
 
 `config/initializers/transcription.rb` validates this on boot — the app will
@@ -126,6 +131,19 @@ SupplementalFile attachments. A trailing slash is added automatically if
 you omit one. Leaving `output_prefix` blank writes to the bucket root,
 matching the adapter's original (pre-prefix) behavior — existing
 deployments don't need to set anything to keep working as before.
+
+### Speaker diarization
+
+Off by default. When `diarization.enabled` is true, jobs are submitted with
+AWS Transcribe's `ShowSpeakerLabels`/`MaxSpeakerLabels` settings, so the
+transcript JSON and the VTT Transcribe generates both include speaker
+labels — `max_speakers` is a required upper bound AWS uses when enabled (an
+estimate, not an exact count), not a hard cap. This only affects the VTT
+caption artifact; the plain-text `transcript.txt` `SupplementalFile` still
+has no speaker labels either way, since `AwsTranscribe#extract_transcript_text`
+just pulls the flat `results.transcripts[0].transcript` string — adding
+speaker labels there would mean parsing the response's separate
+`speaker_labels` segment data, which isn't implemented.
 
 ### Scoping IAM per environment
 

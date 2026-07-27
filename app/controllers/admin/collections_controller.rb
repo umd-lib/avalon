@@ -424,6 +424,7 @@ class Admin::CollectionsController < ApplicationController
     update_access_settings(collection, params)
 
     update_default_lending_period(collection, params) if collection.cdl_enabled?
+    update_diarization_max_speakers(collection, params) if collection.diarization_enabled?
   end
 
   def update_access_settings(collection, params)
@@ -435,6 +436,21 @@ class Admin::CollectionsController < ApplicationController
     end
     if params[:save_field] == "cdl"
       collection.cdl_enabled = params[:cdl] == "1"
+    end
+    if params[:save_field] == "diarization"
+      collection.diarization_enabled = params[:diarization] == "1"
+    end
+  end
+
+  def update_diarization_max_speakers(collection, params)
+    return unless params[:save_field] == "diarization_max_speakers"
+    return if params[:max_speakers].blank?
+
+    max_speakers = params[:max_speakers].to_i
+    if max_speakers.between?(2, 30)
+      collection.diarization_max_speakers = max_speakers
+    else
+      flash[:error] = "Max speakers must be between 2 and 30."
     end
   end
 

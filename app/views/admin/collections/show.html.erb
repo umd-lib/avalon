@@ -136,6 +136,10 @@ Unless required by applicable law or agreed to in writing, software distributed
                            lending_period: @collection.default_lending_period,
                            cdl: @collection.cdl_enabled } %>
 
+  <%= render "diarization_form", { object: @collection,
+                                    max_speakers: @collection.diarization_max_speakers,
+                                    diarization: @collection.diarization_enabled } %>
+
   <h3 style="padding-top: 3rem;">Set Default Access Control for Collection Items</h3>
   <%= render "discovery_visibility_form", { object: @collection,
                                             visibility: @collection.default_visibility,

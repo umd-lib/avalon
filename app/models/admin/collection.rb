@@ -32,6 +32,8 @@ class Admin::Collection < ActiveFedora::Base
   validates :unit, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :website_url, format: { with: URI.regexp }, allow_blank: true
+  # AWS Transcribe requires MaxSpeakerLabels to be 2-30 when diarization is enabled.
+  validates :diarization_max_speakers, numericality: { only_integer: true, greater_than_or_equal_to: 2, less_than_or_equal_to: 30 }, allow_nil: true
 
   property :name, predicate: ::RDF::Vocab::DC.title, multiple: false do |index|
     index.as :stored_sortable
@@ -71,6 +73,12 @@ class Admin::Collection < ActiveFedora::Base
   end
   property :collection_managers, predicate: Avalon::RDFVocab::Collection.collection_managers, multiple: true do |index|
     index.as :symbol
+  end
+  property :diarization_enabled, predicate: Avalon::RDFVocab::Collection.diarization_enabled, multiple: false do |index|
+    index.as ActiveFedora::Indexing::Descriptor.new(:boolean, :stored, :indexed)
+  end
+  property :diarization_max_speakers, predicate: Avalon::RDFVocab::Collection.diarization_max_speakers, multiple: false do |index|
+    index.as :stored_sortable
   end
 
   has_subresource 'poster', class_name: 'IndexedFile'
@@ -304,6 +312,18 @@ class Admin::Collection < ActiveFedora::Base
     else
       Settings.controlled_digital_lending.collections_enabled
     end
+  end
+
+  # Per-collection override of Settings.transcription.aws.diarization.enabled;
+  # nil (not explicitly set on this collection) falls back to the global default.
+  def diarization_enabled?
+    diarization_enabled.nil? ? Settings.transcription.aws.diarization&.enabled : diarization_enabled
+  end
+
+  # Per-collection override of Settings.transcription.aws.diarization.max_speakers.
+  alias_method :'_diarization_max_speakers', :'diarization_max_speakers'
+  def diarization_max_speakers
+    self._diarization_max_speakers || Settings.transcription.aws.diarization&.max_speakers
   end
 
   # UMD Customization

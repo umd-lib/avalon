@@ -701,6 +701,48 @@ describe Admin::CollectionsController, type: :controller do
           end
         end
       end
+
+      context "diarization functionality" do
+        context "diarization disabled for application" do
+          before { allow(Settings.transcription.aws.diarization).to receive(:enabled).and_return(false) }
+          it "enables diarization for collection" do
+            put 'update', params: { id: collection.id, save_field: "diarization", diarization: 1 }
+            collection.reload
+            expect(collection.diarization_enabled).to be true
+            expect(flash[:error]).not_to be_present
+          end
+        end
+        context "diarization enabled for application" do
+          before { allow(Settings.transcription.aws.diarization).to receive(:enabled).and_return(true) }
+          it "disables diarization for collection" do
+            put 'update', params: { id: collection.id, save_field: "diarization" }
+            collection.reload
+            expect(collection.diarization_enabled).to be false
+          end
+        end
+      end
+    end
+
+    context "changing diarization max speakers" do
+      before do
+        allow(Settings.transcription).to receive(:enabled).and_return(true)
+        collection.diarization_enabled = true
+        collection.save!
+      end
+
+      it "sets a custom max_speakers value" do
+        expect { put 'update', params: { id: collection.id, save_field: "diarization_max_speakers", max_speakers: 4 } }.to change { collection.reload.diarization_max_speakers }.to(4)
+        expect(flash[:error]).not_to be_present
+      end
+
+      it "returns an error and leaves the value unchanged if out of AWS's 2-30 range" do
+        expect { put 'update', params: { id: collection.id, save_field: "diarization_max_speakers", max_speakers: 1 } }.not_to change { collection.reload.diarization_max_speakers }
+        expect(response).to redirect_to(admin_collection_path(collection))
+        expect(flash[:error]).to eq("Max speakers must be between 2 and 30.")
+
+        expect { put 'update', params: { id: collection.id, save_field: "diarization_max_speakers", max_speakers: 31 } }.not_to change { collection.reload.diarization_max_speakers }
+        expect(flash[:error]).to eq("Max speakers must be between 2 and 30.")
+      end
     end
 
     context "changing lending period" do
