@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_23_205709) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -290,6 +290,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_23_205709) do
     t.index ["master_file_id"], name: "index_transcription_requests_on_master_file_id"
     t.index ["media_object_id"], name: "index_transcription_requests_on_media_object_id"
     t.index ["provider_job_id"], name: "index_transcription_requests_on_provider_job_id"
+  end
+
+  create_table "transcription_vocabularies", force: :cascade do |t|
+    t.string "collection_id", null: false
+    t.string "aws_vocabulary_name", null: false
+    t.string "language", null: false
+    t.text "phrases", null: false
+    t.string "state", default: "pending", null: false
+    t.text "error_message"
+    t.datetime "last_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["collection_id"], name: "index_transcription_vocabularies_on_collection_id", unique: true
   end
 
   create_table "users", force: :cascade do |t|

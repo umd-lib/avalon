@@ -131,12 +131,17 @@ module TranscriptionJobs
       provider = TranscriptionProviders::Registry.for(request.provider)
       result = provider.fetch_transcript(request.provider_job_id)
 
-      create_supplemental_file(request, :caption, result.caption_vtt)
-      create_supplemental_file(request, :transcript, result.transcript_text)
+      created_files = [
+        create_supplemental_file(request, :caption, result.caption_vtt),
+        create_supplemental_file(request, :transcript, result.transcript_text)
+      ].compact
+      # Registering the files saves the MasterFile, which reindexes it and —
+      # via MasterFile's own after_update_index hook — already enqueues
+      # MediaObjectIndexingJob for the parent media object. No need to
+      # trigger that ourselves too.
+      register_supplemental_files(request, created_files) if created_files.any?
 
       request.transition_to!('completed', transcript_text: result.transcript_text, raw_response: result.raw_response.to_json)
-
-      MediaObjectIndexingJob.perform_later(request.media_object_id) if request.media_object_id.present?
     rescue *TRANSIENT_ERRORS => e
       log_transcription(:warn, 'transient error completing, will retry', request: request, error: "#{e.class}: #{e.message}")
       raise
@@ -171,6 +176,22 @@ module TranscriptionJobs
         content_type: spec[:content_type]
       )
       supplemental_file.save!
+      supplemental_file
+    end
+
+    # Creating a SupplementalFile with parent_id set is enough for its own
+    # Solr doc/indexing, but MasterFile keeps its own separate list of
+    # attached files (supplemental_files_json) that the UI and eligibility
+    # checks (e.g. TranscriptionRequestsController#enqueue_if_eligible,
+    # the "Transcribe" button's visibility) read from — it isn't derived by
+    # querying SupplementalFile.where(parent_id:). Without this, a
+    # completed transcription's caption/transcript wouldn't show up on the
+    # section or prevent it from being re-transcribed. Same pattern already
+    # used for auto-extracted captions in MasterFile#update_progress_on_success!.
+    def register_supplemental_files(request, supplemental_files)
+      master_file = request.master_file
+      master_file.add_supplemental_files(supplemental_files.map { |sf| sf.to_global_id.to_s })
+      master_file.save!
     end
   end
 

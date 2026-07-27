@@ -48,6 +48,7 @@ module TranscriptionProviders
     end
 
     def submit(master_file:, language: nil)
+      collection = master_file.media_object&.collection
       params = {
         transcription_job_name: job_name_for(master_file),
         media: { media_file_uri: media_file_uri(master_file) },
@@ -58,9 +59,9 @@ module TranscriptionProviders
         subtitles: { formats: ['vtt'] }
       }
       params[:output_key] = output_key_prefix if output_key_prefix
-      settings = diarization_settings(master_file)
-      params[:settings] = settings if settings
       language_code = LANGUAGE_CODE_MAP[language]
+      settings = job_settings(collection, language_code)
+      params[:settings] = settings if settings.present?
       language_code ? params[:language_code] = language_code : params[:identify_language] = true
 
       resp = @client.start_transcription_job(**params)
@@ -104,12 +105,8 @@ module TranscriptionProviders
       "#{job_name_prefix}-#{master_file.id}-#{SecureRandom.hex(4)}"
     end
 
-    # Lets deployments sharing one AWS account across multiple environments
-    # (e.g. sandbox/test/qa on the same EKS cluster) scope each environment's
-    # IAM policy Resource pattern to only the jobs it creates. Defaults to
-    # "avalon" — the original, unprefixed-by-environment behavior.
     def job_name_prefix
-      Settings.transcription.aws.job_name_prefix.presence || 'avalon'
+      AwsNaming.job_name_prefix
     end
 
     # When output_bucket is shared with other content (e.g. reused from
@@ -125,22 +122,39 @@ module TranscriptionProviders
       "#{prefix.chomp('/')}/"
     end
 
-    # AWS Transcribe's speaker diarization — labels distinct speakers in the
-    # transcript/VTT it generates. Off by default; max_speakers is a required
-    # companion parameter when enabled (an upper bound, not an exact count).
-    #
-    # The owning Admin::Collection can override both the enabled flag and
-    # max_speakers (Admin::Collection#diarization_enabled?/#diarization_max_speakers
-    # already fall back to Settings.transcription.aws.diarization.* when the
-    # collection hasn't set its own value) — falls back to the global Settings
-    # directly if the master file has no collection (e.g. orphaned record).
-    def diarization_settings(master_file)
-      collection = master_file.media_object&.collection
-      enabled = collection ? collection.diarization_enabled? : Settings.transcription.aws.diarization&.enabled
-      return nil unless enabled
+    # Builds the StartTranscriptionJob "settings" hash — speaker diarization
+    # and/or a custom vocabulary — from whichever is in effect for the
+    # master file's owning collection, falling back to the global Settings
+    # directly for diarization when there's no collection at all (e.g. an
+    # orphaned record). Admin::Collection's own diarization readers
+    # (diarization_enabled?/diarization_max_speakers) already fall back to
+    # Settings.transcription.aws.* when the collection hasn't set its own
+    # value, so this only needs the extra no-collection branch on top of
+    # that. Custom vocabulary has no such global fallback — it's Avalon-managed
+    # per collection only (TranscriptionVocabulary), so an orphaned record
+    # simply gets no vocabulary.
+    def job_settings(collection, language_code)
+      settings = {}
 
-      max_speakers = collection ? collection.diarization_max_speakers : Settings.transcription.aws.diarization&.max_speakers
-      { show_speaker_labels: true, max_speaker_labels: max_speakers }
+      diarization_enabled = collection ? collection.diarization_enabled? : Settings.transcription.aws.diarization&.enabled
+      if diarization_enabled
+        settings[:show_speaker_labels] = true
+        settings[:max_speaker_labels] = collection ? collection.diarization_max_speakers : Settings.transcription.aws.diarization&.max_speakers
+      end
+
+      # A vocabulary is only applied once it's actually READY (not
+      # pending/failed) and its language matches this job's resolved
+      # language — AWS requires an explicit LanguageCode for a vocabulary,
+      # so a job falling back to automatic language identification (no
+      # language_code) never gets one.
+      if collection && language_code
+        vocabulary = TranscriptionVocabulary.find_by(collection_id: collection.id, state: 'ready')
+        if vocabulary && LANGUAGE_CODE_MAP[vocabulary.language] == language_code
+          settings[:vocabulary_name] = vocabulary.aws_vocabulary_name
+        end
+      end
+
+      settings
     end
 
     def media_file_uri(master_file)

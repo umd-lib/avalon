@@ -100,7 +100,7 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
     end
 
     context 'when the master file belongs to a collection with its own diarization override' do
-      let(:collection) { instance_double(Admin::Collection) }
+      let(:collection) { instance_double(Admin::Collection, id: 'collection-1') }
       let(:media_object) { instance_double(MediaObject, collection: collection) }
 
       before { allow(master_file).to receive(:media_object).and_return(media_object) }
@@ -129,6 +129,72 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
           .with(hash_including(settings: { show_speaker_labels: true, max_speaker_labels: 3 }))
           .and_call_original
         adapter.submit(master_file: master_file)
+      end
+    end
+
+    context 'custom vocabulary' do
+      it 'does not set vocabulary_name when the master file has no owning collection' do
+        expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+        adapter.submit(master_file: master_file, language: 'eng')
+      end
+
+      context "when the master file belongs to a collection with an Avalon-managed vocabulary" do
+        let(:collection) { FactoryBot.create(:collection) }
+        let(:media_object) { instance_double(MediaObject, collection: collection) }
+
+        before { allow(master_file).to receive(:media_object).and_return(media_object) }
+
+        it 'does not set vocabulary_name when the collection has none configured' do
+          expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
+
+        it 'does not set vocabulary_name while the vocabulary is still pending sync' do
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'eng', state: 'pending')
+
+          expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
+
+        it 'does not set vocabulary_name when the vocabulary failed to sync' do
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'eng', state: 'failed', error_message: 'boom')
+
+          expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
+
+        it 'sets vocabulary_name once the vocabulary is ready and its language matches the job' do
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'eng', state: 'ready')
+
+          expect(client).to receive(:start_transcription_job)
+            .with(hash_including(settings: { vocabulary_name: "avalon-vocab-#{collection.id}" }))
+            .and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
+
+        it "does not set vocabulary_name when the ready vocabulary's language doesn't match the job" do
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'spa', state: 'ready')
+
+          expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
+
+        it 'does not set vocabulary_name when the job falls back to automatic language identification' do
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'eng', state: 'ready')
+
+          expect(client).to receive(:start_transcription_job).with(hash_excluding(:settings)).and_call_original
+          adapter.submit(master_file: master_file, language: 'haw')
+        end
+
+        it 'combines a ready vocabulary with diarization settings when both are configured' do
+          allow(Settings.transcription.aws.diarization).to receive_messages(enabled: true, max_speakers: 6)
+          TranscriptionVocabulary.create!(collection_id: collection.id, phrases: 'Archelon', language: 'eng', state: 'ready')
+
+          expect(client).to receive(:start_transcription_job)
+            .with(hash_including(settings: { show_speaker_labels: true, max_speaker_labels: 6, vocabulary_name: "avalon-vocab-#{collection.id}" }))
+            .and_call_original
+          adapter.submit(master_file: master_file, language: 'eng')
+        end
       end
     end
   end

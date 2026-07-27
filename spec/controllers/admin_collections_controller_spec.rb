@@ -721,6 +721,43 @@ describe Admin::CollectionsController, type: :controller do
           end
         end
       end
+
+      context "transcription vocabulary functionality" do
+        it "creates a custom transcription vocabulary and enqueues a sync job" do
+          expect do
+            put 'update', params: { id: collection.id, save_field: "vocabulary", vocabulary_phrases: "Archelon\nfoobar" }
+          end.to have_enqueued_job(TranscriptionVocabularyJobs::SyncVocabularyJob)
+
+          vocabulary = TranscriptionVocabulary.find_by(collection_id: collection.id)
+          expect(vocabulary.phrase_list).to eq(["Archelon", "foobar"])
+          expect(vocabulary.state).to eq("pending")
+        end
+
+        it "re-syncs an existing custom transcription vocabulary when the phrase list changes" do
+          vocabulary = TranscriptionVocabulary.create!(collection_id: collection.id, phrases: "old", language: "eng", state: "ready")
+
+          expect do
+            put 'update', params: { id: collection.id, save_field: "vocabulary", vocabulary_phrases: "new phrase" }
+          end.to have_enqueued_job(TranscriptionVocabularyJobs::SyncVocabularyJob).with(vocabulary.id)
+
+          vocabulary.reload
+          expect(vocabulary.phrase_list).to eq(["new phrase"])
+          expect(vocabulary.state).to eq("pending")
+        end
+
+        it "clears a custom transcription vocabulary, enqueueing its deletion" do
+          vocabulary = TranscriptionVocabulary.create!(collection_id: collection.id, phrases: "Archelon", language: "eng")
+
+          expect do
+            put 'update', params: { id: collection.id, save_field: "vocabulary", vocabulary_phrases: "" }
+          end.to have_enqueued_job(TranscriptionVocabularyJobs::DeleteVocabularyJob).with(vocabulary.id)
+        end
+
+        it "does nothing when clearing a vocabulary that doesn't exist" do
+          expect(TranscriptionVocabularyJobs::DeleteVocabularyJob).not_to receive(:perform_later)
+          put 'update', params: { id: collection.id, save_field: "vocabulary", vocabulary_phrases: "" }
+        end
+      end
     end
 
     context "changing diarization max speakers" do

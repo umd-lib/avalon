@@ -167,10 +167,12 @@ transcription:
     # Transcribe write to the bucket root. A trailing slash is added
     # automatically if omitted.
     output_prefix:
-    # Prefix for Transcribe job names ("<job_name_prefix>-<master_file_id>-<random>").
-    # Lets an IAM policy's Resource pattern (transcription-job/<prefix>-*)
-    # scope one environment's role to only the jobs it creates, e.g. when
-    # sandbox/test/qa share one AWS account. Defaults to "avalon".
+    # Prefix for Transcribe job names ("<job_name_prefix>-<master_file_id>-<random>")
+    # and custom vocabulary names ("<job_name_prefix>-vocab-<collection_id>").
+    # Lets an IAM policy's Resource pattern (transcription-job/<prefix>-*,
+    # vocabulary/<prefix>-vocab-*) scope one environment's role to only the
+    # resources it creates, e.g. when sandbox/test/qa share one AWS account.
+    # Defaults to "avalon".
     job_name_prefix: avalon
     diarization:
       # Ask AWS Transcribe to label distinct speakers in the transcript/VTT.

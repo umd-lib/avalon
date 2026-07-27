@@ -1,0 +1,104 @@
+<%#
+Copyright 2011-2026, The Trustees of Indiana University and Northwestern
+  University.  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+  under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+  CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  specific language governing permissions and limitations under the License.
+---  END LICENSE_HEADER BLOCK  ---
+%>
+<% if can?(:update_access_control, object) %>
+  <% if Settings.transcription.enabled && object.is_a?(Admin::Collection) %>
+    <div class="card transcription-settings" data-testid="collection-transcription-settings-card">
+      <div class="card-header">
+        <h3 class="card-title">Transcription</h3>
+      </div>
+      <div class="card-body">
+
+        <h4>Speaker Diarization</h4>
+        <%= bootstrap_form_for object, html: { id: 'diarization_form' }  do |vid| %>
+          <div class="mb-3">
+            <div class="form-check">
+              <%= label_tag :diarization do %>
+              <%= check_box_tag :diarization, '1', (diarization), data: { testid: 'diarization-enable-checkbox' }%>
+              Label distinct speakers when transcribing this collection's items
+              <% end %>
+            </div>
+          </div>
+          <%= hidden_field_tag :save_field, "diarization" %>
+          <%= submit_tag "Save Setting", class: "btn btn-primary", form: 'diarization_form', data:{testid: 'diarization-save-setting'} %>
+        <% end %>
+
+        <% if diarization_enabled?(object) %>
+          <hr/>
+          <h4>Maximum Speakers</h4>
+          <%= bootstrap_form_for object, html: { id: 'diarization_max_speakers_form' }  do |vid| %>
+            <div class="mb-3">
+              <label class="col-form-label" for="max_speakers">
+                Upper bound on distinct speakers AWS Transcribe should try to identify (2-30)
+              </label>
+              <%= text_field_tag "max_speakers", max_speakers, class: 'form-control', data: { testid: 'diarization-max-speakers-input' } %>
+            </div>
+            <%= hidden_field_tag :save_field, "diarization_max_speakers" %>
+            <%= submit_tag "Save Setting", class: "btn btn-primary", form: 'diarization_max_speakers_form', data:{testid: 'diarization-max-speakers-save-setting'} %>
+          <% end %>
+        <% end %>
+
+        <hr/>
+        <h4>Custom Vocabulary</h4>
+        <%= bootstrap_form_for object, html: { id: 'vocabulary_form' }  do |vid| %>
+          <div class="mb-3">
+            <label class="col-form-label" for="vocabulary_phrases">
+              Words/phrases (one per line) to bias recognition toward this collection's
+              domain-specific terms, e.g. proper nouns or product names. Avalon creates
+              and keeps this vocabulary in sync with AWS Transcribe automatically.
+              Leave blank to remove it.
+            </label>
+            <%= text_area_tag "vocabulary_phrases", vocabulary&.phrase_list&.join("\n"), rows: 6, class: 'form-control', data: { testid: 'transcription-vocabulary-phrases-input' } %>
+          </div>
+          <% if vocabulary %>
+            <div class="mb-3" data-testid="transcription-vocabulary-status">
+              Status: <%= vocabulary.state.titleize %>
+              <% if vocabulary.failed? && vocabulary.error_message.present? %>
+                &mdash; <%= vocabulary.error_message %>
+              <% end %>
+              <% if vocabulary.last_synced_at %>
+                (last synced <%= vocabulary.last_synced_at.strftime('%Y-%m-%d %H:%M:%S') %>)
+              <% end %>
+            </div>
+          <% end %>
+          <%= hidden_field_tag :save_field, "vocabulary" %>
+          <%= submit_tag "Save Setting", class: "btn btn-primary", form: 'vocabulary_form', data:{testid: 'transcription-vocabulary-save-setting'} %>
+        <% end %>
+
+      </div>
+    </div>
+  <% end %>
+<% else %>
+
+  <% if Settings.transcription.enabled && object.is_a?(Admin::Collection) && (diarization_enabled?(object) || vocabulary.present?) %>
+    <div class="card transcription-settings">
+      <div class="card-header">
+        <h3 class="card-title">Transcription</h3>
+      </div>
+      <div class="card-body">
+        <% if diarization_enabled?(object) %>
+          <div class="mb-3">
+            Speaker diarization is enabled, identifying up to <%= max_speakers %> speakers.
+          </div>
+        <% end %>
+        <% if vocabulary.present? %>
+          <div class="mb-3">
+            Transcription jobs for this collection use a custom vocabulary (status: <%= vocabulary.state.titleize %>).
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

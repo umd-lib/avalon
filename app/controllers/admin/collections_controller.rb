@@ -425,6 +425,7 @@ class Admin::CollectionsController < ApplicationController
 
     update_default_lending_period(collection, params) if collection.cdl_enabled?
     update_diarization_max_speakers(collection, params) if collection.diarization_enabled?
+    update_transcription_vocabulary(collection, params)
   end
 
   def update_access_settings(collection, params)
@@ -451,6 +452,31 @@ class Admin::CollectionsController < ApplicationController
       collection.diarization_max_speakers = max_speakers
     else
       flash[:error] = "Max speakers must be between 2 and 30."
+    end
+  end
+
+  # Saving a non-blank word list (re-)syncs Avalon's managed AWS Transcribe
+  # custom vocabulary for this collection; saving a blank one deletes it
+  # (both the local TranscriptionVocabulary record and its AWS counterpart).
+  def update_transcription_vocabulary(collection, params)
+    return unless params[:save_field] == "vocabulary"
+
+    phrases = params[:vocabulary_phrases].to_s
+    vocabulary = TranscriptionVocabulary.find_by(collection_id: collection.id)
+
+    if phrases.blank?
+      TranscriptionVocabularyJobs::DeleteVocabularyJob.perform_later(vocabulary.id) if vocabulary
+      return
+    end
+
+    vocabulary ||= TranscriptionVocabulary.new(collection_id: collection.id)
+    vocabulary.phrases = phrases
+    vocabulary.state = 'pending'
+
+    if vocabulary.save
+      TranscriptionVocabularyJobs::SyncVocabularyJob.perform_later(vocabulary.id)
+    else
+      flash[:error] = vocabulary.errors.full_messages.to_sentence
     end
   end
 

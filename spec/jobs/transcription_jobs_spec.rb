@@ -174,6 +174,13 @@ RSpec.describe TranscriptionJobs do
         expect(caption.language).to eq(request.language)
         expect(transcript).to be_present
         expect(transcript.machine_generated?).to eq(true)
+
+        # Not just findable by parent_id — registered on the MasterFile's own
+        # supplemental_files_json list, which is what the "Transcribe" button's
+        # eligibility check and the Section Files UI actually read from.
+        master_file.reload
+        expect(master_file.supplemental_files(tag: 'caption')).to include(caption)
+        expect(master_file.supplemental_files(tag: 'transcript')).to include(transcript)
       end
 
       it 'enqueues a MediaObjectIndexingJob for the parent media object' do

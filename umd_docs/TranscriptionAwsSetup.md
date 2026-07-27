@@ -18,7 +18,8 @@ transcription:
     # Optional: segment Transcribe's output under a prefix instead of the
     # bucket root — see "Sharing a bucket with other content" below.
     output_prefix:
-    # Prefix for Transcribe job names — see "Scoping IAM per environment" below.
+    # Prefix for Transcribe job and vocabulary names — see "Scoping IAM per
+    # environment" below.
     job_name_prefix: avalon
     # Optional: label distinct speakers — see "Speaker diarization" below.
     diarization:
@@ -104,8 +105,27 @@ The IAM role/user Avalon uses for AWS API calls needs:
    }
    ```
 
+4. **Custom vocabulary lifecycle**, scoped to vocabularies this app creates
+   (names are `<job_name_prefix>-vocab-<collection_id>`, see
+   `TranscriptionVocabulary#set_aws_vocabulary_name`) — see "Custom
+   vocabulary" below:
+
+   ```json
+   {
+     "Effect": "Allow",
+     "Action": [
+       "transcribe:CreateVocabulary",
+       "transcribe:UpdateVocabulary",
+       "transcribe:GetVocabulary",
+       "transcribe:DeleteVocabulary"
+     ],
+     "Resource": "arn:aws:transcribe:<region>:*:vocabulary/avalon-vocab-*"
+   }
+   ```
+
 Do not grant broader `transcribe:*` or account-wide `s3:*` — the above is
-sufficient for this adapter's full lifecycle (submit, poll, fetch, cancel).
+sufficient for this adapter's full lifecycle (submit, poll, fetch, cancel,
+plus managing custom vocabularies).
 
 ### Why the app needs s3:GetObject on the output bucket
 
@@ -145,13 +165,60 @@ just pulls the flat `results.transcripts[0].transcript` string — adding
 speaker labels there would mean parsing the response's separate
 `speaker_labels` segment data, which isn't implemented.
 
+Both `enabled` and `max_speakers` can be overridden per `Admin::Collection`
+(`#diarization_enabled?`/`#diarization_max_speakers`, set from the
+collection's edit page) — an unset collection value falls back to this
+global default.
+
+### Custom vocabulary
+
+Off by default, and managed entirely per `Admin::Collection` — there is no
+site-wide default (unlike diarization). AWS Transcribe's Custom Vocabulary
+feature biases recognition toward specific words/phrases — useful for
+proper nouns and domain jargon that a general-purpose language model gets
+wrong (e.g. an internal application name being misheard as something else
+entirely).
+
+Unlike the original reference-only design, **Avalon now creates and manages
+vocabulary content itself**: an admin pastes a word/phrase list (one per
+line) into the "Custom Vocabulary" field on a collection's edit page, and
+Avalon handles the rest via `TranscriptionVocabulary` (one row per
+collection) and `TranscriptionProviders::AwsTranscribeVocabulary`:
+
+1. Saving a non-blank list creates or updates a `TranscriptionVocabulary`
+   record (`state: pending`) and enqueues `TranscriptionVocabularyJobs::SyncVocabularyJob`,
+   which calls AWS's `CreateVocabulary` (first sync) or `UpdateVocabulary`
+   (subsequent edits) with the phrase list as `Phrases`. AWS vocabulary
+   names can't be renamed, so the same deterministic name
+   (`<job_name_prefix>-vocab-<collection_id>`) is reused for the life of
+   the collection's vocabulary.
+2. `TranscriptionVocabularyJobs::PollVocabulariesJob` (sidekiq-cron, every
+   1 min) sweeps `pending` records via `GetVocabulary` until AWS reports
+   `READY` or `FAILED` (with a `FailureReason` surfaced as `error_message`).
+3. `AwsTranscribe#job_settings` only applies a vocabulary to a
+   transcription job once it's `READY` **and** its language matches the
+   job's resolved language — a custom vocabulary requires an explicit AWS
+   `LanguageCode`, so a job that falls back to automatic language
+   identification (no entry in `LANGUAGE_CODE_MAP` for the item's
+   language) never gets one.
+4. Saving a blank list enqueues `TranscriptionVocabularyJobs::DeleteVocabularyJob`,
+   which best-effort deletes the AWS-side vocabulary (`DeleteVocabulary`)
+   and always removes the local record regardless of whether that call
+   succeeded.
+
+Only a simple phrase list is supported (AWS's `Phrases` parameter) — no
+`SoundsLike`/`IPA` pronunciation hints or `DisplayAs` casing, which AWS only
+accepts via a file uploaded to S3 (`VocabularyFileUri`) instead of inline
+`Phrases`.
+
 ### Scoping IAM per environment
 
 If multiple environments (e.g. sandbox/test/qa) share one AWS account and
 each gets its own IRSA role, set a distinct `job_name_prefix` per
 environment (e.g. `avalon-sandbox`, `avalon-test`, `avalon-qa`) and match
-each role's Transcribe policy `Resource` pattern to it
-(`transcription-job/avalon-sandbox-*`, etc.). This is defense-in-depth, not
+each role's Transcribe policy `Resource` patterns to it
+(`transcription-job/avalon-sandbox-*`, `vocabulary/avalon-sandbox-vocab-*`,
+etc.). This is defense-in-depth, not
 the primary isolation boundary — that's the IRSA role's OIDC trust
 condition (e.g. `oidc_subjects_with_wildcards = ["system:serviceaccount:sandbox:avalon"]`),
 which already prevents one environment's pods from assuming another
@@ -184,3 +251,9 @@ an unsupported (non-S3) media source, AWS `AccessDenied`, etc. — fails the
 `TranscriptionRequest` immediately, since retrying won't change the outcome.
 If jobs are failing immediately with an access error, check the IAM policy
 above before assuming it's a code bug.
+
+`TranscriptionVocabularyJobs::TRANSIENT_ERRORS` (same error set) governs
+`SyncVocabularyJob` the same way; a permanent failure marks the
+`TranscriptionVocabulary` `failed` with `error_message` set. `PollVocabulariesJob`
+and `DeleteVocabularyJob` don't retry — the cron sweep re-runs every minute
+regardless, and deletion is already best-effort by design.
