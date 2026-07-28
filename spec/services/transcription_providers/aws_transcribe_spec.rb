@@ -257,6 +257,37 @@ RSpec.describe TranscriptionProviders::AwsTranscribe do
       end
     end
 
+    context 'when the transcript includes multi-speaker diarization data' do
+      let(:transcript_json) do
+        {
+          'results' => {
+            'transcripts' => [{ 'transcript' => 'Hello world. Hi there.' }],
+            'speaker_labels' => { 'speakers' => 2 },
+            'items' => [
+              { 'type' => 'pronunciation', 'start_time' => '0.0', 'end_time' => '0.5', 'speaker_label' => 'spk_0', 'alternatives' => [{ 'content' => 'Hello' }] },
+              { 'type' => 'pronunciation', 'start_time' => '0.5', 'end_time' => '1.0', 'speaker_label' => 'spk_0', 'alternatives' => [{ 'content' => 'world.' }] },
+              { 'type' => 'pronunciation', 'start_time' => '1.0', 'end_time' => '1.5', 'speaker_label' => 'spk_1', 'alternatives' => [{ 'content' => 'Hi' }] },
+              { 'type' => 'pronunciation', 'start_time' => '1.5', 'end_time' => '2.0', 'speaker_label' => 'spk_1', 'alternatives' => [{ 'content' => 'there.' }] }
+            ]
+          }
+        }
+      end
+      let(:vtt_body) { "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello world.\n\n00:00:01.000 --> 00:00:02.000\nHi there.\n" }
+
+      before do
+        client.stub_responses(:get_transcription_job, transcription_job: {
+                                 transcript: { transcript_file_uri: transcript_uri },
+                                 subtitles: { subtitle_file_uris: [vtt_uri] }
+                               })
+      end
+
+      it 'prefixes each cue with the speaker who is talking at that cue\'s start' do
+        vtt = adapter.fetch_transcript('job-1').caption_vtt
+        expect(vtt).to include('[Speaker 1] Hello world.')
+        expect(vtt).to include('[Speaker 2] Hi there.')
+      end
+    end
+
     context 'when no subtitle file was generated' do
       before do
         client.stub_responses(:get_transcription_job, transcription_job: { transcript: { transcript_file_uri: transcript_uri } })

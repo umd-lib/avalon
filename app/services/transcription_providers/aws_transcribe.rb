@@ -15,6 +15,7 @@
 require 'aws-sdk-transcribeservice'
 require 'aws-sdk-s3'
 require 'addressable/uri'
+require 'avalon/webvtt_speaker_labeler'
 
 module TranscriptionProviders
   # AWS Transcribe adapter. AWS Transcribe reads media directly from S3, so
@@ -87,10 +88,16 @@ module TranscriptionProviders
 
       transcript_json = JSON.parse(download_from_output_bucket(transcript_uri))
       vtt_uri = job.subtitles&.subtitle_file_uris&.first
+      caption_vtt = vtt_uri ? download_from_output_bucket(vtt_uri) : nil
+      # AWS Transcribe's generated subtitle files never include speaker
+      # attribution, even with diarization on — only the JSON transcript
+      # does (results.items[].speaker_label, per word). A no-op when
+      # diarization wasn't requested or only one speaker was detected.
+      caption_vtt = Avalon::WebvttSpeakerLabeler.apply(caption_vtt, transcript_json) if caption_vtt
 
       TranscriptResult.new(
         transcript_text: extract_transcript_text(transcript_json),
-        caption_vtt: vtt_uri ? download_from_output_bucket(vtt_uri) : nil,
+        caption_vtt: caption_vtt,
         raw_response: transcript_json
       )
     end
