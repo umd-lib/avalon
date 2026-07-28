@@ -155,32 +155,42 @@ RSpec.describe TranscriptionJobs do
 
       before { request.transition_to!('submitted', provider_job_id: 'provider-job-1') }
 
-      it 'creates caption and transcript SupplementalFile artifacts and marks the request completed' do
+      it 'creates a single caption+transcript SupplementalFile artifact and marks the request completed' do
         allow(provider).to receive(:fetch_transcript).with('provider-job-1').and_return(transcript_result)
 
-        expect { described_class.perform_now(request.id) }.to change(SupplementalFile, :count).by(2)
+        expect { described_class.perform_now(request.id) }.to change(SupplementalFile, :count).by(1)
 
         request.reload
         expect(request.status).to eq('completed')
         expect(request.transcript_text).to eq('Hello world.')
         expect(request.finished_at).to be_present
 
-        artifacts = SupplementalFile.where(parent_id: master_file.id).to_a
-        caption = artifacts.find(&:caption?)
-        transcript = artifacts.find(&:transcript?)
+        artifact = SupplementalFile.where(parent_id: master_file.id).first
 
-        expect(caption).to be_present
-        expect(caption.machine_generated?).to eq(true)
-        expect(caption.language).to eq(request.language)
-        expect(transcript).to be_present
-        expect(transcript.machine_generated?).to eq(true)
+        expect(artifact.caption?).to eq(true)
+        expect(artifact.transcript?).to eq(true)
+        expect(artifact.machine_generated?).to eq(true)
+        expect(artifact.language).to eq(request.language)
 
         # Not just findable by parent_id — registered on the MasterFile's own
         # supplemental_files_json list, which is what the "Transcribe" button's
         # eligibility check and the Section Files UI actually read from.
         master_file.reload
-        expect(master_file.supplemental_files(tag: 'caption')).to include(caption)
-        expect(master_file.supplemental_files(tag: 'transcript')).to include(transcript)
+        expect(master_file.supplemental_files(tag: 'caption')).to include(artifact)
+        expect(master_file.supplemental_files(tag: 'transcript')).to include(artifact)
+      end
+
+      it 'falls back to a transcript-only artifact when the provider returns no VTT' do
+        allow(provider).to receive(:fetch_transcript).with('provider-job-1')
+                                                       .and_return(TranscriptionProviders::TranscriptResult.new(
+                                                                     transcript_text: 'Hello world.', caption_vtt: nil, raw_response: {}
+                                                                   ))
+
+        expect { described_class.perform_now(request.id) }.to change(SupplementalFile, :count).by(1)
+
+        artifact = SupplementalFile.where(parent_id: master_file.id).first
+        expect(artifact.transcript?).to eq(true)
+        expect(artifact.caption?).to eq(false)
       end
 
       it 'enqueues a MediaObjectIndexingJob for the parent media object' do
@@ -190,25 +200,25 @@ RSpec.describe TranscriptionJobs do
         described_class.perform_now(request.id)
       end
 
-      it 'creates artifacts immediately visible, with no review_status, when the collection does not require review' do
+      it 'creates an artifact immediately visible, with no review_status, when the collection does not require review' do
         allow(provider).to receive(:fetch_transcript).and_return(transcript_result)
         described_class.perform_now(request.id)
 
-        artifacts = SupplementalFile.where(parent_id: master_file.id).to_a
-        expect(artifacts).to all(have_attributes(review_status: nil))
-        expect(artifacts.none? { |f| f.tags.include?('private') }).to eq(true)
+        artifact = SupplementalFile.where(parent_id: master_file.id).first
+        expect(artifact.review_status).to be_nil
+        expect(artifact.tags).not_to include('private')
       end
 
       context 'when the collection requires human review' do
         before { master_file.media_object.collection.update!(review_required: true) }
 
-        it 'creates artifacts as pending_review and private' do
+        it 'creates the artifact as pending_review and private' do
           allow(provider).to receive(:fetch_transcript).and_return(transcript_result)
           described_class.perform_now(request.id)
 
-          artifacts = SupplementalFile.where(parent_id: master_file.id).to_a
-          expect(artifacts).to all(have_attributes(review_status: 'pending_review'))
-          expect(artifacts.all? { |f| f.tags.include?('private') }).to eq(true)
+          artifact = SupplementalFile.where(parent_id: master_file.id).first
+          expect(artifact.review_status).to eq('pending_review')
+          expect(artifact.tags).to include('private')
         end
       end
 

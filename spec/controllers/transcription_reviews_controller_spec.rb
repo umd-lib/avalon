@@ -21,7 +21,7 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
   let(:pending_file) do
     FactoryBot.create(:supplemental_file, :with_caption_file,
                        parent_id: master_file.id,
-                       tags: ['caption', 'machine_generated', 'private'],
+                       tags: ['caption', 'transcript', 'machine_generated', 'private'],
                        review_status: 'pending_review')
   end
 

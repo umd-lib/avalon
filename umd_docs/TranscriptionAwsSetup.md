@@ -275,15 +275,26 @@ unset collection value falls back to `Settings.transcription.review.enabled`).
 When enabled for a collection, machine-generated captions/transcripts don't
 go live immediately — they're gated behind administrator approval.
 
-- `TranscriptionJobs::CompleteTranscriptionRequestJob` tags newly-created
-  caption/transcript `SupplementalFile`s `private` (Avalon's existing
-  visibility-hiding tag) and sets `review_status: 'pending_review'` only
-  when the owning collection has `review_required?` true. Otherwise it
-  behaves exactly as before — immediately visible, no review state.
+- `TranscriptionJobs::CompleteTranscriptionRequestJob` creates **one**
+  `SupplementalFile` per completed request — a WebVTT file tagged both
+  `caption` and `transcript` (the same "treat as transcript" pattern the
+  Section Files upload UI already supports for manual uploads,
+  `SupplementalFile#caption_transcript?`), not two independent artifacts.
+  The plain-text transcript view is derived from that single file's cues on
+  demand (`Avalon::TranscriptParser`, already used for Solr indexing) rather
+  than stored separately, so there's only ever one file for a reviewer to
+  check and correct, and no risk of the caption and transcript drifting out
+  of sync with each other. (Falls back to a transcript-only `.txt` artifact
+  — no `caption` tag — on the rare provider response with no VTT, e.g. a
+  language AWS doesn't generate subtitles for.) It's also tagged `private`
+  and given `review_status: 'pending_review'` only when the owning
+  collection has `review_required?` true; otherwise it behaves exactly as
+  before — immediately visible, no review state.
 - Admins review pending items at `/transcription_reviews`, a dashboard
   listing every `pending_review` file across all collections (mirrors the
-  `/transcription_requests` dashboard's `paged_index` pattern). Each row
-  links to the owning `MasterFile`/`MediaObject` and offers three actions:
+  `/transcription_requests` dashboard's `paged_index` pattern) — one row per
+  section awaiting review. Each row links to the owning
+  `MasterFile`/`MediaObject` and offers three actions:
   - **Approve** (`SupplementalFile#approve!`) — removes the `private` tag,
     making it publicly visible, and re-indexes the parent `MediaObject`.
   - **Reject** (`SupplementalFile#reject!`) — stays hidden permanently, but

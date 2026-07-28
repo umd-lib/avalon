@@ -108,8 +108,9 @@ module TranscriptionJobs
     end
   end
 
-  # Downloads/normalizes the finished provider transcript, creates the
-  # caption (.vtt) and transcript (.txt) SupplementalFile artifacts, and
+  # Downloads/normalizes the finished provider transcript, creates a single
+  # SupplementalFile artifact (a .vtt tagged both caption and transcript,
+  # falling back to a transcript-only .txt when no VTT is available), and
   # marks the TranscriptionRequest completed.
   class CompleteTranscriptionRequestJob < ApplicationJob
     include TranscriptionJobs::Logging
@@ -119,11 +120,6 @@ module TranscriptionJobs
       job.class.fail_after_retries(job.arguments.first, error)
     end
 
-    ARTIFACTS = {
-      caption: { tags: %w[caption machine_generated], extension: 'vtt', content_type: 'text/vtt', label: 'Machine-generated Caption' },
-      transcript: { tags: %w[transcript machine_generated], extension: 'txt', content_type: 'text/plain', label: 'Machine-generated Transcript' }
-    }.freeze
-
     def perform(transcription_request_id)
       request = TranscriptionRequest.find_by(id: transcription_request_id)
       return if request.nil? || request.terminal?
@@ -131,15 +127,12 @@ module TranscriptionJobs
       provider = TranscriptionProviders::Registry.for(request.provider)
       result = provider.fetch_transcript(request.provider_job_id)
 
-      created_files = [
-        create_supplemental_file(request, :caption, result.caption_vtt),
-        create_supplemental_file(request, :transcript, result.transcript_text)
-      ].compact
-      # Registering the files saves the MasterFile, which reindexes it and —
+      created_file = create_supplemental_file(request, result)
+      # Registering the file saves the MasterFile, which reindexes it and —
       # via MasterFile's own after_update_index hook — already enqueues
       # MediaObjectIndexingJob for the parent media object. No need to
       # trigger that ourselves too.
-      register_supplemental_files(request, created_files) if created_files.any?
+      register_supplemental_files(request, [created_file]) if created_file
 
       request.transition_to!('completed', transcript_text: result.transcript_text, raw_response: result.raw_response.to_json)
     rescue *TRANSIENT_ERRORS => e
@@ -160,23 +153,50 @@ module TranscriptionJobs
 
     private
 
-    def create_supplemental_file(request, kind, content)
-      return if content.blank?
+    # A single WebVTT file tagged both 'caption' and 'transcript' — the same
+    # "treat as transcript" pattern the Section Files upload UI already
+    # supports for manual uploads (SupplementalFile#caption_transcript?).
+    # The plain-text transcript is derived from this file's cues on demand
+    # (Avalon::TranscriptParser, already used by
+    # SupplementalFile#segment_transcript for Solr indexing) rather than
+    # stored as a second, independently-editable artifact — so there's only
+    # ever one file for a reviewer to check or correct, and no risk of the
+    # caption and transcript drifting out of sync with each other.
+    #
+    # Falls back to a transcript-only .txt artifact when the provider didn't
+    # return a VTT (e.g. subtitle generation isn't supported for the job's
+    # language) — see TranscriptionProviders::AwsTranscribe#fetch_transcript,
+    # where caption_vtt is nil whenever AWS returns no subtitle_file_uris.
+    def create_supplemental_file(request, result)
+      if result.caption_vtt.present?
+        tags = %w[caption transcript machine_generated]
+        content = result.caption_vtt
+        extension = 'vtt'
+        content_type = 'text/vtt'
+        label = 'Machine-generated Caption'
+      elsif result.transcript_text.present?
+        tags = %w[transcript machine_generated]
+        content = result.transcript_text
+        extension = 'txt'
+        content_type = 'text/plain'
+        label = 'Machine-generated Transcript'
+      else
+        return nil
+      end
 
-      spec = ARTIFACTS.fetch(kind)
       review_required = request.master_file.media_object&.collection&.review_required?
-      tags = review_required ? spec[:tags] + ['private'] : spec[:tags]
+      tags += ['private'] if review_required
       supplemental_file = SupplementalFile.new(
         parent_id: request.master_file_id,
         tags: tags,
         review_status: (review_required ? 'pending_review' : nil),
         language: request.language,
-        label: spec[:label]
+        label: label
       )
       supplemental_file.file.attach(
         io: StringIO.new(content),
-        filename: "#{request.master_file_id}_#{kind}.#{spec[:extension]}",
-        content_type: spec[:content_type]
+        filename: "#{request.master_file_id}_caption.#{extension}",
+        content_type: content_type
       )
       supplemental_file.save!
       supplemental_file

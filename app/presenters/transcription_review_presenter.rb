@@ -22,7 +22,13 @@ class TranscriptionReviewPresenter
   delegate :id, :created_at, to: :supplemental_file
 
   def type
-    supplemental_file.caption? ? 'caption' : 'transcript'
+    if supplemental_file.caption? && supplemental_file.transcript?
+      'caption + transcript'
+    elsif supplemental_file.caption?
+      'caption'
+    else
+      'transcript'
+    end
   end
 
   def language
