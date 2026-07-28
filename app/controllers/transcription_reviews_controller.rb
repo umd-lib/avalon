@@ -30,8 +30,15 @@ class TranscriptionReviewsController < ApplicationController
 
     # Pending-review SupplementalFiles for the index page are loaded via
     # /javascript/components/tables/TranscriptionReviewsTable.jsx which
-    # requests the json for all records on initial page load.
-    @supplemental_files = SupplementalFile.where(review_status: 'pending_review')
+    # requests the json for all records on initial page load. Filtered to
+    # collections the current user can edit — the real, item-scoped
+    # visibility boundary (an administrator's check is always true, so this
+    # doesn't change what admins see). The pending-review queue is small/
+    # transient, so a per-row check here doesn't need the grouping
+    # optimization TranscriptionRequestsController#paged_index uses.
+    @supplemental_files = SupplementalFile.where(review_status: 'pending_review').select do |f|
+      can?(:edit, f.master_file&.media_object)
+    end
     records_total = @supplemental_files.count
 
     response = {
@@ -58,7 +65,7 @@ class TranscriptionReviewsController < ApplicationController
 
   # POST /transcription_reviews/1/approve
   def approve
-    authorize! :manage, :transcription_review
+    authorize! :edit, @supplemental_file.master_file&.media_object
 
     @supplemental_file.approve!(current_user.user_key)
     transition_transcription_request!('completed')
@@ -70,7 +77,7 @@ class TranscriptionReviewsController < ApplicationController
 
   # POST /transcription_reviews/1/reject
   def reject
-    authorize! :manage, :transcription_review
+    authorize! :edit, @supplemental_file.master_file&.media_object
 
     @supplemental_file.reject!(current_user.user_key)
     transition_transcription_request!('rejected')
@@ -80,7 +87,7 @@ class TranscriptionReviewsController < ApplicationController
 
   # GET /transcription_reviews/1/edit
   def edit
-    authorize! :manage, :transcription_review
+    authorize! :edit, @supplemental_file.master_file&.media_object
     return redirect_to(transcription_reviews_path, alert: NOT_EDITABLE_MESSAGE) unless @supplemental_file.editable_transcription_review?
 
     @presenter = TranscriptionReviewPresenter.new(@supplemental_file)
@@ -89,7 +96,7 @@ class TranscriptionReviewsController < ApplicationController
 
   # POST /transcription_reviews/1/update_text
   def update_text
-    authorize! :manage, :transcription_review
+    authorize! :edit, @supplemental_file.master_file&.media_object
     return redirect_to(transcription_reviews_path, alert: NOT_EDITABLE_MESSAGE) unless @supplemental_file.editable_transcription_review?
 
     editor = Avalon::WebvttCueEditor.new(@supplemental_file.file.download)

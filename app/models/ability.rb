@@ -49,17 +49,20 @@ class Ability
     can :read, :encode_dashboard if is_administrator?
   end
 
+  # Coarse "is this dashboard even worth showing" gates — administrators see
+  # everything; any other collection member (manager/editor/depositor) can
+  # load the page, but TranscriptionRequestsController/TranscriptionReviewsController
+  # filter rows and gate mutating actions with the real, item-scoped
+  # `can? :edit, media_object` check, which is the actual manager-or-editor
+  # (not depositor) boundary. No `collection_editors_ssim` Solr field exists
+  # to query "editor of any collection" more precisely than that.
   def transcription_dashboard_permissions
-    can :read, :transcription_dashboard if is_administrator?
-    can :manage, TranscriptionRequest if is_administrator?
+    can :read, :transcription_dashboard if is_administrator? || is_member_of_any_collection?
   end
 
-  # Deliberately a separate ability from transcription_dashboard_permissions
-  # (administrators only for now) so review authority can be broadened to
-  # collection managers later without touching transcription-dashboard access.
   def transcription_review_permissions
-    can :read, :transcription_review_dashboard if is_administrator?
-    can :manage, :transcription_review if is_administrator?
+    can :read, :transcription_review_dashboard if is_administrator? || is_member_of_any_collection?
+    can :manage, :transcription_review if is_administrator? || is_member_of_any_collection?
   end
 
   # UMD Customization

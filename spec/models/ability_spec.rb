@@ -837,28 +837,42 @@ describe Ability, type: :model do
   end
   # End UMD Customization
 
-  describe 'transcription dashboard permissions' do
+  describe 'transcription dashboard and review permissions' do
     let(:admin) { FactoryBot.create(:administrator) }
     let(:user) { FactoryBot.create(:user) }
+    let(:manager_user) { FactoryBot.create(:user) }
+    let(:editor_user) { FactoryBot.create(:user) }
+    let(:collection) { FactoryBot.create(:collection, :with_manager, :with_editor, manager: manager_user, editor: editor_user) }
+    let(:media_object) { FactoryBot.create(:media_object, collection: collection) }
 
-    it 'allows administrators to read the transcription dashboard' do
+    it 'allows administrators to read both dashboards' do
       ability = Ability.new(admin)
       expect(ability.can?(:read, :transcription_dashboard)).to be true
+      expect(ability.can?(:read, :transcription_review_dashboard)).to be true
+      expect(ability.can?(:manage, :transcription_review)).to be true
     end
 
-    it 'allows administrators to manage TranscriptionRequest records' do
-      ability = Ability.new(admin)
-      expect(ability.can?(:manage, TranscriptionRequest)).to be true
+    it 'allows a collection manager to read both dashboards (coarse gate — see the real per-item :edit check in the controllers)' do
+      media_object # ensure the collection/manager relationship exists
+      ability = Ability.new(manager_user)
+      expect(ability.can?(:read, :transcription_dashboard)).to be true
+      expect(ability.can?(:read, :transcription_review_dashboard)).to be true
+      expect(ability.can?(:manage, :transcription_review)).to be true
     end
 
-    it 'does not allow non-administrators to read the transcription dashboard' do
+    it 'allows a collection editor to read both dashboards' do
+      media_object
+      ability = Ability.new(editor_user)
+      expect(ability.can?(:read, :transcription_dashboard)).to be true
+      expect(ability.can?(:read, :transcription_review_dashboard)).to be true
+      expect(ability.can?(:manage, :transcription_review)).to be true
+    end
+
+    it 'does not allow a user with no collection relationship to read either dashboard' do
       ability = Ability.new(user)
       expect(ability.can?(:read, :transcription_dashboard)).to be false
-    end
-
-    it 'does not allow non-administrators to manage TranscriptionRequest records' do
-      ability = Ability.new(user)
-      expect(ability.can?(:manage, TranscriptionRequest)).to be false
+      expect(ability.can?(:read, :transcription_review_dashboard)).to be false
+      expect(ability.can?(:manage, :transcription_review)).to be false
     end
   end
 end

@@ -19,6 +19,9 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
   let(:valid_session) { {} }
   let(:user) { FactoryBot.create(:administrator) }
   let(:master_file) { FactoryBot.create(:master_file, :with_media_object) }
+  let(:collection) { master_file.media_object.collection }
+  let(:manager) { User.find_by(username: collection.managers.first) }
+  let(:editor) { User.find_by(username: collection.editors.first) }
   let(:pending_file) do
     FactoryBot.create(:supplemental_file, :with_caption_file,
                        parent_id: master_file.id,
@@ -42,6 +45,15 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
         expect(response).to render_template('errors/restricted_pid')
       end
     end
+
+    context 'when a collection manager (member of at least one collection)' do
+      let(:user) { manager }
+
+      it 'returns a success response' do
+        get :index, params: {}, session: valid_session
+        expect(response).to be_successful
+      end
+    end
   end
 
   describe 'POST #paged_index' do
@@ -56,6 +68,26 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
       expect(parsed_response['recordsTotal']).to eq(1)
       expect(parsed_response['data'].count).to eq(1)
       expect(approved_file.review_status).to eq('approved')
+    end
+
+    context 'when a manager of the file\'s own collection' do
+      let(:user) { manager }
+
+      it 'returns the file' do
+        post :paged_index, format: 'json', session: valid_session
+        expect(JSON.parse(response.body)['recordsTotal']).to eq(1)
+      end
+    end
+
+    context 'when an editor of a different collection' do
+      let(:user) { User.find_by(username: FactoryBot.create(:media_object).collection.editors.first) }
+
+      it 'does not return the other collection\'s pending file' do
+        post :paged_index, format: 'json', session: valid_session
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response['recordsTotal']).to eq(0)
+        expect(parsed_response['data']).to be_empty
+      end
     end
   end
 
@@ -91,6 +123,25 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
       it 'redirects to restricted content page' do
         post :approve, params: { id: pending_file.to_param }, session: valid_session
         expect(response).to render_template('errors/restricted_pid')
+      end
+    end
+
+    context 'when an editor of the file\'s own collection' do
+      let(:user) { editor }
+
+      it 'approves the file' do
+        post :approve, params: { id: pending_file.to_param }, session: valid_session
+        expect(pending_file.reload.review_status).to eq('approved')
+      end
+    end
+
+    context 'when a manager of a different collection' do
+      let(:user) { User.find_by(username: FactoryBot.create(:media_object).collection.managers.first) }
+
+      it 'redirects to restricted content page' do
+        post :approve, params: { id: pending_file.to_param }, session: valid_session
+        expect(response).to render_template('errors/restricted_pid')
+        expect(pending_file.reload.review_status).to eq('pending_review')
       end
     end
   end
@@ -133,6 +184,15 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
         expect(response).to render_template('errors/restricted_pid')
       end
     end
+
+    context 'when a manager of the file\'s own collection' do
+      let(:user) { manager }
+
+      it 'rejects the file' do
+        post :reject, params: { id: pending_file.to_param }, session: valid_session
+        expect(pending_file.reload.review_status).to eq('rejected')
+      end
+    end
   end
 
   describe 'GET #edit' do
@@ -162,6 +222,24 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
 
     context 'when not administrator' do
       let(:user) { FactoryBot.create(:user) }
+
+      it 'redirects to restricted content page' do
+        get :edit, params: { id: pending_file.to_param }, session: valid_session
+        expect(response).to render_template('errors/restricted_pid')
+      end
+    end
+
+    context 'when an editor of the file\'s own collection' do
+      let(:user) { editor }
+
+      it 'returns a success response' do
+        get :edit, params: { id: pending_file.to_param }, session: valid_session
+        expect(response).to be_successful
+      end
+    end
+
+    context 'when a manager of a different collection' do
+      let(:user) { User.find_by(username: FactoryBot.create(:media_object).collection.managers.first) }
 
       it 'redirects to restricted content page' do
         get :edit, params: { id: pending_file.to_param }, session: valid_session
@@ -202,6 +280,25 @@ RSpec.describe TranscriptionReviewsController, type: :controller do
 
     context 'when not administrator' do
       let(:user) { FactoryBot.create(:user) }
+
+      it 'redirects to restricted content page' do
+        post :update_text, params: { id: pending_file.to_param, cues: { 0 => 'x' } }, session: valid_session
+        expect(response).to render_template('errors/restricted_pid')
+      end
+    end
+
+    context 'when a manager of the file\'s own collection' do
+      let(:user) { manager }
+
+      it 'persists the edited cue text' do
+        cue_index = Avalon::WebvttCueEditor.new(pending_file.file.download).cues.first.index
+        post :update_text, params: { id: pending_file.to_param, cues: { cue_index => 'Corrected text' } }, session: valid_session
+        expect(pending_file.reload.file.download).to include('Corrected text')
+      end
+    end
+
+    context 'when an editor of a different collection' do
+      let(:user) { User.find_by(username: FactoryBot.create(:media_object).collection.editors.first) }
 
       it 'redirects to restricted content page' do
         post :update_text, params: { id: pending_file.to_param, cues: { 0 => 'x' } }, session: valid_session

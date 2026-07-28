@@ -24,7 +24,7 @@ class TranscriptionRequestsController < ApplicationController
 
   # GET /transcription_requests/1
   def show
-    authorize! :read, :transcription_dashboard
+    authorize! :edit, master_file_for(@transcription_request)&.media_object
   end
 
   # POST /transcription_requests/paged_index
@@ -33,9 +33,17 @@ class TranscriptionRequestsController < ApplicationController
 
     # TranscriptionRequests for the index page are loaded via
     # /javascript/components/tables/TranscriptionRequestsTable.jsx which
-    # requests the json for all records on initial page load.
-    @transcription_requests = TranscriptionRequest.all
-    records_total = TranscriptionRequest.count
+    # requests the json for all records on initial page load. Grouping by
+    # media_object_id (already denormalized onto TranscriptionRequest at
+    # creation) means an item with several retried requests only needs one
+    # can?(:edit, media_object) check instead of one per row — the real,
+    # item-scoped visibility boundary; an administrator's check is always
+    # true (can :manage, :all) so this doesn't change what admins see.
+    @transcription_requests = TranscriptionRequest.all.group_by(&:media_object_id).flat_map do |media_object_id, requests|
+      media_object = media_object_id.present? ? fetch_proxy(media_object_id) : nil
+      can?(:edit, media_object) ? requests : []
+    end
+    records_total = @transcription_requests.count
 
     response = {
       "recordsTotal": records_total,
@@ -63,7 +71,10 @@ class TranscriptionRequestsController < ApplicationController
   def progress
     authorize! :read, :transcription_dashboard
     status_data = {}
-    TranscriptionRequest.where(id: params[:ids]).each do |transcription_request|
+    # Filtered the same way as paged_index — defense in depth, so a manager
+    # can't probe the status of requests outside their collections just by
+    # passing arbitrary ids directly to this endpoint.
+    TranscriptionRequest.where(id: params[:ids]).select { |tr| can?(:edit, master_file_for(tr)&.media_object) }.each do |transcription_request|
       status_data[transcription_request.id] = { status: transcription_request.status }
     end
     respond_to do |format|
@@ -76,7 +87,7 @@ class TranscriptionRequestsController < ApplicationController
   # POST /transcription_requests
   # Enqueues transcription for a single MasterFile section.
   def create
-    authorize! :manage, TranscriptionRequest
+    authorize! :edit, MasterFile.exists?(params[:master_file_id]) ? MasterFile.find(params[:master_file_id]) : nil
 
     transcription_request = TranscriptionRequest.new(
       master_file_id: params[:master_file_id],
@@ -96,9 +107,8 @@ class TranscriptionRequestsController < ApplicationController
   # silently skipping sections that already have a caption/transcript or an
   # active transcription request.
   def create_for_media_object
-    authorize! :manage, TranscriptionRequest
-
     media_object = MediaObject.find(params[:media_object_id])
+    authorize! :edit, media_object
     media_object.section_ids.each { |master_file_id| enqueue_if_eligible(master_file_id) }
 
     redirect_back fallback_location: transcription_requests_path, notice: 'Transcription requested for eligible sections.'
@@ -110,7 +120,7 @@ class TranscriptionRequestsController < ApplicationController
   # completed/cancelled request needs no retry and an active one is already
   # in flight).
   def retry
-    authorize! :manage, TranscriptionRequest
+    authorize! :edit, master_file_for(@transcription_request)&.media_object
 
     if @transcription_request.failed?
       new_request = TranscriptionRequest.create!(
@@ -126,7 +136,7 @@ class TranscriptionRequestsController < ApplicationController
 
   # POST /transcription_requests/1/cancel
   def cancel
-    authorize! :manage, TranscriptionRequest
+    authorize! :edit, master_file_for(@transcription_request)&.media_object
     TranscriptionJobs::CancelTranscriptionRequestJob.perform_later(@transcription_request.id)
     redirect_back fallback_location: transcription_requests_path, notice: 'Cancellation requested.'
   end
@@ -135,6 +145,16 @@ class TranscriptionRequestsController < ApplicationController
 
     def set_transcription_request
       @transcription_request = TranscriptionRequest.find(params[:id])
+    end
+
+    # Guards against MasterFile.find raising on a dangling/blank
+    # master_file_id (e.g. an orphaned record) — authorize!/can? against a
+    # nil subject falls through to "false for non-admins, true for admins"
+    # since no :edit, MasterFile rule matches a non-MasterFile subject.
+    def master_file_for(transcription_request)
+      return nil unless transcription_request.master_file_id.present? && MasterFile.exists?(transcription_request.master_file_id)
+
+      MasterFile.find(transcription_request.master_file_id)
     end
 
     def ensure_transcription_enabled
