@@ -77,12 +77,28 @@ Unless required by applicable law or agreed to in writing, software distributed
           <%= submit_tag "Save Setting", class: "btn btn-primary", form: 'vocabulary_form', data:{testid: 'transcription-vocabulary-save-setting'} %>
         <% end %>
 
+        <hr/>
+        <h4>Human Review</h4>
+        <%= bootstrap_form_for object, html: { id: 'review_required_form' }  do |vid| %>
+          <div class="mb-3">
+            <div class="form-check">
+              <%= label_tag :review_required do %>
+              <%= check_box_tag :review_required, '1', (review_required), data: { testid: 'review-required-checkbox' }%>
+              Require an administrator to approve machine-generated captions/transcripts
+              before they're visible, via the <%= link_to "review dashboard", transcription_reviews_path %>
+              <% end %>
+            </div>
+          </div>
+          <%= hidden_field_tag :save_field, "review_required" %>
+          <%= submit_tag "Save Setting", class: "btn btn-primary", form: 'review_required_form', data:{testid: 'review-required-save-setting'} %>
+        <% end %>
+
       </div>
     </div>
   <% end %>
 <% else %>
 
-  <% if Settings.transcription.enabled && object.is_a?(Admin::Collection) && (diarization_enabled?(object) || vocabulary.present?) %>
+  <% if Settings.transcription.enabled && object.is_a?(Admin::Collection) && (diarization_enabled?(object) || vocabulary.present? || object.review_required?) %>
     <div class="card transcription-settings">
       <div class="card-header">
         <h3 class="card-title">Transcription</h3>
@@ -96,6 +112,11 @@ Unless required by applicable law or agreed to in writing, software distributed
         <% if vocabulary.present? %>
           <div class="mb-3">
             Transcription jobs for this collection use a custom vocabulary (status: <%= vocabulary.state.titleize %>).
+          </div>
+        <% end %>
+        <% if object.review_required? %>
+          <div class="mb-3">
+            Machine-generated captions/transcripts require administrator approval before they're visible.
           </div>
         <% end %>
       </div>

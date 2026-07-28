@@ -117,11 +117,19 @@ The IAM role/user Avalon uses for AWS API calls needs:
        "transcribe:CreateVocabulary",
        "transcribe:UpdateVocabulary",
        "transcribe:GetVocabulary",
-       "transcribe:DeleteVocabulary"
+       "transcribe:DeleteVocabulary",
+       "transcribe:StartTranscriptionJob"
      ],
      "Resource": "arn:aws:transcribe:<region>:*:vocabulary/avalon-vocab-*"
    }
    ```
+
+   `transcribe:StartTranscriptionJob` has to be granted on the vocabulary
+   resource too, not just the transcription-job resource in permission 1
+   above — when a job's `Settings.VocabularyName` references a vocabulary,
+   AWS IAM checks that action against *both* ARNs. Omitting it here produces
+   an `AccessDeniedException` naming the vocabulary ARN even though the
+   transcription-job permissions are already correct.
 
 Do not grant broader `transcribe:*` or account-wide `s3:*` — the above is
 sufficient for this adapter's full lifecycle (submit, poll, fetch, cancel,
@@ -257,3 +265,43 @@ above before assuming it's a code bug.
 `TranscriptionVocabulary` `failed` with `error_message` set. `PollVocabulariesJob`
 and `DeleteVocabularyJob` don't retry — the cron sweep re-runs every minute
 regardless, and deletion is already best-effort by design.
+
+## Human review workflow
+
+Off by default, and set **per `Admin::Collection`**
+(`Admin::Collection#review_required?`, set from the collection's edit page —
+same override-with-fallback pattern as diarization and custom vocabulary; an
+unset collection value falls back to `Settings.transcription.review.enabled`).
+When enabled for a collection, machine-generated captions/transcripts don't
+go live immediately — they're gated behind administrator approval.
+
+- `TranscriptionJobs::CompleteTranscriptionRequestJob` tags newly-created
+  caption/transcript `SupplementalFile`s `private` (Avalon's existing
+  visibility-hiding tag) and sets `review_status: 'pending_review'` only
+  when the owning collection has `review_required?` true. Otherwise it
+  behaves exactly as before — immediately visible, no review state.
+- Admins review pending items at `/transcription_reviews`, a dashboard
+  listing every `pending_review` file across all collections (mirrors the
+  `/transcription_requests` dashboard's `paged_index` pattern). Each row
+  links to the owning `MasterFile`/`MediaObject` and offers three actions:
+  - **Approve** (`SupplementalFile#approve!`) — removes the `private` tag,
+    making it publicly visible, and re-indexes the parent `MediaObject`.
+  - **Reject** (`SupplementalFile#reject!`) — stays hidden permanently, but
+    the record is kept (not destroyed) for audit purposes. A rejected
+    caption/transcript no longer blocks resubmitting transcription for that
+    section (`TranscriptionRequestsController#enqueue_if_eligible` excludes
+    `rejected` files from its "already has one" check) — a `pending_review`
+    or `approved` one still does.
+  - **Replace** — links out to the item's existing Section Files upload
+    step (`edit_media_object_path(media_object_id, step: 'file-upload')`)
+    to upload a corrected file through the normal upload flow. There's no
+    in-app WebVTT editor; correcting a caption means rejecting the
+    machine-generated one and uploading a replacement by hand.
+- `pending_review → approved` and `pending_review → rejected` are the only
+  transitions; `SupplementalFile#approve!`/`#reject!` raise
+  `SupplementalFile::InvalidReviewTransition` if called on a file that isn't
+  currently `pending_review` (e.g. reviewing the same item twice).
+- Reviewing is gated by a dedicated `:transcription_review` CanCan ability
+  (administrators only currently — see `Ability#transcription_review_permissions`),
+  kept separate from `:manage, TranscriptionRequest` so it can be broadened
+  to collection managers later without touching transcription-dashboard access.

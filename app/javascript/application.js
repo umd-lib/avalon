@@ -32,6 +32,7 @@ import PlaylistsTable from './components/tables/PlaylistsTable';
 import TimelinesTable from './components/tables/TimelinesTable';
 import EncodingJobsTable from './components/tables/EncodingJobsTable';
 import TranscriptionRequestsTable from './components/tables/TranscriptionRequestsTable';
+import TranscriptionReviewsTable from './components/tables/TranscriptionReviewsTable';
 import CheckoutsTable from './components/tables/CheckoutsTable';
 import UsersTable from './components/tables/UsersTable';
 import Dashboard from './components/dashboard/Dashboard';
@@ -54,6 +55,7 @@ ReactOnRails.register({
   TimelinesTable,
   EncodingJobsTable,
   TranscriptionRequestsTable,
+  TranscriptionReviewsTable,
   CheckoutsTable,
   UsersTable,
   Dashboard,

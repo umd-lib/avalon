@@ -180,6 +180,12 @@ transcription:
       # Upper bound on distinct speakers Transcribe should try to identify.
       # Required by the AWS API when diarization is enabled (2-30).
       max_speakers: 10
+  review:
+    # Optional: require human approval (via the /transcription_reviews
+    # dashboard) before machine-generated captions/transcripts go live —
+    # see umd_docs/TranscriptionAwsSetup.md "Human review workflow".
+    # Overridable per Admin::Collection.
+    enabled: false
 recaptcha:
   site_key: # Setting a site_key will enable recaptcha on the comments form
   secret_key: # Required along with site_key

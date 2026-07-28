@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_27_120000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_27_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -256,6 +256,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_27_120000) do
     t.string "tags"
     t.string "language"
     t.string "parent_id"
+    t.string "review_status"
+    t.string "reviewed_by"
+    t.datetime "reviewed_at"
+    t.index ["review_status"], name: "index_supplemental_files_on_review_status"
   end
 
   create_table "timelines", force: :cascade do |t|

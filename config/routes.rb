@@ -38,6 +38,16 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :transcription_reviews, only: [:index] do
+    collection do
+      post :paged_index
+    end
+    member do
+      post :approve
+      post :reject
+    end
+  end
+
   resources :checkouts, only: [:index, :create, :show, :update, :destroy], :constraints => lambda { |request| Avalon::Configuration.controlled_digital_lending_enabled? } do
     collection do
       patch :return_all

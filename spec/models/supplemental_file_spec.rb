@@ -380,6 +380,58 @@ describe SupplementalFile do
     end
   end
 
+  describe 'human review' do
+    let(:pending_file) { FactoryBot.create(:supplemental_file, :with_caption_file, tags: ['caption', 'machine_generated', 'private'], review_status: 'pending_review') }
+
+    describe '#approve!' do
+      it 'transitions to approved, stamps the reviewer/timestamp, and removes the private tag' do
+        pending_file.approve!('admin@example.com')
+
+        expect(pending_file.review_status).to eq('approved')
+        expect(pending_file.reviewed_by).to eq('admin@example.com')
+        expect(pending_file.reviewed_at).to be_present
+        expect(pending_file.tags).not_to include('private')
+        expect(pending_file.tags).to include('caption', 'machine_generated')
+      end
+
+      it 'raises InvalidReviewTransition when not pending_review' do
+        pending_file.approve!('admin@example.com')
+        expect { pending_file.approve!('admin@example.com') }.to raise_error(SupplementalFile::InvalidReviewTransition)
+      end
+    end
+
+    describe '#reject!' do
+      it 'transitions to rejected, stamps the reviewer/timestamp, and keeps the private tag' do
+        pending_file.reject!('admin@example.com')
+
+        expect(pending_file.review_status).to eq('rejected')
+        expect(pending_file.reviewed_by).to eq('admin@example.com')
+        expect(pending_file.reviewed_at).to be_present
+        expect(pending_file.tags).to include('private')
+      end
+
+      it 'raises InvalidReviewTransition when not pending_review' do
+        pending_file.reject!('admin@example.com')
+        expect { pending_file.reject!('admin@example.com') }.to raise_error(SupplementalFile::InvalidReviewTransition)
+      end
+    end
+  end
+
+  describe '#master_file' do
+    it 'resolves the owning MasterFile when parent_id references one' do
+      master_file = FactoryBot.create(:master_file)
+      file = FactoryBot.create(:supplemental_file, parent_id: master_file.id)
+
+      expect(file.master_file).to eq(master_file)
+    end
+
+    it 'returns nil when parent_id does not reference a MasterFile' do
+      file = FactoryBot.create(:supplemental_file, parent_id: 'not-a-master-file')
+
+      expect(file.master_file).to be_nil
+    end
+  end
+
   describe '#download_filename' do
     context 'with machine generated file' do
       let(:file) { FactoryBot.create(:supplemental_file, :with_transcript_file, tags: ['transcript', 'machine_generated']) }

@@ -840,6 +840,37 @@ describe Admin::Collection do
     end
   end
 
+  describe 'review_required' do
+    context 'review disabled at the application level' do
+      before { allow(Settings.transcription.review).to receive(:enabled).and_return(false) }
+      it 'sets collection review to be disabled by default' do
+        expect(collection.review_required?).to be false
+      end
+      context 'turned on for collection' do
+        let(:collection2) { FactoryBot.create(:collection) }
+        it 'does not affect other collections' do
+          collection.review_required = true
+          expect(collection.review_required?).to be true
+          expect(collection2.review_required?).to be false
+        end
+      end
+    end
+    context 'review enabled at the application level' do
+      before { allow(Settings.transcription.review).to receive(:enabled).and_return(true) }
+      it 'sets collection review to be enabled by default' do
+        expect(collection.review_required?).to be true
+      end
+      context 'turned off for collection' do
+        let(:collection2) { FactoryBot.create(:collection) }
+        it 'does not affect other collections' do
+          collection.review_required = false
+          expect(collection.review_required?).to be false
+          expect(collection2.review_required?).to be true
+        end
+      end
+    end
+  end
+
   describe '#unit=' do
     it 'sets governing_policy as well' do
       new_unit = FactoryBot.create(:unit)

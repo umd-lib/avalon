@@ -190,6 +190,28 @@ RSpec.describe TranscriptionJobs do
         described_class.perform_now(request.id)
       end
 
+      it 'creates artifacts immediately visible, with no review_status, when the collection does not require review' do
+        allow(provider).to receive(:fetch_transcript).and_return(transcript_result)
+        described_class.perform_now(request.id)
+
+        artifacts = SupplementalFile.where(parent_id: master_file.id).to_a
+        expect(artifacts).to all(have_attributes(review_status: nil))
+        expect(artifacts.none? { |f| f.tags.include?('private') }).to eq(true)
+      end
+
+      context 'when the collection requires human review' do
+        before { master_file.media_object.collection.update!(review_required: true) }
+
+        it 'creates artifacts as pending_review and private' do
+          allow(provider).to receive(:fetch_transcript).and_return(transcript_result)
+          described_class.perform_now(request.id)
+
+          artifacts = SupplementalFile.where(parent_id: master_file.id).to_a
+          expect(artifacts).to all(have_attributes(review_status: 'pending_review'))
+          expect(artifacts.all? { |f| f.tags.include?('private') }).to eq(true)
+        end
+      end
+
       it 'transitions to failed if materialization raises' do
         allow(provider).to receive(:fetch_transcript).and_raise(StandardError, 'boom')
 

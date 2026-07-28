@@ -148,8 +148,14 @@ class TranscriptionRequestsController < ApplicationController
       return unless MasterFile.exists?(master_file_id)
 
       master_file = MasterFile.find(master_file_id)
-      return if master_file.supplemental_files(tag: 'caption').present?
-      return if master_file.supplemental_files(tag: 'transcript').present?
+      # include_private: true because a pending_review file is tagged
+      # 'private' (hidden from the public until approved) and would
+      # otherwise be invisible to this check by default. A rejected
+      # caption/transcript shouldn't block retrying — otherwise a rejected
+      # transcription could never be resubmitted — but pending_review or
+      # approved still counts as "already have one."
+      return if master_file.supplemental_files(tag: 'caption', include_private: true).reject(&:rejected?).present?
+      return if master_file.supplemental_files(tag: 'transcript', include_private: true).reject(&:rejected?).present?
 
       transcription_request = TranscriptionRequest.new(master_file_id: master_file_id, provider: Settings.transcription.default_provider)
       return unless transcription_request.save

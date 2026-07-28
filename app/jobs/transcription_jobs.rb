@@ -164,9 +164,12 @@ module TranscriptionJobs
       return if content.blank?
 
       spec = ARTIFACTS.fetch(kind)
+      review_required = request.master_file.media_object&.collection&.review_required?
+      tags = review_required ? spec[:tags] + ['private'] : spec[:tags]
       supplemental_file = SupplementalFile.new(
         parent_id: request.master_file_id,
-        tags: spec[:tags],
+        tags: tags,
+        review_status: (review_required ? 'pending_review' : nil),
         language: request.language,
         label: spec[:label]
       )

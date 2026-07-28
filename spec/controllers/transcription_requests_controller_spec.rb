@@ -181,7 +181,7 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
     let(:already_captioned_master_file) { FactoryBot.create(:master_file, :with_media_object, media_object: media_object) }
 
     before do
-      allow(already_captioned_master_file).to receive(:supplemental_files).with(tag: 'caption').and_return([instance_double(SupplementalFile)])
+      allow(already_captioned_master_file).to receive(:supplemental_files).with(tag: 'caption', include_private: true).and_return([instance_double(SupplementalFile, rejected?: false)])
       allow(MasterFile).to receive(:find).and_call_original
       allow(MasterFile).to receive(:find).with(already_captioned_master_file.id).and_return(already_captioned_master_file)
 
@@ -194,6 +194,18 @@ RSpec.describe TranscriptionRequestsController, type: :controller do
 
       expect(TranscriptionRequest.where(master_file_id: eligible_master_file.id)).to exist
       expect(TranscriptionRequest.where(master_file_id: already_captioned_master_file.id)).not_to exist
+    end
+
+    context 'when the existing caption was rejected' do
+      before do
+        allow(already_captioned_master_file).to receive(:supplemental_files).with(tag: 'caption', include_private: true).and_return([instance_double(SupplementalFile, rejected?: true)])
+        allow(already_captioned_master_file).to receive(:supplemental_files).with(tag: 'transcript', include_private: true).and_return([])
+      end
+
+      it 'still enqueues transcription for that section' do
+        post :create_for_media_object, params: { media_object_id: media_object.id }, session: valid_session
+        expect(TranscriptionRequest.where(master_file_id: already_captioned_master_file.id)).to exist
+      end
     end
 
     context 'when not administrator' do

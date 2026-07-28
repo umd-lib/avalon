@@ -80,6 +80,9 @@ class Admin::Collection < ActiveFedora::Base
   property :diarization_max_speakers, predicate: Avalon::RDFVocab::Collection.diarization_max_speakers, multiple: false do |index|
     index.as :stored_sortable
   end
+  property :review_required, predicate: Avalon::RDFVocab::Collection.review_required, multiple: false do |index|
+    index.as ActiveFedora::Indexing::Descriptor.new(:boolean, :stored, :indexed)
+  end
 
   has_subresource 'poster', class_name: 'IndexedFile'
 
@@ -324,6 +327,12 @@ class Admin::Collection < ActiveFedora::Base
   alias_method :'_diarization_max_speakers', :'diarization_max_speakers'
   def diarization_max_speakers
     self._diarization_max_speakers || Settings.transcription.aws.diarization&.max_speakers
+  end
+
+  # Per-collection override of Settings.transcription.review.enabled;
+  # nil (not explicitly set on this collection) falls back to the global default.
+  def review_required?
+    review_required.nil? ? Settings.transcription.review&.enabled : review_required
   end
 
   # UMD Customization

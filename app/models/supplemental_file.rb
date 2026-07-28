@@ -15,6 +15,8 @@
 require 'avalon/transcript_parser'
 
 class SupplementalFile < ApplicationRecord
+  class InvalidReviewTransition < StandardError; end
+
   has_one_attached :file
 
   scope :with_tag, ->(tag_filter) { where("tags LIKE ?", "%\n- #{tag_filter}\n%") }
@@ -26,6 +28,13 @@ class SupplementalFile < ApplicationRecord
   validate  :validate_file_type, if: proc { |file| file.caption? || file.description? }
 
   serialize :tags, type: Array
+
+  # Only machine-generated caption/transcript files from collections with
+  # review_required? go through this — everything else stays nil, meaning
+  # "not subject to review." Only two real transitions exist (both start
+  # from pending_review), so this doesn't need TranscriptionRequest's more
+  # general TRANSITIONS-hash state machine.
+  enum :review_status, { pending_review: 'pending_review', approved: 'approved', rejected: 'rejected' }
 
   # Need to prepend so this runs before the callback added by `has_one_attached` above
   # See https://github.com/rails/rails/issues/37304
@@ -50,6 +59,13 @@ class SupplementalFile < ApplicationRecord
 
   def mime_type
     file.content_type
+  end
+
+  # parent_id can reference either a MasterFile or a MediaObject depending
+  # on how the file was attached — nil when it's not a MasterFile (e.g. a
+  # SupplementalFile attached directly to a MediaObject).
+  def master_file
+    @master_file ||= MasterFile.find(parent_id) if MasterFile.exists?(parent_id)
   end
 
   def caption?
@@ -78,6 +94,18 @@ class SupplementalFile < ApplicationRecord
 
   def forced?
     tags.include?('forced')
+  end
+
+  def approve!(reviewer)
+    raise InvalidReviewTransition, "cannot approve a #{review_status} file" unless pending_review?
+
+    update!(review_status: 'approved', reviewed_by: reviewer, reviewed_at: Time.current, tags: tags - ['private'])
+  end
+
+  def reject!(reviewer)
+    raise InvalidReviewTransition, "cannot reject a #{review_status} file" unless pending_review?
+
+    update!(review_status: 'rejected', reviewed_by: reviewer, reviewed_at: Time.current)
   end
 
   def as_json(_options = {})

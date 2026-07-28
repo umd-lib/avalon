@@ -70,6 +70,7 @@ module Avalon
       property :collection_managers,      "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :diarization_enabled,      "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
       property :diarization_max_speakers, "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
+      property :review_required,          "rdfs:isDefinedBy" => %(avr-collection:).freeze, type: "rdfs:Class".freeze
     end
 
     class Unit < RDF::StrictVocabulary("http://avalonmediasystem.org/rsf/vocab/unit#")

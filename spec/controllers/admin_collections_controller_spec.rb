@@ -758,6 +758,26 @@ describe Admin::CollectionsController, type: :controller do
           put 'update', params: { id: collection.id, save_field: "vocabulary", vocabulary_phrases: "" }
         end
       end
+
+      context "human review functionality" do
+        context "review disabled for application" do
+          before { allow(Settings.transcription.review).to receive(:enabled).and_return(false) }
+          it "enables review for collection" do
+            put 'update', params: { id: collection.id, save_field: "review_required", review_required: 1 }
+            collection.reload
+            expect(collection.review_required).to be true
+            expect(flash[:error]).not_to be_present
+          end
+        end
+        context "review enabled for application" do
+          before { allow(Settings.transcription.review).to receive(:enabled).and_return(true) }
+          it "disables review for collection" do
+            put 'update', params: { id: collection.id, save_field: "review_required" }
+            collection.reload
+            expect(collection.review_required).to be false
+          end
+        end
+      end
     end
 
     context "changing diarization max speakers" do

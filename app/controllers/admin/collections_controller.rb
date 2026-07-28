@@ -441,6 +441,9 @@ class Admin::CollectionsController < ApplicationController
     if params[:save_field] == "diarization"
       collection.diarization_enabled = params[:diarization] == "1"
     end
+    if params[:save_field] == "review_required"
+      collection.review_required = params[:review_required] == "1"
+    end
   end
 
   def update_diarization_max_speakers(collection, params)

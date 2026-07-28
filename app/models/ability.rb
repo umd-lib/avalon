@@ -22,6 +22,7 @@ class Ability
                          :marker_permissions,
                          :encode_dashboard_permissions,
                          :transcription_dashboard_permissions,
+                         :transcription_review_permissions,
                          :timeline_permissions,
                          :checkout_permissions,
                          :administrative_permissions,
@@ -51,6 +52,14 @@ class Ability
   def transcription_dashboard_permissions
     can :read, :transcription_dashboard if is_administrator?
     can :manage, TranscriptionRequest if is_administrator?
+  end
+
+  # Deliberately a separate ability from transcription_dashboard_permissions
+  # (administrators only for now) so review authority can be broadened to
+  # collection managers later without touching transcription-dashboard access.
+  def transcription_review_permissions
+    can :read, :transcription_review_dashboard if is_administrator?
+    can :manage, :transcription_review if is_administrator?
   end
 
   # UMD Customization
