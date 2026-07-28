@@ -38,13 +38,14 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :transcription_reviews, only: [:index] do
+  resources :transcription_reviews, only: [:index, :edit] do
     collection do
       post :paged_index
     end
     member do
       post :approve
       post :reject
+      post :update_text
     end
   end
 

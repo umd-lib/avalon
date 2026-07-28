@@ -294,7 +294,18 @@ go live immediately — they're gated behind administrator approval.
   listing every `pending_review` file across all collections (mirrors the
   `/transcription_requests` dashboard's `paged_index` pattern) — one row per
   section awaiting review. Each row links to the owning
-  `MasterFile`/`MediaObject` and offers three actions:
+  `MasterFile`/`MediaObject` and offers four actions:
+  - **Edit** (`GET`/`POST` `/transcription_reviews/:id/edit` and
+    `/update_text`) — a lightweight in-place editor
+    (`Avalon::WebvttCueEditor`, `lib/avalon/webvtt_cue_editor.rb`) for
+    correcting the *text* of individual cues (e.g. a mistranscribed word),
+    leaving timestamps/cue structure untouched. Saves back into the same
+    `SupplementalFile` record — same id/tags/`review_status`, not a
+    destroy+recreate. Only available for `pending_review` files that carry
+    the `caption` tag (`SupplementalFile#editable_transcription_review?`) —
+    the rare transcript-only `.txt` fallback artifact (no VTT at all, see
+    below) has no Edit link. Deliberately narrow, not a general captions
+    authoring tool: no way to add/remove cues or change timing.
   - **Approve** (`SupplementalFile#approve!`) — removes the `private` tag,
     making it publicly visible, and re-indexes the parent `MediaObject`.
   - **Reject** (`SupplementalFile#reject!`) — stays hidden permanently, but
@@ -305,13 +316,26 @@ go live immediately — they're gated behind administrator approval.
     or `approved` one still does.
   - **Replace** — links out to the item's existing Section Files upload
     step (`edit_media_object_path(media_object_id, step: 'file-upload')`)
-    to upload a corrected file through the normal upload flow. There's no
-    in-app WebVTT editor; correcting a caption means rejecting the
-    machine-generated one and uploading a replacement by hand.
+    to upload a corrected file through the normal upload flow — the right
+    choice for structural corrections (re-timing, adding/removing cues, or
+    a fundamentally wrong transcript) that the narrower in-place Edit
+    action doesn't support.
 - `pending_review → approved` and `pending_review → rejected` are the only
   transitions; `SupplementalFile#approve!`/`#reject!` raise
   `SupplementalFile::InvalidReviewTransition` if called on a file that isn't
   currently `pending_review` (e.g. reviewing the same item twice).
+- The owning `TranscriptionRequest` tracks this too, so its status on
+  `/transcription_requests` doesn't misleadingly read `completed` while the
+  output is still sitting in review: `CompleteTranscriptionRequestJob`
+  transitions it to `in_review` (instead of `completed`) whenever the
+  artifact it created is `pending_review`, and `TranscriptionReviewsController#approve`/`#reject`
+  move it on to `completed`/`rejected` once a reviewer acts (matched to the
+  `SupplementalFile` via `master_file_id` — there's no direct FK, since a
+  `MasterFile` can only have one `in_review` request at a time). `in_review`
+  is excluded from both `ACTIVE_STATUSES` (so `PollTranscriptionRequestsJob`
+  doesn't keep re-fetching an already-finished provider job and re-trigger
+  completion materialization) and `TERMINAL_STATUSES` (a human still needs
+  to act) — see `TranscriptionRequest::TRANSITIONS`.
 - Reviewing is gated by a dedicated `:transcription_review` CanCan ability
   (administrators only currently — see `Ability#transcription_review_permissions`),
   kept separate from `:manage, TranscriptionRequest` so it can be broadened

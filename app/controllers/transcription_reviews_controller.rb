@@ -12,8 +12,12 @@
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
+require 'avalon/webvtt_cue_editor'
+
 class TranscriptionReviewsController < ApplicationController
-  before_action :set_supplemental_file, only: [:approve, :reject]
+  before_action :set_supplemental_file, only: [:approve, :reject, :edit, :update_text]
+
+  NOT_EDITABLE_MESSAGE = 'Only pending-review caption files can be edited.'
 
   # GET /transcription_reviews
   def index
@@ -57,6 +61,7 @@ class TranscriptionReviewsController < ApplicationController
     authorize! :manage, :transcription_review
 
     @supplemental_file.approve!(current_user.user_key)
+    transition_transcription_request!('completed')
     media_object_id = @supplemental_file.master_file&.media_object_id
     MediaObjectIndexingJob.perform_later(media_object_id) if media_object_id.present?
 
@@ -68,8 +73,38 @@ class TranscriptionReviewsController < ApplicationController
     authorize! :manage, :transcription_review
 
     @supplemental_file.reject!(current_user.user_key)
+    transition_transcription_request!('rejected')
 
     redirect_back fallback_location: transcription_reviews_path, notice: 'Rejected.'
+  end
+
+  # GET /transcription_reviews/1/edit
+  def edit
+    authorize! :manage, :transcription_review
+    return redirect_to(transcription_reviews_path, alert: NOT_EDITABLE_MESSAGE) unless @supplemental_file.editable_transcription_review?
+
+    @presenter = TranscriptionReviewPresenter.new(@supplemental_file)
+    @cue_editor = Avalon::WebvttCueEditor.new(@supplemental_file.file.download)
+  end
+
+  # POST /transcription_reviews/1/update_text
+  def update_text
+    authorize! :manage, :transcription_review
+    return redirect_to(transcription_reviews_path, alert: NOT_EDITABLE_MESSAGE) unless @supplemental_file.editable_transcription_review?
+
+    editor = Avalon::WebvttCueEditor.new(@supplemental_file.file.download)
+    new_content = editor.apply(params.require(:cues).to_unsafe_h)
+
+    @supplemental_file.file.attach(
+      io: StringIO.new(new_content),
+      filename: @supplemental_file.file.filename.to_s,
+      content_type: @supplemental_file.file.content_type
+    )
+    @supplemental_file.save!
+
+    redirect_to transcription_reviews_path, notice: 'Caption text updated.'
+  rescue ActionController::ParameterMissing, ArgumentError, Avalon::WebvttCueEditor::InvalidCueText => e
+    redirect_to edit_transcription_review_path(@supplemental_file), alert: "Could not save edits: #{e.message}"
   end
 
   private
@@ -78,8 +113,20 @@ class TranscriptionReviewsController < ApplicationController
       @supplemental_file = SupplementalFile.find(params[:id])
     end
 
+    # Finds the TranscriptionRequest that produced @supplemental_file (no
+    # direct FK — matched via master_file_id + the in_review status the
+    # completion job left it in, see TranscriptionJobs::CompleteTranscriptionRequestJob)
+    # and moves it to the review outcome. A no-op if none is found (e.g. a
+    # manually-uploaded file that was put into review some other way).
+    def transition_transcription_request!(new_status)
+      request = TranscriptionRequest.where(master_file_id: @supplemental_file.parent_id, status: 'in_review')
+                                     .order(created_at: :desc).first
+      request&.transition_to!(new_status)
+    end
+
     def actions_html(supplemental_file, presenter)
       buttons = []
+      buttons << view_context.link_to('Edit', presenter.edit_url, class: 'btn btn-sm btn-outline') if presenter.editable?
       buttons << view_context.link_to('Approve', approve_transcription_review_path(supplemental_file),
                                        method: :post, class: 'btn btn-sm btn-outline',
                                        data: { confirm: 'Approve this caption/transcript?' })

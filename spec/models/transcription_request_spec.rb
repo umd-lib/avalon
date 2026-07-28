@@ -102,6 +102,40 @@ RSpec.describe TranscriptionRequest, type: :model do
       request.transition_to!('cancelled')
       expect { request.transition_to!('submitted') }.to raise_error(TranscriptionRequest::InvalidTransition)
     end
+
+    it 'moves in_progress -> in_review without stamping finished_at (a human still needs to act)' do
+      request.transition_to!('submitted')
+      request.transition_to!('in_progress')
+      expect { request.transition_to!('in_review') }.to change { request.status }.from('in_progress').to('in_review')
+      expect(request.finished_at).to be_nil
+    end
+
+    it 'moves in_review -> completed once a reviewer approves' do
+      request.transition_to!('submitted')
+      request.transition_to!('in_progress')
+      request.transition_to!('in_review')
+
+      expect { request.transition_to!('completed') }.to change { request.status }.from('in_review').to('completed')
+      expect(request.finished_at).to be_present
+    end
+
+    it 'moves in_review -> rejected once a reviewer rejects' do
+      request.transition_to!('submitted')
+      request.transition_to!('in_progress')
+      request.transition_to!('in_review')
+
+      expect { request.transition_to!('rejected') }.to change { request.status }.from('in_review').to('rejected')
+      expect(request.finished_at).to be_present
+    end
+
+    it 'raises InvalidTransition for in_review once already resolved' do
+      request.transition_to!('submitted')
+      request.transition_to!('in_progress')
+      request.transition_to!('in_review')
+      request.transition_to!('completed')
+
+      expect { request.transition_to!('rejected') }.to raise_error(TranscriptionRequest::InvalidTransition)
+    end
   end
 
   describe '#active? and #terminal?' do
@@ -111,12 +145,22 @@ RSpec.describe TranscriptionRequest, type: :model do
       expect(request.terminal?).to eq(false)
     end
 
-    it 'reports terminal for completed/failed/cancelled' do
+    it 'reports terminal for completed/failed/cancelled/rejected' do
       request = build_request.tap(&:save!)
       request.transition_to!('failed', error_message: 'x')
 
       expect(request.terminal?).to eq(true)
       expect(request.active?).to eq(false)
+    end
+
+    it 'reports neither active nor terminal for in_review — a human still needs to act, but polling must not pick it up' do
+      request = build_request.tap(&:save!)
+      request.transition_to!('submitted')
+      request.transition_to!('in_progress')
+      request.transition_to!('in_review')
+
+      expect(request.active?).to eq(false)
+      expect(request.terminal?).to eq(false)
     end
   end
 

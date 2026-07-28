@@ -1,0 +1,52 @@
+<%#
+Copyright 2011-2026, The Trustees of Indiana University and Northwestern
+  University.  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+  under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+  CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  specific language governing permissions and limitations under the License.
+---  END LICENSE_HEADER BLOCK  ---
+%>
+<p id="notice"><%= notice %></p>
+<p id="alert"><%= alert %></p>
+
+<div class="container-md">
+  <h1>Edit Caption Text</h1>
+  <p>
+    MasterFile: <%= link_to @presenter.master_file_id, @presenter.master_file_url %> &middot;
+    MediaObject: <%= link_to @presenter.media_object_id, @presenter.media_object_url %> &middot;
+    Language: <%= @presenter.language %>
+  </p>
+  <p>
+    Only the text of each cue can be corrected here — timestamps aren't editable. For structural
+    corrections (re-timing, adding/removing cues), use Replace on the review dashboard instead.
+  </p>
+
+  <%= form_with url: update_text_transcription_review_path(@supplemental_file), method: :post, local: true do %>
+    <% @cue_editor.cues.each do |cue| %>
+      <div class="mb-3">
+        <div class="text-muted small">
+          <%= cue.timing %><%= " (#{cue.identifier})" if cue.identifier.present? %>
+        </div>
+        <%= text_area_tag "cues[#{cue.index}]", cue.text, rows: [cue.text.lines.count, 2].max, class: 'form-control' %>
+      </div>
+    <% end %>
+
+    <div class="mt-3">
+      <%= submit_tag 'Save Changes', class: 'btn btn-primary' %>
+      <%= link_to 'Approve', approve_transcription_review_path(@supplemental_file),
+                  method: :post, class: 'btn btn-sm btn-outline',
+                  data: { confirm: 'Approve this caption/transcript?' } %>
+      <%= link_to 'Reject', reject_transcription_review_path(@supplemental_file),
+                  method: :post, class: 'btn btn-sm btn-outline',
+                  data: { confirm: 'Reject this caption/transcript?' } %>
+      <%= link_to 'Cancel', transcription_reviews_path, class: 'btn btn-sm btn-outline' %>
+    </div>
+  <% end %>
+</div>

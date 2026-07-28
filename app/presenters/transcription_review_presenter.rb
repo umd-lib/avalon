@@ -47,6 +47,14 @@ class TranscriptionReviewPresenter
     Rails.application.routes.url_helpers.master_file_path(master_file_id)
   end
 
+  def editable?
+    supplemental_file.editable_transcription_review?
+  end
+
+  def edit_url
+    Rails.application.routes.url_helpers.edit_transcription_review_path(supplemental_file.id)
+  end
+
   def media_object_url
     media_object_id.present? ? Rails.application.routes.url_helpers.media_object_path(media_object_id) : ''
   end

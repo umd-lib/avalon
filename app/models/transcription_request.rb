@@ -23,26 +23,40 @@ class TranscriptionRequest < ApplicationRecord
   PROVIDERS = %w[aws_transcribe assembly_ai].freeze
 
   ACTIVE_STATUSES = %w[pending submitted in_progress].freeze
-  TERMINAL_STATUSES = %w[completed failed cancelled].freeze
+  TERMINAL_STATUSES = %w[completed failed cancelled rejected].freeze
 
   # Allowed status transitions. Terminal statuses have no outgoing
   # transitions; retrying a failed/cancelled request means creating a new record.
+  #
+  # in_review is deliberately excluded from ACTIVE_STATUSES: the provider job
+  # is already done (that's how we got here — see
+  # TranscriptionJobs::CompleteTranscriptionRequestJob), so
+  # PollTranscriptionRequestsJob must not keep polling it (it would just
+  # re-observe :completed and re-enqueue completion materialization,
+  # duplicating SupplementalFile artifacts). It's also excluded from
+  # TERMINAL_STATUSES since a human still needs to act — see
+  # TranscriptionReviewsController#approve/#reject, which transition a
+  # matching in_review request to completed/rejected once that happens.
   TRANSITIONS = {
     'pending' => %w[submitted cancelled failed],
-    'submitted' => %w[in_progress completed failed cancelled],
-    'in_progress' => %w[completed failed cancelled],
+    'submitted' => %w[in_progress completed in_review failed cancelled],
+    'in_progress' => %w[completed in_review failed cancelled],
+    'in_review' => %w[completed rejected],
     'completed' => [],
     'failed' => [],
-    'cancelled' => []
+    'cancelled' => [],
+    'rejected' => []
   }.freeze
 
   enum :status, {
     pending: 'pending',
     submitted: 'submitted',
     in_progress: 'in_progress',
+    in_review: 'in_review',
     completed: 'completed',
     failed: 'failed',
-    cancelled: 'cancelled'
+    cancelled: 'cancelled',
+    rejected: 'rejected'
   }, default: 'pending', validate: true
 
   validates :master_file_id, presence: true

@@ -92,6 +92,14 @@ class SupplementalFile < ApplicationRecord
     tags.include?('private')
   end
 
+  # Whether this file can go through the /transcription_reviews in-place cue
+  # editor: only pre-approval (post-approval corrections go through the
+  # general Replace/upload flow), and only when there's a VTT to parse (the
+  # rare transcript-only .txt fallback artifact has no caption tag).
+  def editable_transcription_review?
+    pending_review? && caption?
+  end
+
   def forced?
     tags.include?('forced')
   end

@@ -134,7 +134,11 @@ module TranscriptionJobs
       # trigger that ourselves too.
       register_supplemental_files(request, [created_file]) if created_file
 
-      request.transition_to!('completed', transcript_text: result.transcript_text, raw_response: result.raw_response.to_json)
+      # in_review (not completed) when the artifact is gated behind human
+      # approval — TranscriptionReviewsController#approve/#reject moves it
+      # on to completed/rejected once that happens.
+      final_status = created_file&.pending_review? ? 'in_review' : 'completed'
+      request.transition_to!(final_status, transcript_text: result.transcript_text, raw_response: result.raw_response.to_json)
     rescue *TRANSIENT_ERRORS => e
       log_transcription(:warn, 'transient error completing, will retry', request: request, error: "#{e.class}: #{e.message}")
       raise

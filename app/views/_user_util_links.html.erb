@@ -82,6 +82,10 @@ Unless required by applicable law or agreed to in writing, software distributed
           <li class="nav-item <%= active_for_controller('transcription_requests') %>">
             <%= link_to 'Manage Transcription Jobs', main_app.transcription_requests_path, class: 'nav-link' %></li>
           <% end %>
+          <% if can? :read, :transcription_review_dashboard %>
+          <li class="nav-item <%= active_for_controller('transcription_reviews') %>">
+            <%= link_to 'Review Transcriptions', main_app.transcription_reviews_path, class: 'nav-link' %></li>
+          <% end %>
 
           <% if can? :manage, Admin::Group %>
           <li class="nav-item <%= active_for_controller('admin/groups') %>">

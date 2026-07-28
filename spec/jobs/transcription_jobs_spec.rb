@@ -207,18 +207,20 @@ RSpec.describe TranscriptionJobs do
         artifact = SupplementalFile.where(parent_id: master_file.id).first
         expect(artifact.review_status).to be_nil
         expect(artifact.tags).not_to include('private')
+        expect(request.reload.status).to eq('completed')
       end
 
       context 'when the collection requires human review' do
         before { master_file.media_object.collection.update!(review_required: true) }
 
-        it 'creates the artifact as pending_review and private' do
+        it 'creates the artifact as pending_review and private, and leaves the request in_review' do
           allow(provider).to receive(:fetch_transcript).and_return(transcript_result)
           described_class.perform_now(request.id)
 
           artifact = SupplementalFile.where(parent_id: master_file.id).first
           expect(artifact.review_status).to eq('pending_review')
           expect(artifact.tags).to include('private')
+          expect(request.reload.status).to eq('in_review')
         end
       end
 
