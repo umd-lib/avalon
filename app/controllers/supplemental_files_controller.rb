@@ -13,11 +13,13 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 # frozen_string_literal: true
+require 'avalon/webvtt_cue_editor'
+
 class SupplementalFilesController < ApplicationController
   include Rails::Pagination
 
-  before_action :set_object, only: [:create, :update, :destroy]
-  before_action :set_proxy, except: [:create, :update, :destroy]
+  before_action :set_object, only: [:create, :update, :destroy, :update_text]
+  before_action :set_proxy, except: [:create, :update, :destroy, :update_text]
   before_action :authorize_object
 
   rescue_from Avalon::SaveError do |exception|
@@ -158,6 +160,45 @@ class SupplementalFilesController < ApplicationController
     send_data content, filename: @supplemental_file.download_filename, type: 'text/vtt', disposition: "inline; filename=#{@supplemental_file.download_filename}"
   end
 
+  # GET .../supplemental_files/1/edit_text
+  # A narrow, cue-text-only editor for caption files (WebVTT or SRT — see
+  # Avalon::WebvttCueEditor) — available any time, not gated to the
+  # transcription review workflow (that's TranscriptionReviewsController's
+  # separate #edit/#update_text, for pending_review files only).
+  def edit_text
+    find_supplemental_file
+    raise Avalon::BadRequest, "Only caption files can have their text edited" unless @supplemental_file.caption?
+
+    @cue_editor = Avalon::WebvttCueEditor.new(@supplemental_file.file.download)
+  end
+
+  # POST .../supplemental_files/1/update_text
+  def update_text
+    find_supplemental_file
+    raise Avalon::BadRequest, "Only caption files can have their text edited" unless @supplemental_file.caption?
+
+    editor = Avalon::WebvttCueEditor.new(@supplemental_file.file.download)
+    new_content = editor.apply(params.require(:cues).to_unsafe_h)
+
+    @supplemental_file.file.attach(
+      io: StringIO.new(new_content),
+      filename: @supplemental_file.file.filename.to_s,
+      content_type: @supplemental_file.file.content_type
+    )
+    @supplemental_file.save!
+
+    # The file's own after_update_commit hook reindexes its own Solr doc;
+    # this reaches the parent item's aggregated search content too, same
+    # reason TranscriptionReviewsController#approve does it.
+    media_object_id = @object.is_a?(MasterFile) ? @object.media_object_id : @object.id
+    MediaObjectIndexingJob.perform_later(media_object_id) if media_object_id.present?
+
+    flash[:success] = 'Caption text updated.'
+    redirect_to edit_structure_path
+  rescue ActionController::ParameterMissing, ArgumentError, Avalon::WebvttCueEditor::InvalidCueText => e
+    redirect_to edit_text_object_supplemental_file_path, alert: "Could not save edits: #{e.message}"
+  end
+
   private
 
     def set_object
@@ -294,6 +335,14 @@ class SupplementalFilesController < ApplicationController
         master_file_supplemental_file_path(id: @supplemental_file.id, master_file_id: @object.id)
       else
         media_object_supplemental_file_path(id: @supplemental_file.id, media_object_id: @object.id)
+      end
+    end
+
+    def edit_text_object_supplemental_file_path
+      if @object.is_a? MasterFile
+        edit_text_master_file_supplemental_file_path(id: @supplemental_file.id, master_file_id: @object.id)
+      else
+        edit_text_media_object_supplemental_file_path(id: @supplemental_file.id, media_object_id: @object.id)
       end
     end
 

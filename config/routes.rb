@@ -187,6 +187,10 @@ Rails.application.routes.draw do
 
     # Supplemental Files
     resources :supplemental_files, except: [:new, :index, :edit] do
+      member do
+        get 'edit_text'
+        post 'update_text'
+      end
       get :index, constraints: { format: 'json' }, on: :collection
     end
   end
@@ -225,6 +229,8 @@ Rails.application.routes.draw do
         get 'captions'
         get 'transcripts', :to => redirect('/master_files/%{master_file_id}/supplemental_files/%{id}')
         get 'descriptions', :to => redirect('master_files/%{master_file_id}/supplemental_files/%{id}')
+        get 'edit_text'
+        post 'update_text'
       end
       get :index, constraints: { format: 'json' }, on: :collection
     end

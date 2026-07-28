@@ -247,6 +247,22 @@ module ApplicationHelper
     end
   end
 
+  def object_edit_text_supplemental_file_path(object, file)
+    if object.is_a?(MasterFile) || object.try(:model) == MasterFile
+      edit_text_master_file_supplemental_file_path(master_file_id: object.id, id: file.id)
+    elsif object.is_a?(MediaObject) || object.try(:model) == MediaObject
+      edit_text_media_object_supplemental_file_path(media_object_id: object.id, id: file.id)
+    end
+  end
+
+  def object_update_text_supplemental_file_path(object, file)
+    if object.is_a?(MasterFile) || object.try(:model) == MasterFile
+      update_text_master_file_supplemental_file_path(master_file_id: object.id, id: file.id)
+    elsif object.is_a?(MediaObject) || object.try(:model) == MediaObject
+      update_text_media_object_supplemental_file_path(media_object_id: object.id, id: file.id)
+    end
+  end
+
   def object_supplemental_files_path(object)
     if object.is_a?(MasterFile) || object.try(:model) == MasterFile
       master_file_supplemental_files_path(object.id)

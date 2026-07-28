@@ -25,6 +25,8 @@
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   spec
 
+require 'avalon/webvtt_cue_editor'
+
 RSpec.shared_examples 'a nested controller for' do |object_class|
 
   # This should return the minimal set of attributes required to create a valid
@@ -750,6 +752,107 @@ RSpec.shared_examples 'a nested controller for' do |object_class|
             delete :destroy, params: { class_id => object.id, id: supplemental_file.id, format: :html}, session: valid_session
           }.to change { object.reload.media_object.to_solr(include_child_fields: true)['has_transcripts_bsi'] }.from(true).to(false)
         end
+      end
+    end
+  end
+
+  describe "GET #edit_text" do
+    let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag, label: 'label') }
+
+    before { login_user manager }
+
+    it "renders the cue editor for a caption file" do
+      get :edit_text, params: { class_id => object.id, id: supplemental_file.id }, session: valid_session
+      expect(response).to be_successful
+    end
+
+    context "for a non-caption file" do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag, label: 'label') }
+
+      it "returns a 400" do
+        get :edit_text, params: { class_id => object.id, id: supplemental_file.id, format: :json }, session: valid_session
+        expect(response).to have_http_status(400)
+      end
+    end
+
+    context "without edit permission" do
+      before { login_as :user }
+
+      it "returns a 401" do
+        get :edit_text, params: { class_id => object.id, id: supplemental_file.id }, session: valid_session
+        expect(response).to have_http_status(401)
+      end
+    end
+  end
+
+  describe "POST #update_text" do
+    let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_caption_file, :with_caption_tag, label: 'label') }
+    let(:cue_index) { Avalon::WebvttCueEditor.new(supplemental_file.file.download).cues.first.index }
+
+    before { login_user manager }
+
+    it "persists the edited cue text into the same record and redirects to Manage Files" do
+      post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { cue_index => 'Corrected captions' } }, session: valid_session
+
+      expect(supplemental_file.reload.file.download).to include('Corrected captions')
+      expect(response).to redirect_to("http://#{@request.host}/media_objects/#{media_object.id}/edit?step=file-upload")
+      expect(flash[:success]).to be_present
+    end
+
+    it "enqueues a MediaObjectIndexingJob" do
+      # Force object/supplemental_file/media_object to exist before installing
+      # the expectation — MediaObject's own after-create indexing hook would
+      # otherwise fire during lazy `let` creation inside this example and get
+      # misattributed to the update_text action itself (see CLAUDE.md).
+      object
+      supplemental_file
+      media_object
+      cue_index
+
+      expect(MediaObjectIndexingJob).to receive(:perform_later).with(media_object.id)
+      post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { cue_index => 'Corrected captions' } }, session: valid_session
+    end
+
+    context "with SRT content" do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_caption_srt_file, :with_caption_tag, label: 'label') }
+
+      it "keeps the file SRT-formatted after editing" do
+        post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { cue_index => 'Corrected captions' } }, session: valid_session
+
+        supplemental_file.reload
+        expect(supplemental_file.file.content_type).to eq 'application/x-subrip'
+        expect(supplemental_file.file.download).to include('00:00:03,498 --> 00:00:05,000')
+        expect(supplemental_file.file.download).to include('Corrected captions')
+      end
+    end
+
+    context "for a non-caption file" do
+      let(:supplemental_file) { FactoryBot.create(:supplemental_file, :with_transcript_file, :with_transcript_tag, label: 'label') }
+
+      it "returns a 400" do
+        post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { 0 => 'x' }, format: :json }, session: valid_session
+        expect(response).to have_http_status(400)
+      end
+    end
+
+    context "with an unknown cue index" do
+      it "redirects back to the editor with an alert, leaving the file untouched" do
+        original_content = supplemental_file.file.download
+
+        post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { 999 => 'x' } }, session: valid_session
+
+        expect(response).to be_redirect
+        expect(flash[:alert]).to be_present
+        expect(supplemental_file.reload.file.download).to eq(original_content)
+      end
+    end
+
+    context "without edit permission" do
+      before { login_as :user }
+
+      it "returns a 401" do
+        post :update_text, params: { class_id => object.id, id: supplemental_file.id, cues: { cue_index => 'x' } }, session: valid_session
+        expect(response).to have_http_status(401)
       end
     end
   end

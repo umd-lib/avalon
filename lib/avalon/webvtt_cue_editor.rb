@@ -13,21 +13,30 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 module Avalon
-  # Parses a WebVTT file into its cues (identifier/timing preserved verbatim,
-  # read-only) and lets an edited cue-text-only map be spliced back into the
-  # original bytes. Deliberately narrow and separate from
+  # Parses a WebVTT or SRT file into its cues (identifier/timing preserved
+  # verbatim, read-only) and lets an edited cue-text-only map be spliced back
+  # into the original bytes. Deliberately narrow and separate from
   # Avalon::TranscriptParser, which is a one-way, lossy normalizer built for
   # Solr indexing (strips headers/identifiers/styling/NOTEs) and can't
   # round-trip a file. This class never touches timestamps, cue settings,
   # identifiers, or non-cue blocks (WEBVTT header, NOTE, STYLE, REGION) —
   # #apply substitutes only within a cue's recorded text_range, so everything
   # else in the file comes back byte-identical to the source.
+  #
+  # SRT needs no separate handling: it's structurally the same
+  # blank-line-separated identifier+timing+text blocks as VTT (see
+  # spec/fixtures/captions.srt vs captions.vtt) — the only difference is the
+  # decimal separator in timestamps ('.' for VTT, ',' for SRT), and the
+  # timing line is only ever preserved verbatim here, never parsed apart. A
+  # SupplementalFile's stored bytes stay in their original format either way
+  # (SupplementalFilesController#captions is what transiently converts SRT to
+  # VTT for playback — the attachment itself is untouched by that).
   class WebvttCueEditor
     class InvalidCueText < StandardError; end
 
     Cue = Struct.new(:index, :identifier, :timing, :text, :text_range, keyword_init: true)
 
-    TIMING_LINE = /\A\d{0,2}:?\d{2}:\d{2}\.\d{3} --> \d{0,2}:?\d{2}:\d{2}\.\d{3}.*\z/
+    TIMING_LINE = /\A\d{0,2}:?\d{2}:\d{2}[.,]\d{3} --> \d{0,2}:?\d{2}:\d{2}[.,]\d{3}.*\z/
 
     def initialize(raw_vtt)
       @raw = raw_vtt.to_s.gsub("\r\n", "\n")

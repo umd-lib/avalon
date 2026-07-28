@@ -30,6 +30,28 @@ describe Avalon::WebvttCueEditor do
     end
   end
 
+  describe 'parsing spec/fixtures/captions.srt' do
+    let(:raw) { Rails.root.join('spec', 'fixtures', 'captions.srt').read }
+    subject { described_class.new(raw) }
+
+    it 'parses the single cue, comma-separated timestamps and all' do
+      expect(subject.cues.size).to eq(1)
+      cue = subject.cues.first
+      expect(cue.identifier).to eq('1')
+      expect(cue.timing).to eq('00:00:03,498 --> 00:00:05,000')
+      expect(cue.text).to eq('- Example Captions')
+    end
+
+    it 'edits cue text without reformatting the timestamps to VTT-style periods' do
+      result = subject.apply({ 0 => 'Corrected captions' })
+
+      expect(result).to include('00:00:03,498 --> 00:00:05,000')
+      expect(result).to include('Corrected captions')
+      expect(result).not_to include('.498')
+      expect(result).not_to include('.000')
+    end
+  end
+
   describe 'parsing spec/fixtures/chunk_test.vtt' do
     let(:raw) { Rails.root.join('spec', 'fixtures', 'chunk_test.vtt').read }
     subject { described_class.new(raw) }

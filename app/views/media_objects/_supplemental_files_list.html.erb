@@ -65,6 +65,11 @@ Unless required by applicable law or agreed to in writing, software distributed
         <%= button_tag name: 'edit_label', class:'btn btn-outline btn-sm edit_label display-item',data:{testid:"media-object-supplemenatl-file-edit-btn"}, type: 'button' do %>
           <i class="fa fa-edit" title="Edit"></i> <span class="sm-hidden">Edit</span>
         <% end %>
+        <% if file.caption? %>
+          <%= link_to(object_edit_text_supplemental_file_path(section, file), class: "btn btn-outline btn-sm", data: { testid: "media-object-supplemental-file-edit-text-btn" }) do %>
+            <i class="fa fa-pencil" title="Edit Text"></i> <span class="sm-hidden">Edit Text</span>
+          <% end %>
+        <% end %>
         <%= link_to(object_supplemental_file_path(section, file), title: 'Remove', method: :delete, class: "btn btn-danger btn-sm file-remove btn-confirmation", data: { confirm: "Are you sure?", testid:"media-object-supplemenatl-file-delete-btn" }) do %>
           <i class="fa fa-trash" title="Delete"></i> <span class="sm-hidden">Delete</span>
         <% end %>
