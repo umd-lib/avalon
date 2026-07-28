@@ -180,6 +180,21 @@ RSpec.describe TranscriptionJobs do
         expect(master_file.supplemental_files(tag: 'transcript')).to include(artifact)
       end
 
+      context 'when the master file is audio-only' do
+        let(:master_file) { FactoryBot.create(:master_file, :audio, :with_media_object) }
+
+        it 'tags the artifact transcript only — never caption, which only applies to video' do
+          allow(provider).to receive(:fetch_transcript).with('provider-job-1').and_return(transcript_result)
+
+          described_class.perform_now(request.id)
+
+          artifact = SupplementalFile.where(parent_id: master_file.id).first
+          expect(artifact.transcript?).to eq(true)
+          expect(artifact.caption?).to eq(false)
+          expect(artifact.label).to eq('Machine-generated Transcript')
+        end
+      end
+
       it 'falls back to a transcript-only artifact when the provider returns no VTT' do
         allow(provider).to receive(:fetch_transcript).with('provider-job-1')
                                                        .and_return(TranscriptionProviders::TranscriptResult.new(

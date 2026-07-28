@@ -157,15 +157,19 @@ module TranscriptionJobs
 
     private
 
-    # A single WebVTT file tagged both 'caption' and 'transcript' — the same
-    # "treat as transcript" pattern the Section Files upload UI already
-    # supports for manual uploads (SupplementalFile#caption_transcript?).
-    # The plain-text transcript is derived from this file's cues on demand
-    # (Avalon::TranscriptParser, already used by
+    # A single WebVTT file. For video sections it's tagged both 'caption'
+    # and 'transcript' — the same "treat as transcript" pattern the Section
+    # Files upload UI already supports for manual uploads
+    # (SupplementalFile#caption_transcript?) — so there's only ever one file
+    # for a reviewer to check or correct, and no risk of the caption and
+    # transcript drifting out of sync with each other. For audio-only
+    # sections it's tagged 'transcript' only — 'caption' never applies to
+    # audio (see MasterFile#is_video?; matches the same gate
+    # _file_upload.html.erb already uses to hide the Captions upload UI for
+    # audio sections). Either way, the plain-text transcript is derived from
+    # this file's cues on demand (Avalon::TranscriptParser, already used by
     # SupplementalFile#segment_transcript for Solr indexing) rather than
-    # stored as a second, independently-editable artifact — so there's only
-    # ever one file for a reviewer to check or correct, and no risk of the
-    # caption and transcript drifting out of sync with each other.
+    # stored as a second, independently-editable artifact.
     #
     # Falls back to a transcript-only .txt artifact when the provider didn't
     # return a VTT (e.g. subtitle generation isn't supported for the job's
@@ -173,11 +177,18 @@ module TranscriptionJobs
     # where caption_vtt is nil whenever AWS returns no subtitle_file_uris.
     def create_supplemental_file(request, result)
       if result.caption_vtt.present?
-        tags = %w[caption transcript machine_generated]
+        # 'caption' only applies to video — an audio-only section has no
+        # visual track to overlay it on, and (per the same is_video? gate
+        # the Section Files upload UI already uses in _file_upload.html.erb)
+        # a caption-tagged file on an audio section would end up invisible
+        # in the Section Files list entirely, since the Captions partial
+        # never renders there and the Transcripts list skips anything
+        # already tagged 'caption'.
+        tags = request.master_file.is_video? ? %w[caption transcript machine_generated] : %w[transcript machine_generated]
         content = result.caption_vtt
         extension = 'vtt'
         content_type = 'text/vtt'
-        label = 'Machine-generated Caption'
+        label = request.master_file.is_video? ? 'Machine-generated Caption' : 'Machine-generated Transcript'
       elsif result.transcript_text.present?
         tags = %w[transcript machine_generated]
         content = result.transcript_text
