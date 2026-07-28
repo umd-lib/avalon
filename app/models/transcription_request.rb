@@ -108,8 +108,25 @@ class TranscriptionRequest < ApplicationRecord
     errors.add(:master_file_id, 'not found') unless MasterFile.exists?(master_file_id)
   end
 
+  # Prefers the MediaObject's own cataloged language (MODS languageTerm,
+  # e.g. set via the item's descriptive metadata) over the global
+  # Settings.caption_default.language fallback — a French item should be
+  # transcribed as French, not silently default to English. Only used when
+  # it resolves to a code TranscriptionRequest itself considers valid (the
+  # `language` inclusion validation below); an unrecognized/legacy MODS
+  # code falls back to the global default rather than failing validation.
   def set_default_language
-    self.language ||= Settings.caption_default.language
+    self.language ||= media_object_language_code || Settings.caption_default.language
+  end
+
+  def media_object_language_code
+    return nil if master_file_id.blank? || !MasterFile.exists?(master_file_id)
+
+    # MediaObject#language (app/models/concerns/media_object_mods.rb) returns
+    # [{code:, text:}, ...] from its MODS languageTerm elements — there's no
+    # plain language_code reader on the model itself, only the datastream's.
+    code = MasterFile.find(master_file_id).media_object&.language&.first&.[](:code).presence
+    code if code && LanguageTerm::Iso6392.map.key?(code)
   end
 
   def set_media_object_id

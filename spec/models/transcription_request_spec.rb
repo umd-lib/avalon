@@ -21,6 +21,51 @@ RSpec.describe TranscriptionRequest, type: :model do
     TranscriptionRequest.new({ master_file_id: master_file.id, provider: 'aws_transcribe' }.merge(attrs))
   end
 
+  describe 'language default' do
+    let(:media_object) { FactoryBot.create(:media_object, language: cataloged_language) }
+    let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
+
+    context "when the MediaObject has a recognized cataloged language" do
+      let(:cataloged_language) { ['fre'] }
+
+      it "uses the MediaObject's language instead of the global default" do
+        request = build_request
+        request.valid?
+        expect(request.language).to eq('fre')
+      end
+    end
+
+    context 'when the MediaObject has no cataloged language' do
+      let(:cataloged_language) { [] }
+
+      it 'falls back to Settings.caption_default.language' do
+        request = build_request
+        request.valid?
+        expect(request.language).to eq(Settings.caption_default.language)
+      end
+    end
+
+    context "when the MediaObject's cataloged language code is not recognized" do
+      let(:cataloged_language) { ['xyz'] }
+
+      it 'falls back to Settings.caption_default.language rather than failing validation' do
+        request = build_request
+        expect(request).to be_valid
+        expect(request.language).to eq(Settings.caption_default.language)
+      end
+    end
+
+    context 'when a language is explicitly provided' do
+      let(:cataloged_language) { ['fre'] }
+
+      it 'does not override the explicit value' do
+        request = build_request(language: 'spa')
+        request.valid?
+        expect(request.language).to eq('spa')
+      end
+    end
+  end
+
   describe 'validations' do
     it 'is valid with a master_file_id and provider' do
       expect(build_request).to be_valid
