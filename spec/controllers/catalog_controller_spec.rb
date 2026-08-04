@@ -82,14 +82,31 @@ describe CatalogController do
           expect(assigns(:response).documents.count).to eql(1)
           expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
         end
-        it "should not show results for items that are inherited private" do
+        # UMD Customization
+        # LIBAVALON-554: under UMD's permission model discoverability is inherited from
+        # the collection independently of Item Access, so an inherited-private item in a
+        # non-Course-Reserves collection is still discoverable. Streaming remains gated
+        # separately by visibility -- see umd_docs/AvalonPermissions.md.
+        it "should show results for items that are inherited private" do
           collection = FactoryBot.create(:collection, default_visibility: 'private')
           mo = FactoryBot.create(:published_media_object, visibility: 'public', collection: collection)
           get 'index', params: { q: "" }
           expect(response).to be_successful
           expect(response).to render_template('catalog/index')
+          expect(assigns(:response).documents.count).to eql(1)
+          expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
+        end
+
+        it "should not show results for items that are inherited private in a Course Reserves collection" do
+          unit = FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name)
+          collection = FactoryBot.create(:collection, default_visibility: 'private', unit: unit)
+          FactoryBot.create(:published_media_object, visibility: 'public', collection: collection)
+          get 'index', params: { q: "" }
+          expect(response).to be_successful
+          expect(response).to render_template('catalog/index')
           expect(assigns(:response).documents.count).to eql(0)
         end
+        # End UMD Customization
         context 'disable inheritance' do
           it "should show results for items" do
             collection = FactoryBot.create(:collection, default_visibility: 'private')
@@ -163,14 +180,29 @@ describe CatalogController do
           expect(assigns(:response).documents.count).to eql(1)
           expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
         end
-        it "should not show results for items that are inherited private" do
+        # UMD Customization
+        # LIBAVALON-554: see the matching un-authenticated example above -- collection
+        # discoverability is inherited independently of Item Access.
+        it "should show results for items that are inherited private" do
           collection = FactoryBot.create(:collection, default_visibility: 'private')
           mo = FactoryBot.create(:published_media_object, visibility: 'restricted', collection: collection)
           get 'index', params: { q: "" }
           expect(response).to be_successful
           expect(response).to render_template('catalog/index')
+          expect(assigns(:response).documents.count).to eql(1)
+          expect(assigns(:response).documents.map(&:id)).to eq([mo.id])
+        end
+
+        it "should not show results for items that are inherited private in a Course Reserves collection" do
+          unit = FactoryBot.create(:unit, name: Settings.streaming_reserves.unit_name)
+          collection = FactoryBot.create(:collection, default_visibility: 'private', unit: unit)
+          FactoryBot.create(:published_media_object, visibility: 'restricted', collection: collection)
+          get 'index', params: { q: "" }
+          expect(response).to be_successful
+          expect(response).to render_template('catalog/index')
           expect(assigns(:response).documents.count).to eql(0)
         end
+        # End UMD Customization
         context 'disable inheritance' do
           it "should show results for items" do
             collection = FactoryBot.create(:collection, default_visibility: 'private')

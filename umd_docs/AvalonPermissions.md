@@ -67,15 +67,61 @@ whether a published item is streamable and/or downloadable.
   staff, does not appear in Browse/Search, and is not
   viewable/streamable/downloadable by any mechanism​ by non-Collection staff
 * Published - Item is accessible/viewable by any user (including anonymous
-  users)
+  users), unless Item Discovery has been disabled for it (see below)
 
 ### Item Discovery
 
 For published items:
 
 * Item Discovery allowed​ - Item appears in Browse/Search​
-* Item Discovery disabled - Item does not appear in Browse/Search, but is
-  directly accessible by URL
+* Item Discovery disabled - Item does not appear in Browse/Search, **and is not
+  directly accessible by URL**. Requesting the item page returns "401
+  Unauthorized" for users who do not otherwise have access to it.
+
+  Disabling discovery hides an item; it does not revoke access that was granted
+  explicitly. Collection staff (who have edit access), users/groups/IP ranges
+  granted read via "Assign special access", and holders of a valid access token
+  URL can all still view the item.
+
+  This applies at every Item Access level: hiding a "Available to the general
+  public" item makes it inaccessible to anonymous users, and hiding a "Logged in
+  users only" item makes it inaccessible to ordinary logged-in users. Items in
+  the Streaming Reserves unit are unaffected — they have their own access rule.
+
+Like Item Access, Item Discovery is inherited from the parent collection by
+default, and an item can override that inheritance via "Disable parent
+permissions". An item is discoverable when the item itself is not hidden **and**
+either it has overridden inheritance or its collection is not hidden.
+
+**Item Discovery is independent of Item Access.** Items in a collection are
+publicly discoverable by default regardless of their Item Access setting, so an
+item whose access is "Collection staff only" still appears in Browse/Search for
+anonymous users — they can see its metadata but cannot stream it. The exception
+is collections in the Course Reserves (Streaming Reserves) unit, whose items are
+discoverable only to the groups configured on the collection.
+
+----
+**Note for developers**
+
+Collection-level discoverability is indexed on the collection as
+`inheritable_discover_access_group_ssim`, which is `default_read_groups` plus
+`public` for ordinary collections and `default_read_groups` alone for Course
+Reserves collections (`Admin::Collection#to_solr`). Browse/Search filtering
+happens in `SearchBuilder#limit_to_inheritance_enabled_items` and
+`#limit_to_non_hidden_items`; the matching direct-URL check is
+`Ability#discoverability_allows_read?`, with the explicit-grant escape hatch in
+`Ability#explicit_grant_allows_read?`. The two must be kept in agreement — a
+Solr filter more permissive than the ability check leaks item existence and
+metadata, and one more restrictive makes items unreachable that the item page
+would happily render.
+
+**Changing this setting on existing content requires a reindex.** Because
+`inheritable_discover_access_group_ssim` is written by `Admin::Collection#to_solr`,
+collections created before this field was introduced do not have it until they
+are re-saved or reindexed, and their items will not be publicly discoverable
+until then.
+
+----
 
 ### Item Access
 

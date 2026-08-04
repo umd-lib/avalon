@@ -55,6 +55,30 @@ RSpec.describe SearchBuilder do
       expect(clause).to include('policy_discovery_clause')
       expect(clause).to include('{!join from=id to=isGovernedBy_ssim}inheritable_discover_access_group_ssim:public')
     end
+
+    it 'includes item-level discoverability clause when inheritance is disabled' do
+      clause = subject.limit_to_inheritance_enabled_items({}, anonymous_ability)
+
+      expect(clause).to include('(disable_inheritance_bsi:true AND')
+      expect(clause).to include('discover_access_group_ssim:public')
+      expect(clause).to include('read_access_group_ssim:(public)')
+    end
+
+    # Special-access group names are user-supplied (external groups, UMD IP Manager
+    # groups), so they must not be able to break out of the Solr query.
+    it 'escapes Solr special characters in special-access group names' do
+      hostile_ability = instance_double(
+        Ability,
+        current_user: OpenStruct.new(username: 'user:with"quote'),
+        user_groups: ['public', 'group:with"quote']
+      )
+
+      clause = subject.limit_to_inheritance_enabled_items({}, hostile_ability)
+
+      expect(clause).to include(RSolr.solr_escape('group:with"quote'))
+      expect(clause).to include(RSolr.solr_escape('user:with"quote'))
+      expect(clause).to_not include('read_access_person_ssim:user:with"quote')
+    end
   end
   # End UMD Customization
 

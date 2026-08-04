@@ -510,6 +510,79 @@ describe Ability, type: :model do
             expect(ability).to be_able_to(:read, media_object)
           end
         end
+
+        it 'is readable by a user granted explicit read access (special access)' do
+          user = FactoryBot.create(:user)
+          media_object.read_users += [user.user_key]
+          media_object.save!
+          ability = Ability.new(user)
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        # Regression: "public"/"registered" are ambient Item Access, not an explicit
+        # grant. Honouring them as one would make a public item impossible to hide.
+        it 'is not readable by anonymous users even when its visibility is public' do
+          media_object.visibility = 'public'
+          media_object.save!
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by ordinary logged in users when its visibility is restricted' do
+          media_object.visibility = 'restricted'
+          media_object.save!
+          ability = Ability.new(FactoryBot.create(:user))
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is readable by the holder of an active access token' do
+          access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id)
+          ability = Ability.new(nil, { access_token: access_token.token })
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is not readable with an access token for a different media object' do
+          other_media_object = FactoryBot.create(:published_media_object, collection: regular_collection)
+          access_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: other_media_object.id)
+          ability = Ability.new(nil, { access_token: access_token.token })
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+      end
+
+      context 'and discoverability is suppressed via the collection default' do
+        let(:hidden_collection) { FactoryBot.create(:collection, default_hidden: true) }
+        let(:media_object) do
+          FactoryBot.create(:published_media_object, collection: hidden_collection, visibility: 'public')
+        end
+
+        it 'is not readable by non-logged in users' do
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by ordinary logged in users without read access' do
+          ability = Ability.new(FactoryBot.create(:user))
+          expect(ability).to_not be_able_to(:read, media_object)
+        end
+
+        it 'is not readable when evaluated against the Solr-backed proxy' do
+          media_object # ensure indexed
+          proxy = SpeedyAF::Proxy::MediaObject.find(media_object.id)
+          ability = Ability.new(nil)
+          expect(ability).to_not be_able_to(:read, proxy)
+        end
+
+        it 'is still readable by admin users' do
+          ability = Ability.new(FactoryBot.create(:admin))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is readable by an item that has overridden inheritance and is not itself hidden' do
+          media_object.disable_inheritance = true
+          media_object.save!
+          ability = Ability.new(nil)
+          expect(ability).to be_able_to(:read, media_object)
+        end
       end
     end
   end

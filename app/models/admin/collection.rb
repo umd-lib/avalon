@@ -191,7 +191,7 @@ class Admin::Collection < ActiveFedora::Base
       solr_doc["inheritable_read_access_person_ssim"] = default_read_users
       solr_doc["inheritable_read_access_group_ssim"] = default_read_groups
       # UMD Customization
-      # UMD Customization: collection-based discoverability
+      # Collection-based discoverability (LIBAVALON-554)
       if is_course_reserves?
         # This collection’s items should not inherit public discoverability
         solr_doc["inheritable_discover_access_group_ssim"] = default_read_groups

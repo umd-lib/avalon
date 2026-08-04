@@ -48,23 +48,8 @@ class SearchBuilder < Blacklight::SearchBuilder
     read_access_clauses += ["read_access_person_ssim:#{RSolr.solr_escape(current_user)}"] if current_user.present?
     read_access_clauses += ["_query_:\"{!terms f=read_access_group_ssim}#{RSolr.solr_escape(user_groups.join(','))}\""] if user_groups.present?
     # UMD Customization
-    inherited_discover_visibility_clauses = user_visibility_groups.map { |group| "{!join from=id to=isGovernedBy_ssim}inheritable_discover_access_group_ssim:#{RSolr.solr_escape(group)}" }
-    override_discover_visibility_clauses = user_visibility_groups.map { |group| "discover_access_group_ssim:#{RSolr.solr_escape(group)}" }
-    inherited_policy_clauses = Array(policy_clauses(permission_types: discovery_permissions))
-
-    # Inherited branch: collection policy/read rules + discoverability visibility.
-    inherited_conditions = (inherited_policy_clauses + read_access_clauses + inherited_discover_visibility_clauses).join(' OR ')
-    inheritance_branch = "(*:* AND NOT disable_inheritance_bsi:true AND (#{inherited_conditions}))"
-
-    # Override branch: item-level read/special-access rules + discoverability visibility.
-    override_conditions = (
-            read_access_clauses +
-          ["read_access_group_ssim:(#{user_visibility_groups.map { |group| RSolr.solr_escape(group) }.join(' OR ')})"] +
-      override_discover_visibility_clauses
-    ).join(' OR ')
-    override_branch = "(disable_inheritance_bsi:true AND (#{override_conditions}))"
-
-    combined_read_clause = "(#{inheritance_branch} OR #{override_branch})"
+    combined_read_clause = "(#{inheritance_enabled_clause(read_access_clauses, user_visibility_groups)} OR " \
+                           "#{inheritance_disabled_clause(read_access_clauses, user_visibility_groups)})"
 
     [
       policy_clauses(permission_types: [:edit]),
@@ -72,6 +57,36 @@ class SearchBuilder < Blacklight::SearchBuilder
     ].compact.join(' OR ')
     # End UMD Customization
   end
+
+  # UMD Customization
+  # Discovery clause for items that inherit from their collection: the collection's
+  # policy/read rules, the user's own read grants, and discoverability inherited from
+  # the collection's "inheritable_discover_access_group_ssim" field.
+  def inheritance_enabled_clause(read_access_clauses, user_visibility_groups)
+    inherited_discover_visibility_clauses = user_visibility_groups.map do |group|
+      "{!join from=id to=isGovernedBy_ssim}inheritable_discover_access_group_ssim:#{RSolr.solr_escape(group)}"
+    end
+    conditions = (Array(policy_clauses(permission_types: discovery_permissions)) +
+                  read_access_clauses +
+                  inherited_discover_visibility_clauses).join(' OR ')
+
+    "(*:* AND NOT disable_inheritance_bsi:true AND (#{conditions}))"
+  end
+
+  # Discovery clause for items that have overridden collection inheritance: item-level
+  # read/special-access rules plus item-level discoverability.
+  def inheritance_disabled_clause(read_access_clauses, user_visibility_groups)
+    override_discover_visibility_clauses = user_visibility_groups.map do |group|
+      "discover_access_group_ssim:#{RSolr.solr_escape(group)}"
+    end
+    escaped_visibility_groups = user_visibility_groups.map { |group| RSolr.solr_escape(group) }.join(' OR ')
+    conditions = (read_access_clauses +
+                  ["read_access_group_ssim:(#{escaped_visibility_groups})"] +
+                  override_discover_visibility_clauses).join(' OR ')
+
+    "(disable_inheritance_bsi:true AND (#{conditions}))"
+  end
+  # End UMD Customization
 
   # Overridden to skip for admin users
   def add_access_controls_to_solr_params(solr_parameters)

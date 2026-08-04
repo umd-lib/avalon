@@ -348,6 +348,14 @@ This section verifies that items with restricted streaming access are still
 discoverable to public (anonymous) users when discoverability is inherited
 from a standard (non-Course-Reserves) collection.
 
+> **Precondition:** Collection-level discoverability is driven by a Solr field
+> (`inheritable_discover_access_group_ssim`) that is only written when a
+> collection is saved or reindexed. Collections that existed before this change
+> was deployed will not have it, and their items will not be publicly
+> discoverable until they are reindexed. When testing against an existing
+> collection, re-save the collection (or reindex it) first. Testing with a
+> newly-created collection will pass regardless and will **not** exercise this.
+
 11.1) Log in to Avalon via CAS as an administrator. From the navigation bar,
 select "Manage | Manage Content". The page with units and collections will be
 displayed.
@@ -442,6 +450,66 @@ Verify that:
   "Restricted Content" message and a 401 Unauthorized response code.
 * The item metadata (title, description, etc.) is **not** displayed.
 
+12.6) Verify that hiding the item does **not** revoke an access token.
+
+Hiding an item controls only its discoverability; users who were granted access
+explicitly must still be able to reach it.
+
+12.6.1) In the administrator window, go to the item detail page and left-click
+the "Access Tokens" button. Create a new access token for the item with
+streaming enabled, and copy the generated access token URL.
+
+12.6.2) In a new private/incognito window, paste the access token URL.
+
+Verify that:
+
+* The item detail page **is** displayed, even though the item is hidden.
+* The item metadata (title, description, etc.) is displayed.
+* The media player is displayed, and the item can be streamed successfully.
+
+12.7) Verify that hiding the item does **not** revoke "Assign special access".
+
+12.7.1) In the administrator window, left-click the "Edit" button for the item,
+then go to the "Access Control" page. Under "Assign special access", add a
+specific Avalon user (for example, a test account you can log in as) and
+left-click "Save".
+
+12.7.2) In a new private/incognito window, log in to Avalon via CAS as that
+user, then go directly to the item detail URL.
+
+Verify that:
+
+* The item detail page **is** displayed, even though the item is hidden.
+* The item still does **not** appear in browse/search results for that user.
+
+12.8) Verify that hiding works at every Item Access level.
+
+The item used above has Item Access "Collection staff only". Hiding must also
+take effect for items that would otherwise be streamable by anyone.
+
+12.8.1) In the administrator window, remove the special access user added in
+step 12.7.1. On the "Access Control" page, set "Item Access" to "Available to
+the general public", leave "Hide this item from search results" checked, and
+left-click "Save".
+
+12.8.2) In a private/incognito window (not logged in), go directly to the item
+detail URL.
+
+Verify that:
+
+* The item detail page is **not** viewable. You should see a "Restricted
+  Content" message and a 401 Unauthorized response code.
+
+12.8.3) In the administrator window, set "Item Access" to "Logged in users
+only" and left-click "Save". In a private/incognito window, log in via CAS as
+an ordinary user (one who is not staff on the collection) and go directly to
+the item detail URL.
+
+Verify that:
+
+* The item detail page is **not** viewable. You should see a "Restricted
+  Content" message and a 401 Unauthorized response code.
+
 ### 13) UMD IP Manager Group-Based Access
 
 > **Note:** Since the Avalon pre-production environments are not accessible
@@ -507,7 +575,7 @@ campus and VPN* group. Left-click the "**Add**" button next to the dropdown to
 save the changes.
 
 13.8.2) On the collection detail page, under the "Assign special access"
-section, left-click the "X" next to the *The Jim Henson Works* group to remove it..
+section, left-click the "X" next to the *The Jim Henson Works* group to remove it.
 
 13.9) In the same private/incognito window, go to the item detail URL.
 
@@ -547,18 +615,18 @@ item.
   inherits access settings from the collection.
 * Left-click "Save" if any changes were made.
 
-14.3) In a private/incognito browser window (not logged in and not connected to
+14.4) In a private/incognito browser window (not logged in and not connected to
 VPN), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
 Verify that the browse page is displayed and that you are **not** logged in.
 
-14.4) In the same private/incognito window, search for the title of the Course
-Reserves item identified in step 14.2. Verify that the item does **not** appear
+14.5) In the same private/incognito window, search for the title of the Course
+Reserves item identified in step 14.3. Verify that the item does **not** appear
 in the browse/search results.
 
-14.5) In the private/incognito window, go directly to the item detail URL for
+14.6) In the private/incognito window, go directly to the item detail URL for
 the Course Reserves item.
 
 Verify that:

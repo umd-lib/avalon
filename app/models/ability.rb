@@ -120,7 +120,7 @@ class Ability
         if media_object.is_streaming_reserve?
           (test_read(media_object.id) && media_object.published?) || test_edit(media_object.id)
         else
-          (media_object.published? && discoverability_allows_read?(media_object)) || test_edit(media_object.id)
+          media_object.published? || test_edit(media_object.id)
         end
       end
 
@@ -286,6 +286,24 @@ class Ability
       # End UMD Customization
         media_object.disable_inheritance? && is_exclusively_inherited_from_parent?(media_object) && !is_member_of?(media_object.collection)
       end
+
+      # UMD Customization
+      # LIBAVALON-554: suppressing discoverability has to be able to *remove* read
+      # access, which a "can" rule cannot do -- Hydra's own read_permissions rule
+      # independently grants :read from read_access_group_ssim, and CanCan ORs all
+      # matching rules together. Expressed as a "can" this only took effect on
+      # "Collection staff only" items and silently did nothing for public or
+      # logged-in-only ones.
+      #
+      # Streaming reserve items are excluded: they have their own read rule above
+      # and their discoverability behavior is unchanged by LIBAVALON-554.
+      cannot :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+        !media_object.is_streaming_reserve? &&
+          !discoverability_allows_read?(media_object) &&
+          !explicit_grant_allows_read?(media_object) &&
+          !test_edit(media_object.id)
+      end
+      # End UMD Customization
 
       cannot :update, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
@@ -470,12 +488,54 @@ class Ability
     allowed
   end
 
+  # Returns true if the given media object's discoverability settings permit an
+  # ordinary user to read (view) it.
+  #
+  # This deliberately mirrors SearchBuilder#limit_to_non_hidden_items so that an
+  # item hidden from Browse/Search is also unreachable by direct URL: an item-level
+  # "hidden" flag always applies, and when the item has not overridden collection
+  # inheritance the collection's "default_hidden" flag applies as well.
   def discoverability_allows_read?(media_object)
-    if media_object.disable_inheritance?
-      !media_object.hidden?
-    else
-      !media_object.inherited_hidden?
+    return false if media_object.hidden?
+    return true if media_object.disable_inheritance?
+
+    !media_object.inherited_hidden?
+  end
+
+  # Returns true if the user holds a grant that should let them view a hidden item
+  # anyway. Hiding an item controls its *discoverability*; it must not revoke access
+  # that was handed out explicitly, either through "Assign special access" or through
+  # an Access Token URL.
+  def explicit_grant_allows_read?(media_object)
+    access_token_allows_read?(media_object) || special_access_allows_read?(media_object)
+  end
+
+  def access_token_allows_read?(media_object)
+    @options.present? && @options.has_key?(:access_token) &&
+      AccessToken.allow_read_of?(@options[:access_token], media_object.id)
+  end
+
+  # "Assign special access" grants read to a named Avalon user, an external group, or
+  # an IP-based group. This deliberately excludes the ambient "public"/"registered"
+  # visibility groups: those are Item Access, not an explicit grant, and treating them
+  # as one here would make it impossible to hide a publicly-streamable item.
+  #
+  # Only Solr-backed attributes are read so that this stays cheap for
+  # SpeedyAF::Proxy::MediaObject and does not force the proxy to reify.
+  def special_access_allows_read?(media_object)
+    granted_users = Array(media_object.read_users)
+    granted_groups = Array(media_object.read_groups) - SearchBuilder::PERMISSION_GROUPS
+
+    unless media_object.disable_inheritance?
+      collection = media_object.collection
+      if collection
+        granted_users += Array(collection.default_read_users)
+        granted_groups += Array(collection.default_read_groups) - SearchBuilder::PERMISSION_GROUPS
+      end
     end
+
+    (@user.present? && granted_users.include?(@user.user_key)) ||
+      (granted_groups & @user_groups).any?
   end
 
   def is_course_reserves_manager?
