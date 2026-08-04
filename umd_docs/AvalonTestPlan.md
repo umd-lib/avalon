@@ -348,20 +348,20 @@ This section verifies that items with restricted streaming access are still
 discoverable to public (anonymous) users when discoverability is inherited
 from a standard (non-Course-Reserves) collection.
 
-11.1) Log in to Avalon via CAS as an administrator (see section 2). From the
-navigation bar, select "Manage | Manage Content". The page with units and
-collections will be displayed.
+11.1) Log in to Avalon via CAS as an administrator. From the navigation bar,
+select "Manage | Manage Content". The page with units and collections will be
+displayed.
 
-11.2) Create or identify a published item in a standard (non-Course-Reserves)
+11.2) Create or identify a published item in a standard (non *Course Reserves*)
 collection with the following access settings:
 
 11.2.1) On the parent collection:
 
-* Verify the collection belongs to a unit that is **not** “Streaming Reserves”
-  (confirming this is a standard collection, not a Course Reserves collection).
+* Verify the collection is **not** a  *Course Reserves* collection.
 * On the collection detail page, verify that public
   discoverability is **not** suppressed. Under “Item Discovery”, verify that
   “Hide this item from search results” is **not** checked.
+* Verify that the "Item Access" setting is set to "Collection staff only".
 * Verify that no "Assign special access" options are configured for the collection.
 
 11.2.2) On the item:
@@ -408,7 +408,7 @@ restricted item.
 ### 12) Item-Level Override Restricts Access
 
 This section verifies that item-level override can restrict discoverability
-within a publicly discoverable standard (non-Course-Reserves) collection.
+within a publicly discoverable standard (non *Course Reserves*) collection.
 
 12.1) Reuse the same published item from section 11. From the item detail page,
 left-click the “Edit” button to go to the “Edit Media Object > Access Control”
@@ -416,7 +416,8 @@ page.
 
 12.2) On the access control page:
 
-* Check “Disable parent permissions”, then left-click “Save”.
+* Check “Disable parent permissions”, then left-click “Save” at the bottom of
+  the page.
 * After saving, verify that the “Item Discovery” and “Item Access” edit options
   are visible.
 * Under “Item Discovery”, verify that “Hide this item from search results” is
@@ -437,58 +438,83 @@ Verify that the item does **not** appear in the browse/search results.
 
 Verify that:
 
-* The item detail page is not viewable by the anonymous user (for example,
-  an authorization error page, "not found" page, or redirect away from the
-  item detail page is shown).
+* The item detail page is not viewable by the anonymous user. You should see a
+  "Restricted Content" message and a 401 Unauthorized response code.
 * The item metadata (title, description, etc.) is **not** displayed.
 
 ### 13) UMD IP Manager Group-Based Access
 
-13.1) Log in to Avalon via CAS as an administrator (see section 2). From the
-navigation bar, select "Manage | Manage Content". The page with units and
-collections will be displayed.
+> **Note:** Since the Avalon pre-production environments are not accessible
+> outside the UMD network, we will test IP-based access control by first
+> restricting access to a more restrictive IP Manager group (for example, *The
+> Jim Henson Works* IP Manager group, which is limited to a small set of
+> McKeldin public access computers) to verify that access is correctly
+> **blocked**. We will then expand access to the broader *UMD College Park
+> campus and VPN* group to verify that access is **granted** as expected.
+
+13.1) Log in to Avalon via CAS as an administrator. From the navigation bar,
+select "Manage | Manage Content". The page with units and collections will be
+displayed.
 
 13.2) Create or identify a collection that will be used to test IP-based access
 control (for example, a collection intended for campus/VPN-only streaming).
 
-13.3) Create a new item in this collection following the same steps as section 4
-(upload a video file, add a title and publication date, continue through
-Structure, and reach the "Access Control" step). Publish the item and verify
-that a success notification is displayed on the item detail page.
+13.3) On the collection detail page, under the "Assign special access" section,
+left-click the UMD IP Manager dropdown and select *The Jim Henson Works* group.
+Left-click the "**Add**" button next to the dropdown to save the changes.
 
-13.4) On the “Edit Media Object > Access Control” page for the item, verify that
-the “UMD IP Manager” dropdown is populated with one or more entries
+13.4) Create or identify a published item in the collection. If reusing the item
+from section 12, ensure that the changes for step 12.2 (disabling parent
+permissions and hiding the item from search results) are reverted so that the
+item inherits discoverability from the collection.
 
-13.5) Configure the item so that:
-
-* The item is discoverable to public users.
-* Streaming access is restricted to an IP Manager group (for example, select
-  a group from the “UMD IP Manager” dropdown and save).
-
-13.6) In a private/incognito browser window (not logged in and not connected to
+13.5) In a private/incognito browser window (not logged in and not connected to
 VPN), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
-Search for the title of the item created in step 13.3 and verify that the item
-appears in the browse/search results.
+Search for the title of the item created/identified in step 13.4 and verify that
+the item appears in the browse/search results.
 
-13.7) In the same private/incognito window, go to the item detail URL.
+13.6) In the same private/incognito window, go to the item detail URL.
 
-Verify that:
+13.6.1) If you're on campus (McKeldin Library), and **not** connected to VPN,
+verify that:
+
+* The item metadata (title, description, etc.) is displayed.
+* The media player is displayed, and the item can be streamed successfully.
+
+13.6.2) If you're off/on campus, and connected to VPN, verify that:
 
 * The item metadata (title, description, etc.) is displayed.
 * A "Playback Restricted" panel or equivalent restricted playback message is
   displayed in place of the media player.
 
-13.8) Connect to the UMD VPN (or ensure you are on a campus IP that belongs to
-the IP Manager group selected in step 13.5), then refresh the item detail page.
+13.7) Optionally, if doing this test after a major upgrade, physically go the
+McKeldin Library public access computers and test access anonymously from a
+computer in the *The Jim Henson Works* IP Manager group.
 
 Verify that:
 
-* The media player is displayed.
-* The item can be streamed successfully as an anonymous user connecting from
-  an IP address in the configured IP Manager group.
+* The item metadata (title, description, etc.) is displayed.
+* The media player is displayed, and the item can be streamed successfully.
+
+13.8) Change the IP Manager group for the collection
+
+13.8.1) On the collection detail page, under the "Assign special access"
+section, left-click the UMD IP Manager dropdown and select *UMD College Park
+campus and VPN* group. Left-click the "**Add**" button next to the dropdown to
+save the changes.
+
+13.8.2) On the collection detail page, under the "Assign special access"
+section, left-click the "X" next to the *The Jim Henson Works* group to remove it..
+
+13.9) In the same private/incognito window, go to the item detail URL.
+
+13.9.1) If you're on campus, or connected to VPN, verify that:
+
+* The item metadata (title, description, etc.) is displayed.
+* The media player is displayed, and the item can be streamed successfully.
 
 ### 14) Course Reserves Items Not Discoverable to Public Users
 
@@ -497,26 +523,24 @@ belonging to the "Streaming Reserves" unit) are not publicly discoverable.
 The Course Reserves collection does not propagate public discoverability to
 its items, so anonymous users should not find those items via browse or search.
 
-14.1) Log in to Avalon via CAS as an administrator (see section 2). From the
-navigation bar, select "Manage | Manage Content". The page with units and
-collections will be displayed.
+14.1) Log in to Avalon via CAS as an administrator. From the navigation bar,
+select "Manage | Manage Content". The page with units and collections will be
+displayed.
 
-14.2) Create or identify a published item in the Course Reserves collection
-(the collection belonging to the "Streaming Reserves" unit) with the following
-access settings:
-
-14.2.1) On the Course Reserves collection:
+14.2) Find the Course Reserves (usually named the *Digitized Items*) collection
+under the collections section. If it does not exist, create a new course
+reserves collection by following the steps in section 6.2
 
 * Go to the collection detail page and confirm the collection belongs to the
   "Streaming Reserves" unit.
 * Left-click the "Edit" button. On the collection access control/settings
   page, verify that no UMD IP Manager groups are configured on the collection.
 
-14.2.2) On the item:
+14.3) Find or create a published item in the Course Reserves collection. If
+creating a new item, follow the steps in section 4 to create and publish the
+item.
 
-* Go to the item detail page and verify that the item is published. If it
-  is not yet published, left-click the "Publish" button and verify that a
-  success notification is displayed.
+* Go to the item detail page.
 * Left-click the "Edit" button to go to the "Edit Media Object > Access
   Control" page.
 * Verify that "Disable parent permissions" is **not** checked, so the item
@@ -539,5 +563,6 @@ the Course Reserves item.
 
 Verify that:
 
-* The item metadata is **not** displayed, and instead the user is directed to
-  sign in.
+* The item detail page is not viewable by the anonymous user. You should see a
+  "Restricted Content" message and a 401 Unauthorized response code.
+* The item metadata (title, description, etc.) is **not** displayed.
