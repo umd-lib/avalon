@@ -2712,11 +2712,27 @@ describe MediaObjectsController, type: :controller do
     # with. Without it the token holder is denied read of a hidden item and the
     # player reports "Failed to fetch Manifest."
     context 'hidden media object' do
-      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', hidden: true) }
+      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private', hidden: true) }
       let!(:access_token) { FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id) }
 
       before do
         sign_out :user
+      end
+
+      # Hiding withdraws the metadata read a published item grants to everyone, but
+      # not the access Item Access grants, so a hidden public item still plays.
+      it 'is retrievable without an access token when its Item Access is public' do
+        public_media_object = FactoryBot.create(:published_media_object, visibility: 'public', hidden: true)
+        get 'manifest', params: { id: public_media_object.id, format: 'json' }
+        expect(response).to have_http_status(:ok)
+      end
+
+      # Same when both settings come from the collection rather than the item.
+      it 'is retrievable when Item Access and hiding are inherited from the collection' do
+        hidden_collection = FactoryBot.create(:collection, default_hidden: true, default_visibility: 'public')
+        inherited_media_object = FactoryBot.create(:published_media_object, visibility: 'public', collection: hidden_collection)
+        get 'manifest', params: { id: inherited_media_object.id, format: 'json' }
+        expect(response).to have_http_status(:ok)
       end
 
       it 'is not retrievable without an access token' do

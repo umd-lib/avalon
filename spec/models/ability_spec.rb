@@ -519,19 +519,26 @@ describe Ability, type: :model do
           expect(ability).to be_able_to(:read, media_object)
         end
 
-        # Regression: "public"/"registered" are ambient Item Access, not an explicit
-        # grant. Honouring them as one would make a public item impossible to hide.
-        it 'is not readable by anonymous users even when its visibility is public' do
+        # Hiding withdraws the broad metadata read a published item grants, but it
+        # never withdraws access the item's own Item Access grants.
+        it 'is readable by anonymous users when its visibility is public' do
           media_object.visibility = 'public'
           media_object.save!
           ability = Ability.new(nil)
-          expect(ability).to_not be_able_to(:read, media_object)
+          expect(ability).to be_able_to(:read, media_object)
         end
 
-        it 'is not readable by ordinary logged in users when its visibility is restricted' do
+        it 'is readable by ordinary logged in users when its visibility is restricted' do
           media_object.visibility = 'restricted'
           media_object.save!
           ability = Ability.new(FactoryBot.create(:user))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is not readable by anonymous users when its visibility is restricted' do
+          media_object.visibility = 'restricted'
+          media_object.save!
+          ability = Ability.new(nil)
           expect(ability).to_not be_able_to(:read, media_object)
         end
 
@@ -550,9 +557,9 @@ describe Ability, type: :model do
       end
 
       context 'and discoverability is suppressed via the collection default' do
-        let(:hidden_collection) { FactoryBot.create(:collection, default_hidden: true) }
+        let(:hidden_collection) { FactoryBot.create(:collection, default_hidden: true, default_visibility: 'private') }
         let(:media_object) do
-          FactoryBot.create(:published_media_object, collection: hidden_collection, visibility: 'public')
+          FactoryBot.create(:published_media_object, collection: hidden_collection, visibility: 'private')
         end
 
         it 'is not readable by non-logged in users' do
@@ -572,8 +579,36 @@ describe Ability, type: :model do
           expect(ability).to_not be_able_to(:read, proxy)
         end
 
+        # The item page and the IIIF manifest evaluate this against the proxy, so the
+        # check has to stay on Solr-backed attributes -- of the collection as well as
+        # the item. Falling through to an attribute SpeedyAF does not carry sends
+        # both back to Fedora on every request.
+        it 'does not reify the Solr-backed proxy or its collection' do
+          media_object # ensure indexed
+          proxy = SpeedyAF::Proxy::MediaObject.find(media_object.id)
+          Ability.new(nil).can?(:read, proxy)
+          expect(proxy.real?).to be false
+          expect(proxy.collection.real?).to be false
+        end
+
         it 'is still readable by admin users' do
           ability = Ability.new(FactoryBot.create(:admin))
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        it 'is readable by anonymous users when its own Item Access is public' do
+          media_object.visibility = 'public'
+          media_object.save!
+          ability = Ability.new(nil)
+          expect(ability).to be_able_to(:read, media_object)
+        end
+
+        # Item Access granted at the collection level has to count the same as Item
+        # Access granted on the item itself.
+        it 'is readable by anonymous users when Item Access is public on the collection' do
+          hidden_collection.default_visibility = 'public'
+          hidden_collection.save!
+          ability = Ability.new(nil)
           expect(ability).to be_able_to(:read, media_object)
         end
 

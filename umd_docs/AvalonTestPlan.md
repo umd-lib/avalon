@@ -430,6 +430,10 @@ page.
   are visible.
 * Under “Item Discovery”, verify that “Hide this item from search results” is
   checked. If it is not checked, check it and left-click “Save”.
+* Under “Item Access”, set the access to “Collection staff only” and left-click
+  “Save”. The expected results below depend on this: hiding an item does not
+  take away access that Item Access grants, so it is the “Collection staff
+  only” setting that refuses the anonymous user in step 12.5.
 * Verify that no UMD IP Manager or other special access are configured on the item.
 
 12.3) In a private/incognito browser window (not logged in and not connected to
@@ -482,33 +486,61 @@ Verify that:
 * The item detail page **is** displayed, even though the item is hidden.
 * The item still does **not** appear in browse/search results for that user.
 
-12.8) Verify that hiding works at every Item Access level.
+12.8) Verify that hiding does **not** override Item Access.
 
-The item used above has Item Access "Collection staff only". Hiding must also
-take effect for items that would otherwise be streamable by anyone.
+The item used above has Item Access "Collection staff only", which is why the
+anonymous user was refused in step 12.5. Hiding an item removes it from
+browse/search and withdraws the metadata view a published item otherwise grants
+to everyone, but it never takes away access that Item Access itself grants.
 
 12.8.1) In the administrator window, remove the special access user added in
 step 12.7.1. On the "Access Control" page, set "Item Access" to "Available to
 the general public", leave "Hide this item from search results" checked, and
 left-click "Save".
 
-12.8.2) In a private/incognito window (not logged in), go directly to the item
-detail URL.
+12.8.2) In a private/incognito window (not logged in), search for the title of
+the item, then go directly to the item detail URL.
 
 Verify that:
 
-* The item detail page is **not** viewable. You should see a "Restricted
-  Content" message and a 401 Unauthorized response code.
+* The item still does **not** appear in the browse/search results.
+* The item detail page **is** viewable, and the item metadata (title,
+  description, etc.) is displayed.
+* The media player is displayed, and the item can be streamed successfully.
 
 12.8.3) In the administrator window, set "Item Access" to "Logged in users
-only" and left-click "Save". In a private/incognito window, log in via CAS as
-an ordinary user (one who is not staff on the collection) and go directly to
-the item detail URL.
+only" and left-click "Save". In a private/incognito window (not logged in), go
+directly to the item detail URL.
 
 Verify that:
 
 * The item detail page is **not** viewable. You should see a "Restricted
   Content" message and a 401 Unauthorized response code.
+
+12.8.4) In the same private/incognito window, log in to Avalon via CAS as an
+ordinary user (one who is not staff on the collection), then go directly to the
+item detail URL.
+
+Verify that:
+
+* The item detail page **is** viewable, and the item metadata is displayed.
+* The item still does **not** appear in the browse/search results for that user.
+
+12.9) Verify that the same holds when Item Access is set on the collection.
+
+12.9.1) In the administrator window, edit the item's "Access Control" page,
+uncheck "Disable parent permissions", and left-click "Save". Then go to the
+collection's edit page and set the collection's "Item Access" to "Available to
+the general public" and "Item Discovery" to hidden, and save.
+
+12.9.2) In a private/incognito window (not logged in), search for the title of
+the item, then go directly to the item detail URL.
+
+Verify that:
+
+* The item does **not** appear in the browse/search results.
+* The item detail page **is** viewable, and the item can be streamed
+  successfully.
 
 ### 13) UMD IP Manager Group-Based Access
 

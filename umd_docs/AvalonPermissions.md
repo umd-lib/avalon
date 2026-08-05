@@ -66,27 +66,37 @@ whether a published item is streamable and/or downloadable.
 * Unpublished - Item is only viewable/streamable/downloadable by Collection
   staff, does not appear in Browse/Search, and is not
   viewable/streamable/downloadable by any mechanism​ by non-Collection staff
-* Published - Item is accessible/viewable by any user (including anonymous
-  users), unless Item Discovery has been disabled for it (see below)
+* Published - Item is viewable by any user (including anonymous users) whatever
+  its Item Access setting, unless Item Discovery has been disabled for it (see
+  below)
 
 ### Item Discovery
 
 For published items:
 
 * Item Discovery allowed​ - Item appears in Browse/Search​
-* Item Discovery disabled - Item does not appear in Browse/Search, **and is not
-  directly accessible by URL**. Requesting the item page returns "401
-  Unauthorized" for users who do not otherwise have access to it.
+* Item Discovery disabled - Item does not appear in Browse/Search, and the broad
+  metadata read above is withdrawn: the item page is viewable only by users the
+  item's access controls actually admit. Everyone else gets a "Restricted
+  Content" message and a "401 Unauthorized" response.
 
-  Disabling discovery hides an item; it does not revoke access that was granted
-  explicitly. Collection staff (who have edit access), users/groups/IP ranges
-  granted read via "Assign special access", and holders of a valid access token
-  URL can all still view the item.
+  **Hiding an item never removes access that its access controls grant.** It is
+  a discovery setting, so whoever could view the item can still reach it by
+  direct URL:
 
-  This applies at every Item Access level: hiding a "Available to the general
-  public" item makes it inaccessible to anonymous users, and hiding a "Logged in
-  users only" item makes it inaccessible to ordinary logged-in users. Items in
-  the Streaming Reserves unit are unaffected — they have their own access rule.
+  | Item Access, item hidden | Anonymous user | Logged in user |
+  | --- | --- | --- |
+  | Available to the general public | Item page | Item page |
+  | Logged in users only | 401 | Item page |
+  | Collection staff only | 401 | 401 |
+
+  Collection staff (who have edit access), users/groups/IP ranges granted read
+  via "Assign special access", and holders of a valid access token URL can view
+  the item in every row. Items in the Streaming Reserves unit are unaffected —
+  they have their own access rule.
+
+  The same is true whether Item Access was set on the item or inherited from the
+  collection.
 
 Like Item Access, Item Discovery is inherited from the parent collection by
 default, and an item can override that inheritance via "Disable parent
@@ -108,12 +118,18 @@ Collection-level discoverability is indexed on the collection as
 `public` for ordinary collections and `default_read_groups` alone for Course
 Reserves collections (`Admin::Collection#to_solr`). Browse/Search filtering
 happens in `SearchBuilder#limit_to_inheritance_enabled_items` and
-`#limit_to_non_hidden_items`; the matching direct-URL check is
-`Ability#discoverability_allows_read?`, with the explicit-grant escape hatch in
-`Ability#explicit_grant_allows_read?`. The two must be kept in agreement — a
-Solr filter more permissive than the ability check leaks item existence and
-metadata, and one more restrictive makes items unreachable that the item page
-would happily render.
+`#limit_to_non_hidden_items`; the matching direct-URL check is the `cannot :read`
+rule in `Ability#custom_permissions`, built from
+`Ability#discoverability_allows_read?` (which mirrors `#limit_to_non_hidden_items`)
+plus `#access_controls_allow_read?` and `#access_token_allows_read?`, which are
+what keep a hidden item reachable by whoever its access controls admit.
+
+Browse/Search and the item page are deliberately **not** symmetrical here: a
+hidden public item is absent from search results but renders on direct URL. What
+must stay in agreement is the hidden/not-hidden determination itself —
+`#discoverability_allows_read?` and `#limit_to_non_hidden_items` have to classify
+the same items as hidden, or an item disappears from search for reasons the item
+page does not apply (or the reverse).
 
 **Changing this setting on existing content requires a reindex.** Because
 `inheritable_discover_access_group_ssim` is written by `Admin::Collection#to_solr`,

@@ -288,19 +288,24 @@ class Ability
       end
 
       # UMD Customization
-      # LIBAVALON-554: suppressing discoverability has to be able to *remove* read
-      # access, which a "can" rule cannot do -- Hydra's own read_permissions rule
-      # independently grants :read from read_access_group_ssim, and CanCan ORs all
-      # matching rules together. Expressed as a "can" this only took effect on
-      # "Collection staff only" items and silently did nothing for public or
-      # logged-in-only ones.
+      # LIBAVALON-554: a published item grants metadata read to everyone, whatever
+      # its Item Access. Hiding an item withdraws that broad grant, so a hidden item
+      # is viewable only by the users its access controls actually name -- but it
+      # never withdraws access those controls do grant, so hiding a "Available to the
+      # general public" item keeps it viewable by direct URL.
+      #
+      # This has to be a "cannot": Hydra's own read_permissions rule independently
+      # grants :read from read_access_group_ssim and CanCan ORs all matching rules
+      # together, so as a "can" it silently did nothing for public or
+      # logged-in-only items.
       #
       # Streaming reserve items are excluded: they have their own read rule above
       # and their discoverability behavior is unchanged by LIBAVALON-554.
       cannot :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         !media_object.is_streaming_reserve? &&
           !discoverability_allows_read?(media_object) &&
-          !explicit_grant_allows_read?(media_object) &&
+          !access_controls_allow_read?(media_object) &&
+          !access_token_allows_read?(media_object) &&
           !test_edit(media_object.id)
       end
       # End UMD Customization
@@ -491,10 +496,11 @@ class Ability
   # Returns true if the given media object's discoverability settings permit an
   # ordinary user to read (view) it.
   #
-  # This deliberately mirrors SearchBuilder#limit_to_non_hidden_items so that an
-  # item hidden from Browse/Search is also unreachable by direct URL: an item-level
-  # "hidden" flag always applies, and when the item has not overridden collection
-  # inheritance the collection's "default_hidden" flag applies as well.
+  # This deliberately mirrors SearchBuilder#limit_to_non_hidden_items so that the
+  # same items are hidden from Browse/Search and from the broad metadata read a
+  # published item otherwise grants: an item-level "hidden" flag always applies, and
+  # when the item has not overridden collection inheritance the collection's
+  # "default_hidden" flag applies as well.
   def discoverability_allows_read?(media_object)
     return false if media_object.hidden?
     return true if media_object.disable_inheritance?
@@ -502,40 +508,41 @@ class Ability
     !media_object.inherited_hidden?
   end
 
-  # Returns true if the user holds a grant that should let them view a hidden item
-  # anyway. Hiding an item controls its *discoverability*; it must not revoke access
-  # that was handed out explicitly, either through "Assign special access" or through
-  # an Access Token URL.
-  def explicit_grant_allows_read?(media_object)
-    access_token_allows_read?(media_object) || special_access_allows_read?(media_object)
-  end
-
   def access_token_allows_read?(media_object)
     @options.present? && @options.has_key?(:access_token) &&
       AccessToken.allow_read_of?(@options[:access_token], media_object.id)
   end
 
-  # "Assign special access" grants read to a named Avalon user, an external group, or
-  # an IP-based group. This deliberately excludes the ambient "public"/"registered"
-  # visibility groups: those are Item Access, not an explicit grant, and treating them
-  # as one here would make it impossible to hide a publicly-streamable item.
+  # Returns true if the media object's own access controls admit this user, which is
+  # what makes a hidden item still reachable by direct URL. Hiding may withdraw the
+  # broad metadata read every published item grants, but it must not withdraw access
+  # the item's access controls do grant, so this covers both:
+  #
+  # * Item Access -- the ambient "public" and "registered" groups, so a hidden
+  #   "Available to the general public" item stays viewable by anyone; and
+  # * "Assign special access" -- a named Avalon user, an external group, or an
+  #   IP-based group.
+  #
+  # Both are read from the collection as well as the item when the item has not
+  # overridden inheritance, so it behaves the same whether the setting was made at
+  # the item level or the collection level.
   #
   # Only Solr-backed attributes are read so that this stays cheap for
   # SpeedyAF::Proxy::MediaObject and does not force the proxy to reify.
-  def special_access_allows_read?(media_object)
+  def access_controls_allow_read?(media_object)
     granted_users = Array(media_object.read_users)
-    granted_groups = Array(media_object.read_groups) - SearchBuilder::PERMISSION_GROUPS
+    granted_groups = Array(media_object.read_groups)
 
     unless media_object.disable_inheritance?
       collection = media_object.collection
       if collection
         granted_users += Array(collection.default_read_users)
-        granted_groups += Array(collection.default_read_groups) - SearchBuilder::PERMISSION_GROUPS
+        granted_groups += Array(collection.default_read_groups)
       end
     end
 
     (@user.present? && granted_users.include?(@user.user_key)) ||
-      (granted_groups & @user_groups).any?
+      (granted_groups & user_groups).any?
   end
 
   def is_course_reserves_manager?
