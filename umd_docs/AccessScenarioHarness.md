@@ -79,6 +79,9 @@ ALLOW_ACCESS_SCENARIOS=true HOST=https://av-test.lib.umd.edu \
 | `HOST` | Base URL used in the report and manifest |
 | `ALLOW_ACCESS_SCENARIOS` | Required outside development/test |
 | `INCLUDE_CANARIES` | Let teardown remove the canary items too |
+| `PROBE_NAMESPACE` | Kubernetes namespace the generated Probes declare (default `test`) |
+| `PROBE_ENVIRONMENT` | Prefix for the probe `jobName` (defaults to the namespace) |
+| `PROBE_RUNBOOK` | URL for the optional `runbook` label — see [Runbook label](#runbook-label). Leave unset until a runbook exists. |
 
 ## What gets created, and how teardown stays safe
 
@@ -145,23 +148,90 @@ locations is the only way to exercise the real UMD IP Manager path, since it use
 source addresses rather than a header.
 
 ```bash
-FORMAT=blackbox HOST=https://av-test.lib.umd.edu rails umd:access_scenarios:report
+FORMAT=probes HOST=https://av-test.lib.umd.edu PROBE_NAMESPACE=test \
+  rails umd:access_scenarios:report
 ```
 
-writes `umd_docs/monitoring/blackbox_targets.yml`, a Prometheus `file_sd` list carrying the
-expected status for each canary as a label. Point two `blackbox_exporter` instances at it,
-one on-campus/VPN and one outside, and label the vantage in the Prometheus scrape config —
-the IP-dependent rows are *expected* to differ between them.
+writes `umd_docs/monitoring/access_scenario_probes.yaml` — `Probe` CRDs
+(`monitoring.coreos.com/v1`) for the DevOps `blackbox_exporter`. Copy them into the Avalon
+stack repository so the checks deploy with the stack; they are git-ignored here because
+they are generated per environment.
 
-Pair it with three modules: expect 200, expect 401, and a body check
-(`fail_if_body_matches_regexp: Restricted Content`) — a 200 that renders the restricted page
-would otherwise pass. Alert on `probe_success == 0` or a status that no longer matches its
-`expected_status_*` label.
+The vantage point is not something we configure — a **module** encodes both the expected
+status and the network the request comes from, and the exporter reaches non-`internal`
+networks through a forward proxy. One Probe carries one module, so the generator groups the
+canaries by module:
+
+| Module | What it asserts |
+| --- | --- |
+| `http_2xx_internet` | Hidden-but-public items, and the access token URL, are viewable from off campus |
+| `http_401_internet` | Hidden restricted and staff-only items are refused off campus |
+| `http_2xx_campus` | IP-Manager-granted items are viewable from campus (needs IP canaries provisioned) |
+
+Failures are told apart by the `instance` label, which carries the URL. Alert on
+`probe_success == 0`; the module already encodes what "success" means, so no
+expected-status label is needed.
+
+### Modules to request from DevOps
+
+Avalon answers restricted content with **401**, and the exporter defines only `2xx` and
+`403` modules — an `http_403_*` probe reports a *failure* for a correct 401. The generated
+file names the missing modules in its header and the rake task prints them, so the manifest
+doubles as the request. Until they exist, only the `http_2xx_internet` Probe can be
+deployed.
+
+The DevOps team is willing to add modules, so the ask is concrete. Each is an ordinary
+`http` prober differing only in `valid_status_codes` and which forward proxy it egresses
+through — the same shape as the existing `http_403_*` modules:
+
+```yaml
+http_401_internet:
+  prober: http
+  timeout: 10s
+  http:
+    valid_status_codes: [401]
+    proxy_url: <the internet/AWS egress proxy the http_2xx_internet module uses>
+
+http_401_campus:      # needed once the IP-Manager canaries are provisioned
+  prober: http
+  timeout: 10s
+  http:
+    valid_status_codes: [401]
+    proxy_url: <the campus egress proxy>
+```
+
+`http_2xx_campus` is already on their planned list and needs no new definition, just
+enabling. No body-matching module is needed: a hidden public item that regressed would
+answer 401 rather than a 200 carrying the "Restricted Content" page, so the status code is
+decisive on its own.
+
+### Runbook label
+
+`PROBE_RUNBOOK` sets the optional `runbook` label, which AlertManager surfaces as
+`runbook_url` in the alert itself. It is worth setting for these probes in particular,
+because a failing access-control canary means the permission model changed — not something
+an on-call operator can act on from a job name alone.
+
+The runbook is [monitoring/runbooks/access-control.md](monitoring/runbooks/access-control.md):
+
+```bash
+PROBE_RUNBOOK=https://github.com/umd-lib/avalon/blob/avalon-main/umd_docs/monitoring/runbooks/access-control.md
+```
+
+It lives here rather than in the stack repository (where the DevOps docs suggest putting
+runbooks) because every remediation step is a rake task in this repository and the behavior
+it explains is defined by `app/models/ability.rb` — keeping them together is what stops the
+runbook going stale. Move it if the stack repository turns out to be the better home; only
+the label's URL needs to change.
+
+The `campus` Probe is only generated when the IP scenarios were provisioned
+(`IP_GROUP_KEY` and `IP_IN_RANGE_ADDRESS` set) — that is the one behavior the harness
+cannot fake over HTTP, and the reason probing from a second network matters.
 
 Limits: no session, so logged-in personas stay with Cypress; no JS, so player rendering is
 not covered (the IIIF manifest URL is a plain GET and *is* probeable). The token canary
-needs a long-expiry token, held as a Prometheus secret rather than committed, and a renewal
-reminder.
+embeds a live token in the manifest, which is why the file is not committed here — it needs
+a renewal reminder before its year is up.
 
 ## Adding a scenario
 

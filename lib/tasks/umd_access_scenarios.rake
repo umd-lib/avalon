@@ -18,12 +18,18 @@ namespace :umd do
 
     desc 'Print the scenario expectation table, and write the Cypress manifest'
     task report: :environment do
-      reporter = UmdAccessScenarios::Reporter.new(host: ENV['HOST'])
+      reporter = UmdAccessScenarios::Reporter.new(host: ENV['HOST'], namespace: ENV['PROBE_NAMESPACE'],
+                                                  environment: ENV['PROBE_ENVIRONMENT'],
+                                                  runbook: ENV['PROBE_RUNBOOK'])
 
       case ENV['FORMAT']
-      when 'blackbox'
-        path = reporter.write_blackbox_targets
-        puts "Wrote blackbox targets to #{path}"
+      when 'probes'
+        path = reporter.write_probes
+        puts "Wrote Probe CRDs to #{path}"
+        if reporter.unavailable_modules.any?
+          puts "These modules do not exist in the blackbox_exporter yet and must be requested " \
+               "from DevOps: #{reporter.unavailable_modules.join(', ')}"
+        end
       when 'json'
         path = reporter.write_manifest
         puts "Wrote Cypress manifest to #{path}"
