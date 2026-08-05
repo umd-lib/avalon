@@ -356,6 +356,14 @@ from a standard (non-Course-Reserves) collection.
 > collection, re-save the collection (or reindex it) first. Testing with a
 > newly-created collection will pass regardless and will **not** exercise this.
 
+**Shortcut:** sections 11 through 14 all begin by hand-building collections and
+items with particular access settings. `rails umd:access_scenarios:provision`
+creates that whole matrix in one step and prints a table of URLs with the result
+expected of each persona, and `:teardown` removes it again. See
+[AccessScenarioHarness.md](AccessScenarioHarness.md). The steps below remain the
+authoritative manual procedure, and are still what to follow when verifying a
+release by hand.
+
 11.1) Log in to Avalon via CAS as an administrator. From the navigation bar,
 select "Manage | Manage Content". The page with units and collections will be
 displayed.
