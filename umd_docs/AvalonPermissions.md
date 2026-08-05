@@ -121,6 +121,18 @@ collections created before this field was introduced do not have it until they
 are re-saved or reindexed, and their items will not be publicly discoverable
 until then.
 
+**Access token requests are not always identified by a query parameter.** An
+access token URL carries the token as `?access_token=`, but the item page issues
+sub-requests the player builds itself from bare paths — most importantly
+`/media_objects/:id/manifest.json` — which do not inherit it. So
+`ApplicationController#current_ability` also accepts the token from the referring
+page's URL (`#access_token_from_referer`), the same lookup
+`MasterFilesController#hls_manifest` uses to authorize streaming. Anything that
+newly denies `:read` on a media object must be checked against these
+sub-requests, not just against the item page: before this fallback existed, a
+hidden item loaded via an access token rendered its page but the player failed
+with "Failed to fetch Manifest."
+
 ----
 
 ### Item Access
