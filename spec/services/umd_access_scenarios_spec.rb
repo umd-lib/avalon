@@ -62,6 +62,9 @@ describe UmdAccessScenarios, :umd do
 
       scenario.personas.each do |persona|
         expected = scenario.expectation_for(persona)
+        # The IP personas need a real address to build an ability from. The scenario itself
+        # is still provisioned and still probed from campus without one.
+        next if persona.to_s.start_with?('ip_') && !described_class.ip_address_configured?
 
         it "grants #{persona} the declared access" do
           ability = ability_for(persona, result)

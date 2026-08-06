@@ -13,7 +13,7 @@ namespace :umd do
                                                .provision
       puts "Provisioned #{results.count} scenarios."
       puts 'Items are metadata-only (METADATA_ONLY=true).' if media_options == false
-      puts "Skipped IP scenarios: set IP_GROUP_KEY and IP_IN_RANGE_ADDRESS to include them." unless UmdAccessScenarios.ip_scenarios_configured?
+      report_ip_status
     end
 
     desc 'Print the scenario expectation table, and write the Cypress manifest'
@@ -60,6 +60,23 @@ def guard_environment!
   return if ActiveModel::Type::Boolean.new.cast(ENV['ALLOW_ACCESS_SCENARIOS'])
 
   abort("Refusing to run in #{Rails.env}. Set ALLOW_ACCESS_SCENARIOS=true to proceed.")
+end
+
+# The IP scenarios need an IP Manager group, which is found automatically when the default
+# one exists. An in-range address is only needed to check those personas in-process -- the
+# campus probe supplies its own source address.
+def report_ip_status
+  unless UmdAccessScenarios.ip_scenarios_configured?
+    puts "Skipped IP scenarios: no '#{UmdAccessScenarios::DEFAULT_IP_GROUP_KEY}' group found " \
+         'in the IP Manager. Set IP_GROUP_KEY to name a different one.'
+    return
+  end
+
+  puts "IP scenarios use #{UmdAccessScenarios.ip_group}."
+  return if UmdAccessScenarios.ip_address_configured?
+
+  puts 'Set IP_IN_RANGE_ADDRESS to also check the IP personas in the report and specs; ' \
+       'the campus probe works without it.'
 end
 
 # nil lets the provisioner use the videoshort fixtures the rest of the suite already uses;

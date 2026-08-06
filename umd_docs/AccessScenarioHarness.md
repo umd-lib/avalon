@@ -134,11 +134,18 @@ player rendering:
 CYPRESS_grepTags=@access-scenarios docker-compose up cypress
 ```
 
-Personas: anonymous, `cy.login()` accounts, access-token URLs from the manifest, and IP
-personas via an `X-Forwarded-For` header. That header only becomes `request.ip` in local
-Docker, where Rails treats the private-range source as a trusted proxy — behind av-test's
-ingress it is overwritten, which is why IP behavior there is checked by probing from a
-different network instead.
+Personas: anonymous, access-token URLs from the manifest, and the IP personas via an
+`X-Forwarded-For` header. That header only becomes `request.ip` in local Docker, where Rails
+treats the private-range source as a trusted proxy — behind av-test's ingress it is
+overwritten, which is why IP behavior there is checked by probing from a different network
+instead.
+
+**Logged-in personas are deliberately not checked here.** UMD authenticates through CAS/SAML
+only; there is no local password login to script, and enabling one is not wanted. Those
+personas (`user`, `manager`, `administrator`, `special_access_user`) are covered by the
+rspec check, which builds their abilities directly, and by hand through CAS when following
+`AvalonTestPlan.md`. What goes unverified over HTTP for them is only the rendering — the
+authorization decision itself is checked.
 
 ## Canaries and blackbox probes
 
@@ -164,9 +171,32 @@ canaries by module:
 
 | Module | What it asserts |
 | --- | --- |
-| `http_2xx_internet` | Hidden-but-public items, and the access token URL, are viewable from off campus |
-| `http_401_internet` | Hidden restricted and staff-only items are refused off campus |
-| `http_2xx_campus` | IP-Manager-granted items are viewable from campus (needs IP canaries provisioned) |
+| `http_2xx_internet` | Item pages that should render, and streams that should play, from off campus |
+| `http_401_internet` | Item pages and streams that should be refused from off campus |
+| `http_2xx_campus` | IP-Manager-granted items and streams from campus (needs IP canaries provisioned) |
+
+Every module is a plain status check with no application-specific configuration, so they
+stay reusable across stacks.
+
+### Two URLs per canary
+
+A 200 on the item page is a weak assertion, because the page renders whether or not playback
+is allowed — an item that regressed from full access to restricted playback still answers
+200. So each canary contributes **two** targets:
+
+| Target | Gated by |
+| --- | --- |
+| `/media_objects/<id>` | Can this user see the item at all |
+| `/master_files/<section>/high.m3u8` | Can this user *play* it (Avalon's streaming permission) |
+
+The stream endpoint's status already carries the playback answer, which is why no
+body-matching module is needed. The alternative — matching the rendered page — would have
+required an Avalon-specific module and would not have worked anyway: the player and the
+restricted-playback message are both drawn client-side by `MediaObjectRamp`, and
+`blackbox_exporter` does not run JavaScript.
+
+The access token canary probes only the item page. `MasterFilesController#hls_manifest`
+reads the token from the referring page's URL, which a probe does not send.
 
 Failures are told apart by the `instance` label, which carries the URL. Alert on
 `probe_success == 0`; the module already encodes what "success" means, so no
@@ -192,18 +222,13 @@ http_401_internet:
     valid_status_codes: [401]
     proxy_url: <the internet/AWS egress proxy the http_2xx_internet module uses>
 
-http_401_campus:      # needed once the IP-Manager canaries are provisioned
-  prober: http
-  timeout: 10s
-  http:
-    valid_status_codes: [401]
-    proxy_url: <the campus egress proxy>
+# And http_401_campus alongside http_2xx_campus, if a refusal is ever probed from campus.
 ```
 
-`http_2xx_campus` is already on their planned list and needs no new definition, just
-enabling. No body-matching module is needed: a hidden public item that regressed would
-answer 401 rather than a 200 carrying the "Restricted Content" page, so the status code is
-decisive on its own.
+Nothing here is Avalon-specific: `http_401_*` is the same generic status check as the
+existing `http_403_*` modules, differing only in `valid_status_codes`, and is reusable by any
+application that answers 401. No body-matching module is required — see "Two URLs per
+canary" above for why the streaming check is a URL rather than a regexp.
 
 ### Runbook label
 
@@ -224,9 +249,15 @@ it explains is defined by `app/models/ability.rb` — keeping them together is w
 runbook going stale. Move it if the stack repository turns out to be the better home; only
 the label's URL needs to change.
 
-The `campus` Probe is only generated when the IP scenarios were provisioned
-(`IP_GROUP_KEY` and `IP_IN_RANGE_ADDRESS` set) — that is the one behavior the harness
-cannot fake over HTTP, and the reason probing from a second network matters.
+The `campus` Probe generates itself: the IP scenarios are provisioned whenever the IP
+Manager lists the group named by `UmdAccessScenarios::DEFAULT_IP_GROUP_KEY` (`um`, the
+campus and VPN group), and `IP_GROUP_KEY` overrides that choice. Nothing else is needed —
+the prober supplies the campus source address, which is the one behavior the harness cannot
+fake over HTTP and the reason probing from a second network matters at all.
+
+`IP_IN_RANGE_ADDRESS` is separate and optional: it only lets the report and the rspec check
+evaluate the IP personas in-process, where there is no real request to take an address
+from.
 
 Limits: no session, so logged-in personas stay with Cypress; no JS, so player rendering is
 not covered (the IIIF manifest URL is a plain GET and *is* probeable). The token canary

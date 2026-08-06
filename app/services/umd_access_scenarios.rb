@@ -22,8 +22,8 @@ class UmdAccessScenarios
   UNIT_NAME = 'ZZ Access Scenarios (harness)'
   COLLECTION_PREFIX = 'ZZ-AXS'
 
-  # The first four map to accounts cy.login() already knows about
-  # (spec/cypress/cypress.env.local.json).
+  # The logged-in personas are evaluated in-process only: UMD authenticates through
+  # CAS/SAML, so there is no password login for the Cypress spec to script.
   PERSONAS = %i[
     anonymous
     user
@@ -92,15 +92,53 @@ class UmdAccessScenarios
     ENV['SPECIAL_ACCESS_USER'].presence || 'zz-axs-special@example.com'
   end
 
-  # UMD IP Manager group used by the IP-based scenarios, e.g. "umd.ip.manager:campus".
-  # Nil when unconfigured, which makes those scenarios skip rather than fail.
+  # The IP Manager group the IP-based scenarios grant access to. Defaults to the campus and
+  # VPN group, which is deliberately the broad one: the campus blackbox probe reaches
+  # Avalon through the DevOps forward proxy, so the group has to contain that proxy's
+  # egress address. A narrower group would make the probe fail while the feature worked.
+  DEFAULT_IP_GROUP_KEY = 'um'
+
+  # Nil when there is no group to use -- no IP Manager configured, unreachable, or the
+  # default group absent -- which makes the IP scenarios skip rather than fail.
   def self.ip_group
-    key = ENV['IP_GROUP_KEY'].presence
-    key && "#{UmdIpManager::GROUP_PREFIX}#{key}"
+    return @ip_group if defined?(@ip_group)
+
+    @ip_group = resolve_ip_group
   end
 
+  def self.reset_ip_group!
+    remove_instance_variable(:@ip_group) if defined?(@ip_group)
+  end
+
+  # An explicitly named group is taken on trust; otherwise the default is used only if the
+  # IP Manager actually lists it.
+  def self.resolve_ip_group
+    key = ENV['IP_GROUP_KEY'].presence
+    return UmdIpManager::Group.as_prefixed_key(key) if key
+    return nil unless available_ip_group_keys.include?(DEFAULT_IP_GROUP_KEY)
+
+    UmdIpManager::Group.as_prefixed_key(DEFAULT_IP_GROUP_KEY)
+  end
+
+  def self.available_ip_group_keys
+    result = UmdIpManager.new.groups
+    return [] unless result.success?
+
+    result.groups.map { |group| group.prefixed_key.sub(UmdIpManager::GROUP_PREFIX, '') }
+  rescue StandardError
+    []
+  end
+
+  # Enough to provision the IP scenarios and to generate the campus probe: the prober
+  # supplies the campus address itself.
   def self.ip_scenarios_configured?
-    ip_group.present? && ENV['IP_IN_RANGE_ADDRESS'].present?
+    ip_group.present?
+  end
+
+  # Additionally needed to check the IP personas' expectations in-process, where there is
+  # no real request and the address has to be supplied.
+  def self.ip_address_configured?
+    ENV['IP_IN_RANGE_ADDRESS'].present?
   end
 
   COLLECTIONS = {
@@ -175,6 +213,7 @@ class UmdAccessScenarios
       slug: 'item-private',
       description: 'Collection-staff-only item, not hidden. Metadata is public, playback is not.',
       collection: :standard, visibility: 'private', hidden: false, disable_inheritance: true,
+      canary: true,
       expectations: {
         anonymous: outcome(page: 200, stream: false),
         manager: outcome(page: 200, stream: true)

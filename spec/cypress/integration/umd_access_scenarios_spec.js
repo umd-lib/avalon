@@ -28,26 +28,19 @@
 //
 // See umd_docs/AccessScenarioHarness.md.
 
-// Personas that log in, mapped to the cy.login() role whose credentials live in
-// cypress.env.<environment>.json. special_access_user needs an account of its own: the
-// scenarios that grant it access also expect an ordinary logged-in user to be refused, so
-// the two cannot be the same person.
-const LOGIN_PERSONAS = {
-  user: 'user',
-  manager: 'manager',
-  administrator: 'administrator',
-  special_access_user: 'axsspecial',
-};
-
-// Personas whose outcome cannot be reproduced in this environment are skipped rather than
-// silently checked as anonymous.
+// Only personas that need no session are checked here. UMD authenticates through CAS/SAML
+// alone -- there is no local password login to script -- so the logged-in personas (user,
+// manager, administrator, special_access_user) are covered by the rspec check in
+// spec/services/umd_access_scenarios_spec.rb, which builds their abilities directly, and by
+// hand through CAS when following AvalonTestPlan.md.
 const isSupported = (persona, entry) => {
+  if (persona === 'anonymous') return true;
   if (persona.startsWith('token_')) {
     return Boolean(entry.token_urls[persona.replace('token_', '')]);
   }
   if (persona === 'ip_in_range') return Boolean(Cypress.env('IP_IN_RANGE_ADDRESS'));
   if (persona === 'ip_out_of_range') return Boolean(Cypress.env('IP_OUT_OF_RANGE_ADDRESS'));
-  return persona === 'anonymous' || Boolean(LOGIN_PERSONAS[persona]);
+  return false;
 };
 
 context('UMD access scenarios', { tags: '@access-scenarios' }, () => {
@@ -82,12 +75,10 @@ context('UMD access scenarios', { tags: '@access-scenarios' }, () => {
     return { ...options, url: entry.url };
   };
 
-  const withSession = (persona, callback) => {
-    if (LOGIN_PERSONAS[persona]) {
-      cy.login(LOGIN_PERSONAS[persona]);
-    } else {
-      cy.clearCookies();
-    }
+  // Every persona checked here is session-less; clear cookies so a stray session from an
+  // earlier spec cannot make a refusal look like a pass.
+  const withSession = (_persona, callback) => {
+    cy.clearCookies();
     callback();
   };
 

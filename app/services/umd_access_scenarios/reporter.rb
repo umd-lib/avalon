@@ -22,7 +22,7 @@ class UmdAccessScenarios
     ].freeze
 
     def initialize(host: nil, namespace: nil, environment: nil, runbook: nil)
-      @host = normalize_host(host.presence || Settings.domain&.host || 'http://av-local:3000')
+      @host = normalize_host(host.presence || default_host)
       @namespace = namespace.presence || 'test'
       @environment = environment.presence || @namespace
       @runbook = runbook.presence
@@ -67,15 +67,27 @@ class UmdAccessScenarios
         next if media_object.nil?
 
         { slug: scenario.slug, description: scenario.description, id: media_object.id,
-          url: item_url(media_object), canary: scenario.canary?,
-          token_urls: token_urls(media_object), expectations: scenario.expectations }
+          url: item_url(media_object), stream_url: stream_url(media_object),
+          canary: scenario.canary?, token_urls: token_urls(media_object),
+          expectations: scenario.expectations }
       end
     end
 
     private
 
-      # Settings.domain.host carries no scheme, and a URL without one is useless to both
-      # Cypress and blackbox_exporter.
+      # Settings.domain holds the protocol, host and port separately, and all three matter:
+      # dropping the port yields http://av-local, which nothing can reach in development.
+      def default_host
+        domain = Settings.domain
+        return 'http://av-local:3000' if domain.blank? || domain.host.blank?
+
+        port = domain.port
+        suffix = port.present? && ![80, 443].include?(port.to_i) ? ":#{port}" : ''
+        "#{domain.protocol.presence || 'http'}://#{domain.host}#{suffix}"
+      end
+
+      # An explicitly supplied host may carry no scheme, and a URL without one is useless to
+      # both Cypress and blackbox_exporter.
       def normalize_host(host)
         host = host.to_s.sub(%r{/\z}, '')
         return host if host.match?(%r{\Ahttps?://})
@@ -91,6 +103,14 @@ class UmdAccessScenarios
 
       def item_url(media_object)
         "#{@host}/media_objects/#{media_object.id}"
+      end
+
+      # Gated by :read on the MasterFile, which is Avalon's streaming permission -- so this
+      # answers 200 when playback is allowed and 401 when only the metadata is. Nil for
+      # metadata-only items, which have no section to stream.
+      def stream_url(media_object)
+        section_id = media_object.section_ids.first
+        section_id && "#{@host}/master_files/#{section_id}/high.m3u8"
       end
 
       def token_urls(media_object)
@@ -147,31 +167,54 @@ class UmdAccessScenarios
           next if entry.nil?
 
           PERSONA_VANTAGES.each do |persona, vantage|
-            status = scenario.expectation_for(persona)[:page]
-            next if status.nil?
+            outcome = scenario.expectation_for(persona)
+            next if outcome[:page].nil?
 
-            (groups["http_#{status_family(status)}_#{vantage}"] ||= []) <<
-              { slug: scenario.slug, url: entry[:url], status: status }
+            add_target(groups, module_for(outcome[:page], vantage),
+                       slug: scenario.slug, url: entry[:url], status: outcome[:page])
+            add_stream_target(groups, scenario, entry, outcome, vantage)
           end
 
           add_token_target(groups, scenario, entry)
         end
       end
 
+      def add_target(groups, mod, target)
+        (groups[mod] ||= []) << target
+      end
+
+      # A 200 on the item page is a weak assertion, because the page renders whether or not
+      # playback is allowed -- an item that regressed from full access to restricted
+      # playback still answers 200. Rather than match the body for that (which would need an
+      # Avalon-specific module, and would not work anyway: the player and the restricted
+      # message are drawn by JavaScript that blackbox_exporter does not run), probe the
+      # stream endpoint, whose *status* already carries the answer. That keeps every module
+      # a plain, reusable status check.
+      def add_stream_target(groups, scenario, entry, outcome, vantage)
+        return if outcome[:stream].nil? || entry[:stream_url].blank?
+
+        status = outcome[:stream] ? 200 : 401
+        add_target(groups, module_for(status, vantage),
+                   slug: "#{scenario.slug} (stream)", url: entry[:stream_url], status: status)
+      end
+
       # The point of the token canary is that the token URL still works, which is a
       # different URL from the item -- without this it would only ever be probed
       # anonymously, checking the 401 it shares with every other hidden item.
+      #
+      # Only the item page is probed: MasterFilesController#hls_manifest reads the token
+      # from the referring page's URL, which a probe does not send.
       def add_token_target(groups, scenario, entry)
-        status = scenario.expectation_for(:token_stream)[:page]
+        outcome = scenario.expectation_for(:token_stream)
         url = entry[:token_urls][:stream]
-        return if status.nil? || url.blank?
+        return if outcome[:page].nil? || url.blank?
 
-        (groups["http_#{status_family(status)}_internet"] ||= []) <<
-          { slug: "#{scenario.slug} (token URL)", url: url, status: status }
+        add_target(groups, module_for(outcome[:page], 'internet'),
+                   slug: "#{scenario.slug} (token URL)", url: url, status: outcome[:page])
       end
 
-      def status_family(status)
-        status.between?(200, 299) ? '2xx' : status.to_s
+      def module_for(status, vantage)
+        "http_#{status.between?(200, 299) ? '2xx' : status}_#{vantage}"
       end
 
       def probes_yaml
@@ -183,12 +226,22 @@ class UmdAccessScenarios
         warning = if unavailable_modules.any?
                     <<~WARN
                       #
-                      # REQUIRES NEW MODULES: #{unavailable_modules.join(', ')}
+                      # NOT AVAILABLE YET: #{unavailable_modules.join(', ')}
                       #
-                      # Avalon answers restricted content with 401, and the blackbox_exporter defines
-                      # only 2xx and 403 modules, so these have to be requested from DevOps before
-                      # this manifest can be deployed. A http_403_* probe would report a failure for
-                      # a correct 401.
+                      # Request these from DevOps before deploying the Probes that use them, for two
+                      # different reasons:
+                      #
+                      #   * http_401_* has to be defined. Avalon answers restricted content with 401
+                      #     and the exporter offers only 2xx and 403, so an http_403_* probe would
+                      #     report a failure for a correct 401.
+                      #   * http_*_campus and http_*_vpn are documented as planned but not enabled.
+                      #
+                      # All of them are plain status checks, reusable by any application. Whether
+                      # playback is allowed is probed by URL, not by matching Avalon's markup: the
+                      # ".m3u8" targets below are gated by the streaming permission, so their
+                      # status carries the answer.
+                      #
+                      # The Probes using available modules can be deployed independently.
                     WARN
                   else
                     ''
@@ -225,11 +278,15 @@ class UmdAccessScenarios
       end
 
       def description_for(mod, targets)
-        expectation = targets.first[:status] == 200 ? 'be viewable' : "answer #{targets.first[:status]}"
         vantage = vantage_of(mod)
         article = vantage.start_with?('i') ? 'an' : 'a'
-        "Avalon access control canaries that should #{expectation} from #{article} #{vantage}-based " \
-          "user: #{targets.map { |t| t[:slug] }.join(', ')}. LIBAVALON-554."
+        "Avalon access control canaries that should #{expectation_of(mod, targets)} from " \
+          "#{article} #{vantage}-based user: #{targets.map { |t| t[:slug] }.join(', ')}. " \
+          'LIBAVALON-554.'
+      end
+
+      def expectation_of(_mod, targets)
+        targets.first[:status] == 200 ? 'answer 200' : "answer #{targets.first[:status]}"
       end
 
       def vantage_of(mod)

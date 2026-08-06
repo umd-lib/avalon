@@ -167,6 +167,16 @@ class UmdAccessScenarios
         media_object.governing_policies = [collection]
         media_object.other_identifier = [{ id: scenario.identifier, source: IDENTIFIER_SOURCE }]
         media_object.avalon_publisher = scenario.published? ? 'access scenario harness' : nil
+        apply_workflow(media_object)
+      end
+
+      # The edit form unlocks its tabs as the workflow advances, so an item built straight
+      # through the model opens with "Access Control" greyed out -- which is exactly the tab
+      # someone reviewing these items wants. MediaObjectsController does the same thing when
+      # it creates an object.
+      def apply_workflow(media_object)
+        media_object.workflow.origin = 'console'
+        media_object.workflow.last_completed_step = HYDRANT_STEPS.last.step
       end
 
       # Order matters: visibility= rewrites read_groups, so special access has to be added
