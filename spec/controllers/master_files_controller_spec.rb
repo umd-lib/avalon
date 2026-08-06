@@ -883,6 +883,48 @@ describe MasterFilesController do
       expect(get('hls_manifest', params: { id: public_master_file.id, quality: 'auto' })).to have_http_status(:ok)
     end
 
+    # UMD Customization
+    # Streaming with an access token is authorized through the ability, which accepts the
+    # token from the query parameter or the referring page's URL. The referer is what the
+    # player sends; the query parameter is what anything without a referring page -- a
+    # monitoring probe, a direct request -- can send.
+    context 'with an access token' do
+      let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private') }
+      let(:manager) { User.where(username: media_object.collection.managers.first).first }
+      let(:stream_token) do
+        FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id, user: manager)
+      end
+      let(:download_token) do
+        FactoryBot.create(:access_token, media_object_id: media_object.id, user: manager,
+                                         allow_download: true, allow_streaming: false)
+      end
+
+      it 'returns the manifest when the streaming token is a query parameter' do
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto',
+                                             access_token: stream_token.token }))
+          .to have_http_status(:ok)
+      end
+
+      it 'returns the manifest when the streaming token is in the referer' do
+        request.env['HTTP_REFERER'] = "http://test.host/media_objects/#{media_object.id}?access_token=#{stream_token.token}"
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' }))
+          .to have_http_status(:ok)
+      end
+
+      it 'refuses a download-only token' do
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto',
+                                             access_token: download_token.token }))
+          .to have_http_status(:unauthorized)
+      end
+
+      it 'refuses an unknown token' do
+        expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto',
+                                             access_token: 'not-a-real-token' }))
+          .to have_http_status(:unauthorized)
+      end
+    end
+    # End UMD Customization
+
     context 'read from solr' do
       it 'should not read from fedora' do
         master_file

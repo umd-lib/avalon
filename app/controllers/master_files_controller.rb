@@ -287,19 +287,11 @@ class MasterFilesController < ApplicationController
       end
     else
       # UMD Customization
-      # Extract access token from referer (if present) and use to determine
-      # if streaming is allowed.
-      cannot_stream = true
-
-      unless request.referer.nil?
-        access_token = Rack::Utils.parse_nested_query(URI(request.referer).query)["access_token"]
-        if access_token.present?
-          media_object_id = @master_file.media_object.id
-          cannot_stream = !AccessToken.allow_streaming_of?(access_token, media_object_id)
-        end
-      end
-
-      return head :unauthorized if cannot?(:read, @master_file) && cannot_stream
+      # Authorize through the ability rather than re-reading the access token here:
+      # ApplicationController#current_ability already takes the token from the query
+      # parameter or the referring page's URL, and :stream honors it. This is a superset of
+      # the upstream check, since :stream is `full_read` plus an active streaming token.
+      return head :unauthorized if cannot?(:stream, @master_file.media_object)
       # End UMD Customization
       @hls_streams = if quality == "auto"
                        gather_hls_streams(@master_file)
