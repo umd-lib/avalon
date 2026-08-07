@@ -393,12 +393,11 @@ collection with the following access settings:
 11.3) On the item detail page, verify that the media player is visible and that
 the item can be streamed when logged in as an authorized user.
 
-11.4) In a private/incognito browser window (not logged in and not connected to
-VPN), go to
+11.4) In a private/incognito browser window (not logged in), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
-Verify that the browse page is displayed and that you are **not** logged in.
+Verify that the browse page is displayed.
 
 11.5) In the same private/incognito window, search for the title of the
 restricted item identified in step 11.2. Verify that the item appears in the
@@ -416,7 +415,8 @@ restricted item.
 ### 12) Item-Level Override Restricts Access
 
 This section verifies that item-level override can restrict discoverability
-within a publicly discoverable standard (non *Course Reserves*) collection.
+within a publicly discoverable standard (non *Course Reserves*) collection with
+**no** special access configured.
 
 12.1) Reuse the same published item from section 11. From the item detail page,
 left-click the “Edit” button to go to the “Edit Media Object > Access Control”
@@ -434,14 +434,14 @@ page.
   “Save”. The expected results below depend on this: hiding an item does not
   take away access that Item Access grants, so it is the “Collection staff
   only” setting that refuses the anonymous user in step 12.5.
-* Verify that no UMD IP Manager or other special access are configured on the item.
+* Verify that no UMD IP Manager or other special access are configured on the
+  item.
 
-12.3) In a private/incognito browser window (not logged in and not connected to
-VPN), go to
+12.3) In a private/incognito browser window (not logged in), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
-Verify that the browse page is displayed and that you are **not** logged in.
+Verify that the browse page is displayed.
 
 12.4) In the same private/incognito window, search for the title of the item.
 Verify that the item does **not** appear in the browse/search results.
@@ -568,8 +568,7 @@ from section 12, ensure that the changes for step 12.2 (disabling parent
 permissions and hiding the item from search results) are reverted so that the
 item inherits discoverability from the collection.
 
-13.5) In a private/incognito browser window (not logged in and not connected to
-VPN), go to
+13.5) In a private/incognito browser window (not logged in), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
@@ -633,8 +632,8 @@ reserves collection by following the steps in section 6.2
 
 * Go to the collection detail page and confirm the collection belongs to the
   "Streaming Reserves" unit.
-* Left-click the "Edit" button. On the collection access control/settings
-  page, verify that no UMD IP Manager groups are configured on the collection.
+* On the collection access control/settings section, verify that no UMD IP
+  Manager groups are configured on the collection.
 
 14.3) Find or create a published item in the Course Reserves collection. If
 creating a new item, follow the steps in section 4 to create and publish the
@@ -647,12 +646,11 @@ item.
   inherits access settings from the collection.
 * Left-click "Save" if any changes were made.
 
-14.4) In a private/incognito browser window (not logged in and not connected to
-VPN), go to
+14.4) In a private/incognito browser window (not logged in), go to
 
 <https://av-test.lib.umd.edu/catalog>
 
-Verify that the browse page is displayed and that you are **not** logged in.
+Verify that the browse page is displayed.
 
 14.5) In the same private/incognito window, search for the title of the Course
 Reserves item identified in step 14.3. Verify that the item does **not** appear
