@@ -478,8 +478,9 @@ then go to the "Access Control" page. Under "Assign special access", add a
 specific Avalon user (for example, a test account you can log in as) and
 left-click "Save".
 
-12.7.2) In a new private/incognito window, log in to Avalon via CAS as that
-user, then go directly to the item detail URL.
+12.7.2) In a new private/incognito window, log in to Avalon via CAS, and use the
+"Become" option on the manage users page to log in as that user, then go
+directly to the item detail URL.
 
 Verify that:
 
