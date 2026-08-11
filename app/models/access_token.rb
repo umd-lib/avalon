@@ -36,6 +36,25 @@ class AccessToken < ApplicationRecord
     allow_streaming? && active? && self.media_object_id == media_object_id
   end
 
+  # Convenience method for accessing instance version of "allow_read_of?"
+  # with just a token string and media object id
+  def self.allow_read_of?(token, media_object_id)
+    return false if token.blank?
+
+    access_token = AccessToken.find_by(token: token)
+    return false if access_token.nil?
+
+    access_token.allow_read_of?(media_object_id)
+  end
+
+  # Returns true if this access token grants access of any kind (streaming or
+  # download) to the given media object id, false otherwise. Viewing the item
+  # page is a prerequisite for both, so this is deliberately scope-agnostic.
+  def allow_read_of?(media_object_id)
+    active? && self.media_object_id == media_object_id &&
+      (allow_streaming? || allow_download?)
+  end
+
   # Generates a URL-safe base64 encoded 12 byte token.
   def generate_token
     self.token ||= Base64.urlsafe_encode64(SecureRandom.random_bytes(12))

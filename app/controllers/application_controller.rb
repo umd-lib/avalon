@@ -215,7 +215,7 @@ class ApplicationController < ActionController::Base
     session_opts ||= {}
 
     # UMD Customization
-    access_token = request.query_parameters[:access_token]
+    access_token = access_token_for_request
     session_opts = session_opts.merge(access_token: access_token) if access_token
 
     @current_ability ||= Ability.new(current_user, session_opts.merge(remote_ip: request.ip))
@@ -300,6 +300,32 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+    # UMD Customization
+    # Returns the access token associated with this request, or nil if there is
+    # none.
+    #
+    # The token is normally carried as a query parameter, but the item page makes
+    # sub-requests the player builds itself from bare paths (the IIIF manifest,
+    # and the transcript/supplemental file URLs the manifest contains), and those
+    # do not inherit it. For those, fall back to the token in the referring page's
+    # URL -- the same lookup MasterFilesController#hls_manifest has always used to
+    # authorize streaming.
+    def access_token_for_request
+      request.query_parameters[:access_token].presence || access_token_from_referer
+    end
+
+    def access_token_from_referer
+      return nil if request.referer.blank?
+
+      query = URI(request.referer).query
+      return nil if query.blank?
+
+      Rack::Utils.parse_nested_query(query)['access_token'].presence
+    rescue URI::InvalidURIError, ArgumentError
+      nil
+    end
+    # End UMD Customization
 
     def application_name
       Settings.name || 'Avalon Media System'

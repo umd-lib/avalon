@@ -91,6 +91,15 @@ class SpeedyAF::Proxy::MediaObject < SpeedyAF::Base
   def is_streaming_reserve?
     collection&.unit&.name == Settings.streaming_reserves.unit_name
   end
+
+  # Mirrors MediaObjectBehavior#inherited_hidden?. Defined here so that
+  # Ability#discoverability_allows_read? can be evaluated against the Solr-backed
+  # proxy without reifying it (SpeedyAF#method_missing would otherwise fall through
+  # to the ActiveFedora model and clear the cached attributes on every item page).
+  def inherited_hidden?
+    return false unless collection
+    collection.default_hidden
+  end
   # End UMD Customization
 
   def lending_period

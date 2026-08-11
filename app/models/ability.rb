@@ -281,9 +281,34 @@ class Ability
       #   can :manage, Avalon::ControlledVocabulary
       # end
 
-      cannot :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+      # UMD Customization
+      cannot :full_read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+      # End UMD Customization
         media_object.disable_inheritance? && is_exclusively_inherited_from_parent?(media_object) && !is_member_of?(media_object.collection)
       end
+
+      # UMD Customization
+      # LIBAVALON-554: a published item grants metadata read to everyone, whatever
+      # its Item Access. Hiding an item withdraws that broad grant, so a hidden item
+      # is viewable only by the users its access controls actually name -- but it
+      # never withdraws access those controls do grant, so hiding a "Available to the
+      # general public" item keeps it viewable by direct URL.
+      #
+      # This has to be a "cannot": Hydra's own read_permissions rule independently
+      # grants :read from read_access_group_ssim and CanCan ORs all matching rules
+      # together, so as a "can" it silently did nothing for public or
+      # logged-in-only items.
+      #
+      # Streaming reserve items are excluded: they have their own read rule above
+      # and their discoverability behavior is unchanged by LIBAVALON-554.
+      cannot :read, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
+        !media_object.is_streaming_reserve? &&
+          !discoverability_allows_read?(media_object) &&
+          !access_controls_allow_read?(media_object) &&
+          !access_token_allows_read?(media_object) &&
+          !test_edit(media_object.id)
+      end
+      # End UMD Customization
 
       cannot :update, [MediaObject, SpeedyAF::Proxy::MediaObject] do |media_object|
         (not (full_login? || is_api_request?)) || (!is_member_of?(media_object.collection)) ||
@@ -466,6 +491,58 @@ class Ability
     end
 
     allowed
+  end
+
+  # Returns true if the given media object's discoverability settings permit an
+  # ordinary user to read (view) it.
+  #
+  # This deliberately mirrors SearchBuilder#limit_to_non_hidden_items so that the
+  # same items are hidden from Browse/Search and from the broad metadata read a
+  # published item otherwise grants: an item-level "hidden" flag always applies, and
+  # when the item has not overridden collection inheritance the collection's
+  # "default_hidden" flag applies as well.
+  def discoverability_allows_read?(media_object)
+    return false if media_object.hidden?
+    return true if media_object.disable_inheritance?
+
+    !media_object.inherited_hidden?
+  end
+
+  def access_token_allows_read?(media_object)
+    @options.present? && @options.has_key?(:access_token) &&
+      AccessToken.allow_read_of?(@options[:access_token], media_object.id)
+  end
+
+  # Returns true if the media object's own access controls admit this user, which is
+  # what makes a hidden item still reachable by direct URL. Hiding may withdraw the
+  # broad metadata read every published item grants, but it must not withdraw access
+  # the item's access controls do grant, so this covers both:
+  #
+  # * Item Access -- the ambient "public" and "registered" groups, so a hidden
+  #   "Available to the general public" item stays viewable by anyone; and
+  # * "Assign special access" -- a named Avalon user, an external group, or an
+  #   IP-based group.
+  #
+  # Both are read from the collection as well as the item when the item has not
+  # overridden inheritance, so it behaves the same whether the setting was made at
+  # the item level or the collection level.
+  #
+  # Only Solr-backed attributes are read so that this stays cheap for
+  # SpeedyAF::Proxy::MediaObject and does not force the proxy to reify.
+  def access_controls_allow_read?(media_object)
+    granted_users = Array(media_object.read_users)
+    granted_groups = Array(media_object.read_groups)
+
+    unless media_object.disable_inheritance?
+      collection = media_object.collection
+      if collection
+        granted_users += Array(collection.default_read_users)
+        granted_groups += Array(collection.default_read_groups)
+      end
+    end
+
+    (@user.present? && granted_users.include?(@user.user_key)) ||
+      (granted_groups & user_groups).any?
   end
 
   def is_course_reserves_manager?

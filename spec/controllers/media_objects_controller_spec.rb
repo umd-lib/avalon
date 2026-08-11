@@ -2705,6 +2705,61 @@ describe MediaObjectsController, type: :controller do
         expect(new_cache.to_json).to eq(new_manifest)
       end
     end
+
+    # UMD Customization
+    # LIBAVALON-554: the player builds the manifest URL itself, so the request does
+    # not carry the "access_token" query parameter that the item page was loaded
+    # with. Without it the token holder is denied read of a hidden item and the
+    # player reports "Failed to fetch Manifest."
+    context 'hidden media object' do
+      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private', hidden: true) }
+      let!(:access_token) { FactoryBot.create(:access_token, :allow_streaming, media_object_id: media_object.id) }
+
+      before do
+        sign_out :user
+      end
+
+      # Hiding withdraws the metadata read a published item grants to everyone, but
+      # not the access Item Access grants, so a hidden public item still plays.
+      it 'is retrievable without an access token when its Item Access is public' do
+        public_media_object = FactoryBot.create(:published_media_object, visibility: 'public', hidden: true)
+        get 'manifest', params: { id: public_media_object.id, format: 'json' }
+        expect(response).to have_http_status(:ok)
+      end
+
+      # Same when both settings come from the collection rather than the item.
+      it 'is retrievable when Item Access and hiding are inherited from the collection' do
+        hidden_collection = FactoryBot.create(:collection, default_hidden: true, default_visibility: 'public')
+        inherited_media_object = FactoryBot.create(:published_media_object, visibility: 'public', collection: hidden_collection)
+        get 'manifest', params: { id: inherited_media_object.id, format: 'json' }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'is not retrievable without an access token' do
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'is retrievable with the access token as a query parameter' do
+        get 'manifest', params: { id: media_object.id, format: 'json', access_token: access_token.token }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'is retrievable when the access token is only present in the referer' do
+        @request.env['HTTP_REFERER'] = media_object_url(id: media_object.id, access_token: access_token.token)
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'is not retrievable with a referer holding a token for another media object' do
+        other_media_object = FactoryBot.create(:published_media_object)
+        other_token = FactoryBot.create(:access_token, :allow_streaming, media_object_id: other_media_object.id)
+        @request.env['HTTP_REFERER'] = media_object_url(id: other_media_object.id, access_token: other_token.token)
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+    # End UMD Customization
   end
 
   describe '#tree' do
