@@ -31,3 +31,32 @@ describe 'OmniAuth strategy middleware' do
     expect(middleware_classes).to include(Devise.omniauth_configs[:lti].strategy_class)
   end
 end
+
+# Regression guard for a second, related boot-order bug found live against a
+# real Moodle launch: OmniAuth::Strategy#request_path / #callback_path
+# memoize themselves (once per middleware instance, i.e. once per process)
+# from OmniAuth.config.path_prefix on whatever request first reaches them.
+# That value is otherwise only set correctly as a side effect of devise_for
+# drawing the auth/callback routes, and routes are lazy-loaded on first
+# access -- with the OmniAuth strategy sitting *before* the router in the
+# middleware stack, "first access" ends up being the very first real
+# request's own trip through that strategy, before the router further down
+# the stack has ever run and drawn routes. That request's memoized path is
+# then stuck wrong for the rest of the process's life, even though routes
+# are correctly drawn moments later and every later request works fine --
+# invisible to a test suite where many other requests/spec runs have already
+# warmed routes by the time an LTI spec runs. Asserted here directly against
+# a fresh strategy instance rather than via Rails.application.middleware, to
+# guard the actual mechanism (path_prefix correctness) independent of route
+# state, matching how the live bug actually manifested.
+describe 'OmniAuth path_prefix' do
+  it 'is set correctly without depending on routes having been drawn' do
+    expect(OmniAuth.config.path_prefix).to eq('/users/auth')
+  end
+
+  it 'gives a freshly-instantiated :lti strategy the correct request/callback paths' do
+    strategy = Devise.omniauth_configs[:lti].strategy_class.new(->(_env) { [200, {}, ['ok']] })
+    expect(strategy.request_path).to eq('/users/auth/lti')
+    expect(strategy.callback_path).to eq('/users/auth/lti/callback')
+  end
+end
