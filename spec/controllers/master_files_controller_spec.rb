@@ -814,6 +814,38 @@ describe MasterFilesController do
     end
   end
 
+  describe '#iiif_auth_probe' do
+    let(:media_object) { FactoryBot.create(:published_media_object) }
+    let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
+    let(:public_media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
+    let(:public_master_file) { FactoryBot.create(:master_file, media_object: public_media_object) }
+
+    it 'returns unauthorized probe response (401) with invalid auth token' do
+      request.headers['Authorization'] = "Bearer bad-token"
+      expect(get('iiif_auth_probe', params: { id: master_file.id })).to have_http_status(:unauthorized)
+      parsed_response = JSON.parse(response.body)
+      expect(parsed_response["@context"]).to eq "http://iiif.io/api/auth/2/context.json"
+      expect(parsed_response["type"]).to eq "AuthProbeResult2"
+      expect(parsed_response["status"]).to eq 401
+      expect(parsed_response["header"]).to eq({ "en" => [I18n.t('iiif.auth.failureHeader')] })
+      expect(parsed_response["note"]).to eq({ "en" => [I18n.t('iiif.auth.failureDescription')] })
+    end
+
+    it 'returns successful probe response (200) with valid auth token' do
+      token = StreamToken.find_or_create_session_token(session, master_file.id)
+      request.headers['Authorization'] = "Bearer #{token.to_s}"
+      expect(get('iiif_auth_probe', params: { id: master_file.id })).to have_http_status(:ok)
+      parsed_response = JSON.parse(response.body)
+      expect(parsed_response["@context"]).to eq "http://iiif.io/api/auth/2/context.json"
+      expect(parsed_response["type"]).to eq "AuthProbeResult2"
+      expect(parsed_response["status"]).to eq 200
+    end
+
+    it 'returns ok (200) if public' do
+      expect(get('iiif_auth_probe', params: { id: public_master_file.id })).to have_http_status(:ok)
+    end
+  end
+
   describe '#iiif_auth_token' do
     render_views
     let(:media_object) { FactoryBot.create(:published_media_object, master_file: master_file) }
@@ -826,14 +858,14 @@ describe MasterFilesController do
       login_as :administrator
       get(:iiif_auth_token, params: { id: master_file.id, messageId: 1, origin: "https://example.com" })
       expect(response).to have_http_status(:ok)
-      expect(response.body.gsub(/\s+/,'')).to match /window.parent.postMessage\({"expiresIn":\d+,"accessToken":".+","messageId":"1"},"https:\/\/example.com"\);/
+      expect(response.body.gsub(/\s+/, '')).to match /window.parent.postMessage\({"@context":"http:\/\/iiif.io\/api\/auth\/2\/context.json","type":"AuthAccessToken2","accessToken":".+","expiresIn":\d+,"messageId":"1"},"https:\/\/example.com"\);/
     end
   end
 
   describe '#hls_manifest' do
     let(:media_object) { FactoryBot.create(:published_media_object) }
     let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
-    let(:public_media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+    let(:public_media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
     let(:public_master_file) { FactoryBot.create(:master_file, media_object: public_media_object) }
 
     context 'with head request' do
@@ -867,16 +899,29 @@ describe MasterFilesController do
       expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:unauthorized)
     end
 
-    it 'returns the dynamic bitrate HLS manifest' do
+    it 'returns an auto-generated variable bitrate HLS manifest' do
       login_as :administrator
       expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:ok)
       expect(response.content_type).to eq 'application/x-mpegURL; charset=utf-8'
     end
 
-    it 'returns a single quality HLS manifest' do
+    it 'returns not found (404) if the requested quality does not exist' do
       login_as :administrator
-      expect(get('hls_manifest', params: { id: master_file.id, quality: 'high' })).to have_http_status(:ok)
-      expect(response.content_type).to eq 'application/x-mpegURL; charset=utf-8'
+      expect(get('hls_manifest', params: { id: master_file.id, quality: 'high' })).to have_http_status(:not_found)
+    end
+
+    it 'redirects to a static variable bitrate HLS manifest if available' do
+      derivative = FactoryBot.create(:derivative, master_file: master_file, quality: 'auto')
+      login_as :administrator
+      expect(get('hls_manifest', params: { id: master_file.id, quality: 'auto' })).to have_http_status(:found)
+      expect(response.location).to start_with(derivative.hls_url)
+    end
+
+    it 'redirects to a single quality HLS manifest' do
+      derivative = FactoryBot.create(:derivative, master_file: master_file, quality: 'high')
+      login_as :administrator
+      expect(get('hls_manifest', params: { id: master_file.id, quality: 'high' })).to have_http_status(:found)
+      expect(response.location).to start_with(derivative.hls_url)
     end
 
     it 'returns a manifest if public' do
@@ -891,6 +936,84 @@ describe MasterFilesController do
         login_as :administrator
         get('hls_manifest', params: { id: master_file.id, quality: 'high' })
         expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+      end
+    end
+  end
+
+  describe '#stream' do
+    let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
+    let(:master_file) { FactoryBot.create(:master_file, media_object: media_object, derivatives: [derivative]) }
+    let(:derivative) { FactoryBot.create(:derivative) }
+    let(:token) { "abcdef123456" }
+
+    before do
+      allow_any_instance_of(StreamToken).to receive(:token).and_return(token)
+    end
+
+    context 'without access' do
+      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private', disable_inheritance: true) }
+
+      it 'responds with unauthorized' do
+        expect(get('stream', params: { id: master_file.id, quality: 'high' })).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'with managed content' do
+      let(:derivative) { FactoryBot.create(:derivative) }
+      it 'redirects to auto.m3u8' do
+        expect(get(:stream, params: { id: master_file.id, quality: 'high' })).to redirect_to(hls_manifest_master_file_url(id: master_file.id, quality: :high))
+      end
+
+      context 'with mp3 skip transcoded content' do
+        let(:mp3_path) { 'file:///srv/avalon/content/path/to/file.mp3' }
+        let(:derivative) { FactoryBot.build(:derivative, audio_codec: 'mp3', mime_type: 'audio/mpeg', video_codec: nil, absolute_location: mp3_path ) }
+
+        it 'redirects to stream' do
+          expect(get(:stream, params: { id: master_file.id, quality: 'high' })).to redirect_to(derivative.hls_url + "?token=#{token}")
+        end
+      end
+    end
+
+    context 'with unmanaged content' do
+      let(:hls_url) { 'http://example.com/stream-url' }
+      let(:derivative) { FactoryBot.build(:derivative, managed: false, hls_url: hls_url) }
+
+      it 'redirects to stream' do
+        expect(get(:stream, params: { id: master_file.id, quality: 'high' })).to redirect_to(derivative.hls_url + "?token=#{token}")
+      end
+
+      context 'with mp3 content' do
+        let(:hls_url) { 'http://example.com/file.mp3' }
+        let(:derivative) { FactoryBot.build(:derivative, managed: false, audio_codec: 'mp3', mime_type: 'audio/mpeg', hls_url: hls_url ) }
+
+        it 'redirects to stream' do
+          expect(get(:stream, params: { id: master_file.id, quality: 'high' })).to redirect_to(derivative.hls_url + "?token=#{token}")
+        end
+      end
+
+      context 'missing quality' do
+        context 'with other derivative' do
+          it 'redirects to first derivative' do
+            expect(derivative.quality).not_to eq 'low'
+            expect(get(:stream, params: { id: master_file.id, quality: 'low' })).to redirect_to(derivative.hls_url + "?token=#{token}")
+          end
+        end
+
+        context 'with derivative missing stream url' do
+          let(:hls_url) { "" } # nil leads to errors so using empty string
+
+          it 'returns 404 not found' do
+            expect(get(:stream, params: { id: master_file.id, quality: 'high' })).to have_http_status(:not_found)
+          end
+        end
+
+        context 'with no derivatives' do
+          let(:master_file) { FactoryBot.create(:master_file, media_object: media_object, derivatives: []) }
+
+          it 'returns 404 not found' do
+            expect(get('stream', params: { id: master_file.id, quality: 'high' })).to have_http_status(:not_found)
+          end
+        end
       end
     end
   end
@@ -1034,7 +1157,8 @@ describe MasterFilesController do
     it 'should display a flash message if file is not found' do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("ENCODE_WORK_DIR").and_return(Rails.root.join('spec').to_s)
-      allow(high_derivative).to receive(:hls_url).and_return('missing')
+      high_derivative.absolute_location = 'missing'
+      high_derivative.save!
       get :download_derivative, params: { id: master_file.id }
       expect(response).to redirect_to(edit_media_object_path(media_object))
       expect(flash[:error]).to be_present

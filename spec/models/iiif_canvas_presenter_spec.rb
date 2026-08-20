@@ -15,34 +15,121 @@
 require 'rails_helper'
 
 describe IiifCanvasPresenter do
-  let(:media_object) { FactoryBot.build(:media_object, visibility: 'private') }
+  let (:collection) { FactoryBot.build(:collection, default_visibility: 'private') }
+  let(:media_object) { FactoryBot.build(:media_object, collection: collection) }
   let(:derivative) { FactoryBot.build(:derivative) }
   let(:master_file) { FactoryBot.build(:master_file, media_object: media_object, derivatives: [derivative]) }
   let(:stream_info) { master_file.stream_details }
   let(:presenter) { described_class.new(master_file: master_file, stream_info: stream_info) }
 
   context 'auth_service' do
-    subject { presenter.display_content.first.auth_service }
+    context '1.0' do
+      subject { presenter.display_content.first.auth_service }
 
-    it 'provides a cookie auth service' do
-      expect(subject[:@id]).to eq Rails.application.routes.url_helpers.new_user_session_url(login_popup: 1)
+      it 'provides a cookie auth service' do
+        expect(subject[:@id]).to eq Rails.application.routes.url_helpers.new_user_session_url(login_popup: 1)
+      end
+
+      it 'provides a token service' do
+        token_service = subject[:service].find { |s| s[:@type] == "AuthTokenService1"}
+        expect(token_service[:@id]).to eq Rails.application.routes.url_helpers.iiif_auth_token_url(id: master_file.id)
+      end
+
+      it 'provides a logout service' do
+        logout_service = subject[:service].find { |s| s[:@type] == "AuthLogoutService1"}
+        expect(logout_service[:@id]).to eq Rails.application.routes.url_helpers.destroy_user_session_url
+      end
+
+      context 'when public media object' do
+        context 'via disable inheritance' do
+          let(:media_object) { FactoryBot.build(:media_object, collection: collection, visibility: 'public', disable_inheritance: true) }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_nil
+          end
+        end
+        context 'via inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'public') }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_nil
+          end
+        end
+      end
+      context 'when private media object' do
+        context 'via disable inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'public') }
+          let(:media_object) { FactoryBot.build(:media_object, collection: collection, visibility: 'private', disable_inheritance: true) }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_present
+          end
+        end
+        context 'via inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'private') }
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_present
+          end
+        end
+      end
     end
 
-    it 'provides a token service' do
-      token_service = subject[:service].find { |s| s[:@type] == "AuthTokenService1"}
-      expect(token_service[:@id]).to eq Rails.application.routes.url_helpers.iiif_auth_token_url(id: master_file.id)
-    end
+    context '2.0' do
+      subject { presenter.display_content.first.auth2_service }
 
-    it 'provides a logout service' do
-      logout_service = subject[:service].find { |s| s[:@type] == "AuthLogoutService1"}
-      expect(logout_service[:@id]).to eq Rails.application.routes.url_helpers.destroy_user_session_url
-    end
+      before do
+        @auth_service = subject[:service].find { |s| s[:type] == 'AuthAccessService2' } if subject.present?
+      end
 
-    context 'when public media object' do
-      let(:media_object) { FactoryBot.build(:media_object, visibility: 'public') }
+      it 'provides a probe service' do
+        expect(subject[:id]).to eq Rails.application.routes.url_helpers.iiif_auth_probe_url(id: master_file.id)
+      end
 
-      it "does not provide an auth service" do
-        expect(presenter.display_content.first.auth_service).to be_nil
+      it 'provides an auth service' do
+        expect(@auth_service[:id]).to eq Rails.application.routes.url_helpers.new_user_session_url(login_popup: 1)
+      end
+
+      it 'provides a token service' do
+        token_service = @auth_service[:service].find { |s| s[:type] == "AuthAccessTokenService2" }
+        expect(token_service[:id]).to eq Rails.application.routes.url_helpers.iiif_auth_token_url(id: master_file.id)
+      end
+
+      it 'provides a logout service' do
+        logout_service = @auth_service[:service].find { |s| s[:type] == "AuthLogoutService2" }
+        expect(logout_service[:id]).to eq Rails.application.routes.url_helpers.destroy_user_session_url
+      end
+
+      context 'when public media object' do
+        context 'via disable inheritance' do
+          let(:media_object) { FactoryBot.build(:media_object, collection: collection, visibility: 'public', disable_inheritance: true) }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_nil
+          end
+        end
+        context 'via inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'public') }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_nil
+          end
+        end
+      end
+      context 'when private media object' do
+        context 'via disable inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'public') }
+          let(:media_object) { FactoryBot.build(:media_object, collection: collection, visibility: 'private', disable_inheritance: true) }
+
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_present
+          end
+        end
+        context 'via inheritance' do
+          let (:collection) { FactoryBot.build(:collection, default_visibility: 'private') }
+          it "does not provide an auth service" do
+            expect(presenter.display_content.first.auth_service).to be_present
+          end
+        end
       end
     end
   end
@@ -95,14 +182,15 @@ describe IiifCanvasPresenter do
 
       context 'with mp3 file' do
         let(:mp3_url) { 'https://streaming.example.com/dir/file.mp3' }
-        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp3_url, mime_type: 'audio/mpeg' ) }
+        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp3_url, managed: false, mime_type: 'audio/mpeg' ) }
 
         it 'has format' do
           expect(subject.format).to eq 'audio/mpeg'
         end
 
-        it 'has progressive download url' do
-          expect(subject.url).to eq mp3_url
+        it 'has stream url without stream token' do
+          expect(subject.url).to eq Rails.application.routes.url_helpers.stream_master_file_url(derivative.master_file.id, quality: derivative.quality)
+          expect(subject.url).not_to include "token="
         end
       end
     end
@@ -123,14 +211,15 @@ describe IiifCanvasPresenter do
 
       context 'with mp4 file' do
         let(:mp4_url) { 'https://streaming.example.com/dir/file.mp4' }
-        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp4_url, mime_type: 'video/mp4' ) }
+        let(:derivative) { FactoryBot.build(:derivative, hls_url: mp4_url, managed: false, mime_type: 'video/mp4' ) }
 
         it 'has format' do
           expect(subject.format).to eq 'video/mp4'
         end
 
-        it 'has progressive download url' do
-          expect(subject.url).to eq mp4_url
+        it 'has stream url without stream token' do
+          expect(subject.url).to eq Rails.application.routes.url_helpers.stream_master_file_url(derivative.master_file.id, quality: derivative.quality)
+          expect(subject.url).not_to include "token="
         end
       end
     end
@@ -442,6 +531,10 @@ describe IiifCanvasPresenter do
 
         it "adds '[forced]' to the label" do
           expect(subject.any? { |content| content.label['eng'][0] =~ /#{caption_file.label} \[forced\]/ }).to eq true
+        end
+
+        it "serializes the caption as a caption" do
+          expect(subject.any? { |content| content.body_id =~ /supplemental_files\/#{caption_file.id}\/captions/ }).to eq true
         end
       end
 

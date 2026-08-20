@@ -13,6 +13,7 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 class IiifCanvasPresenter
+  include IiifAuthService
   include IiifSupplementalFileBehavior
 
   attr_reader :master_file, :stream_info
@@ -103,7 +104,8 @@ class IiifCanvasPresenter
 
   def video_display_content(quality, url, mimetype)
     if mimetype.present? && mimetype != 'application/x-mpegURL'
-      IIIFManifest::V3::DisplayContent.new(url, **manifest_attributes(quality, 'Video', mimetype: mimetype))
+      IIIFManifest::V3::DisplayContent.new(Rails.application.routes.url_helpers.stream_master_file_url(master_file.id, quality: quality),
+                                           **manifest_attributes(quality, 'Video', mimetype: mimetype))
     else
       IIIFManifest::V3::DisplayContent.new(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality),
                                            **manifest_attributes(quality, 'Video'))
@@ -116,7 +118,8 @@ class IiifCanvasPresenter
 
   def audio_display_content(quality, url, mimetype)
     if mimetype.present? && mimetype != 'application/x-mpegURL'
-      IIIFManifest::V3::DisplayContent.new(url, **manifest_attributes(quality, 'Sound', mimetype: mimetype))
+      IIIFManifest::V3::DisplayContent.new(Rails.application.routes.url_helpers.stream_master_file_url(master_file.id, quality: quality),
+                                           **manifest_attributes(quality, 'Sound', mimetype: mimetype))
     else
       IIIFManifest::V3::DisplayContent.new(Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality),
                                            **manifest_attributes(quality, 'Sound'))
@@ -124,7 +127,9 @@ class IiifCanvasPresenter
   end
 
   def supplementing_content_data(file)
-    tags = file.tags.reject { |t| t == 'machine_generated' }.compact
+    # Private items should not be getting returned here in the first place, but reject the
+    # tag anyways to make sure every file is being filtered correctly.
+    tags = file.tags.reject { |t| ['machine_generated', 'forced', 'private'].include?(t) }.compact
     case tags
     when ['caption']
       url = Rails.application.routes.url_helpers.captions_master_file_supplemental_file_url(master_file.id, file.id)
@@ -239,11 +244,10 @@ class IiifCanvasPresenter
       thumbnail: [{ id: thumbnail_url, type: 'Image' }]
     }.compact
 
-    if master_file.media_object.visibility == 'public'
-      media_hash
-    else
-      media_hash.merge!(auth_service: auth_service(quality))
+    if master_file.media_object.active_visibility != 'public'
+      media_hash.merge!(auth_service: auth_service(quality), auth2_service: auth2_service)
     end
+    media_hash
   end
 
   def supplemental_attributes(file, type: nil)
@@ -283,39 +287,6 @@ class IiifCanvasPresenter
                           else
                             Nokogiri::XML(nil)
                           end
-  end
-
-  def auth_service(quality)
-    {
-      "context": "http://iiif.io/api/auth/1/context.json",
-      "@id": Rails.application.routes.url_helpers.new_user_session_url(login_popup: 1),
-      "@type": "AuthCookieService1",
-      "confirmLabel": I18n.t('iiif.auth.confirmLabel'),
-      "description": I18n.t('iiif.auth.description'),
-      "failureDescription": I18n.t('iiif.auth.failureDescription'),
-      "failureHeader": I18n.t('iiif.auth.failureHeader'),
-      "header": I18n.t('iiif.auth.header'),
-      "label": I18n.t('iiif.auth.label'),
-      "profile": "http://iiif.io/api/auth/1/login",
-      "service": [
-        {
-          "@id": Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality),
-          "@type": "AuthProbeService1",
-          "profile": "http://iiif.io/api/auth/1/probe"
-        },
-        {
-          "@id": Rails.application.routes.url_helpers.iiif_auth_token_url(id: master_file.id),
-          "@type": "AuthTokenService1",
-          "profile": "http://iiif.io/api/auth/1/token"
-        },
-        {
-          "@id": Rails.application.routes.url_helpers.destroy_user_session_url,
-          "@type": "AuthLogoutService1",
-          "label": I18n.t('iiif.auth.logoutLabel'),
-          "profile": "http://iiif.io/api/auth/1/logout"
-        }
-      ]
-    }
   end
 
   def thumbnail_url

@@ -14,6 +14,11 @@ en:
       If you are an instructor, you cannot view these items in student mode.
       Please switch back to instructor mode to view. If you are a student and
       receiving this message, please contact us at <a href="mailto:%s">%s</a>.
+    lti_missing_email_error: |
+      Your account could not be created because the LMS did not provide an
+      email address for this launch. This is often a course or platform
+      privacy setting on the LMS side. Please contact us at
+      <a href="mailto:%s">%s</a> for help.
     general_auth_error: You are not authorized to access this content.
     general_500_error: There was an error with this request.
     missing_derivatives_error: |
@@ -28,6 +33,10 @@ en:
     accessibility_enforcement_error: |
       This item is unable to be published. Accessibility requirements such as a transcript or
       caption file are missing.
+    search_error: |
+      <p>There was an error with this search. This is usually caused by abnormal combinations of
+      special characters, e.x. "query,. term". Check your query and try again.</p><p>If the problem
+      persists please contact support to report this error: <a href="mailto:%s">%s</a><p>
    # UMD Customization
     umd_ip_manager_error: Unable to access IP Manager server
   access_token:

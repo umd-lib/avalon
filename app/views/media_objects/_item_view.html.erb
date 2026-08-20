@@ -92,7 +92,7 @@ Unless required by applicable law or agreed to in writing, software distributed
 </div>
 
 <% content_for :page_scripts do %>
-  <script>
+  <%= javascript_tag nonce: true do %>
     // When viewing video on smaller devices scroll to page content to fully
     // display the video player
     document.addEventListener('DOMContentLoaded', function () {
@@ -194,5 +194,5 @@ Unless required by applicable law or agreed to in writing, software distributed
         }
       }
     });
-</script>
+<% end %>
 <% end %>

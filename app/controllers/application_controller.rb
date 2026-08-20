@@ -42,6 +42,7 @@ class ApplicationController < ActionController::Base
   rescue_from RSolr::Error::Timeout, :with => :handle_solr_connection_error
   rescue_from Blacklight::Exceptions::ECONNREFUSED, :with => :handle_solr_connection_error
   rescue_from Faraday::ConnectionFailed, :with => :handle_fedora_connection_error
+  rescue_from Blacklight::Exceptions::InvalidRequest, with: :handle_search_error
 
   # Enable profiling
   if ActiveModel::Type::Boolean.new.cast(ENV['AVALON_PROFILING'])
@@ -95,12 +96,16 @@ class ApplicationController < ActionController::Base
   def find_redirect_url(auth_type, lti_group: nil)
     previous_url = session.delete(:previous_url) || session.delete(:user_return_to)
     if params['target_id']
-      # Whitelist params that are allowed to be passed through via LTI
+      # Allowlist params that are allowed to be passed through via LTI
       objects_path(params['target_id'], params.permit('t', 'position', 'token'))
     elsif params[:url]
       # Limit redirects to current host only (Fixes bug https://bugs.dlib.indiana.edu/browse/VOV-5662)
-      uri = Addressable::URI.parse(params[:url])
-      request.host == uri.host ? uri.path : root_path
+      begin
+        uri = Addressable::URI.parse(params[:url])
+        request.host == uri.host ? uri.path : root_path
+      rescue Addressable::URI::InvalidURIError
+        root_path
+      end
     elsif auth_type == 'lti' && lti_group.present?
       search_catalog_path('f[read_access_virtual_group_ssim][]' => lti_group)
     elsif previous_url
@@ -259,6 +264,16 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def handle_routing_error
+    if request.format == :json
+      render json: { errors: ["API action does not exist. Check that your URL and HTTP request method are correct."] }, status: :not_found
+    elsif request.format == :html
+      render file: Rails.root.join('public', '404.html').to_s, status: :not_found, layout: false
+    else
+      head :not_found
+    end
+  end
+
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up) do |user_params|
       user_params.permit(:username, :email, :password, :password_confirmation)
@@ -348,6 +363,15 @@ class ApplicationController < ActionController::Base
         render '/errors/fedora_connection', status: :service_unavailable
       else
         render json: { errors: [exception.message] }, status: :service_unavailable
+      end
+    end
+
+    def handle_search_error(exception)
+      if request.path == '/'
+        raise exception
+      else
+        flash[:error] = (I18n.t('errors.search_error') % [Settings.email.support, Settings.email.support]).html_safe
+        redirect_to(root_path)
       end
     end
 end

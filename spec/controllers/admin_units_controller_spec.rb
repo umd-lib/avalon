@@ -332,7 +332,7 @@ describe Admin::UnitsController, type: :controller do
       unit = Admin::Unit.find(JSON.parse(response.body)['id'])
       expect(unit.unit_admins).to eq([administrator.username])
     end
-    it "should return 422 if unit creation failed" do
+    it "should return 422 if name not provided" do
       post 'create', params: { format: 'json', admin_unit: { description: unit.description } }
       expect(response.status).to eq(422)
       expect(JSON.parse(response.body)).to include('errors')
@@ -406,8 +406,15 @@ describe Admin::UnitsController, type: :controller do
     end
 
     context "add new special access" do
-      it "user" do
-        expect { put 'update', params: { id: unit.id, submit_add_user: "Add", add_user: "test1@example.com", add_user_display: "test1" } }.to change { unit.reload.default_read_users.size }.by(1)
+      context "user" do
+        it "adds user" do
+          expect { put 'update', params: { id: unit.id, submit_add_user: "Add", add_user: "test1@example.com", add_user_display: "test1" } }.to change { unit.reload.default_read_users.size }.by(1)
+        end
+
+        it "is case insensitive" do
+          put 'update', params: { id: unit.id, submit_add_user: "Add", add_user: "Test2@example.com", add_user_display: "Test2" }
+          expect(unit.reload.default_read_users).to include("test2@example.com")
+        end
       end
 
       it "group" do

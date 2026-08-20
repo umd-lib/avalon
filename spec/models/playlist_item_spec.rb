@@ -52,7 +52,7 @@ RSpec.describe PlaylistItem, type: :model do
       end
 
       context 'when master file is readable by user' do
-        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
         let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
 
         it{ is_expected.to be_able_to(:read, playlist_item) }
@@ -71,7 +71,7 @@ RSpec.describe PlaylistItem, type: :model do
       end
 
       context 'when master file is readable by user' do
-        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
         let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
 
         it{ is_expected.to be_able_to(:read, playlist_item) }
@@ -91,7 +91,7 @@ RSpec.describe PlaylistItem, type: :model do
       end
 
       context 'when master file is readable by public' do
-        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+        let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
         let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
 
         it{ is_expected.to be_able_to(:read, playlist_item) }
@@ -111,6 +111,19 @@ RSpec.describe PlaylistItem, type: :model do
       expect(new_item.playlist_id).to eq playlist_item.playlist_id
       expect(new_item.clip_id).not_to eq playlist_item.clip_id
       expect(new_item.persisted?).to eq true
+    end
+
+    context 'copying to a new playlist' do
+      let(:new_playlist) { FactoryBot.create(:playlist, visibility: Playlist::PUBLIC) }
+
+      it 'assigns the duplicated item to the proper playlist' do
+        new_item = playlist_item.duplicate!(to_playlist: new_playlist)
+        expect(new_item.id).not_to eq playlist_item.id
+        expect(new_item.playlist_id).not_to eq playlist_item.playlist_id
+        expect(new_item.playlist_id).to eq new_playlist.id
+        expect(new_item.clip_id).not_to eq playlist_item.clip_id
+        expect(new_item.persisted?).to eq true
+      end
     end
   end
 end

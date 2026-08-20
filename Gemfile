@@ -5,7 +5,7 @@ gem 'bootsnap', require: false
 gem 'listen'
 gem 'net-smtp', require: false
 gem 'psych', '< 4'
-gem 'rails', '~>8.0', '>= 8.0.4.1'
+gem 'rails', '~>8.0', '>= 8.0.5.1'
 gem 'sprockets', '>= 4'
 # gem 'sprockets-rails'
 gem 'sqlite3'
@@ -41,19 +41,20 @@ gem 'rdf-rdfxml'
 # Samvera version pins
 gem 'blacklight', '~> 8.10'
 gem 'blacklight-access_controls', '~> 6.1'
+gem "json-ld"
 gem 'rdf', '~> 3.1'
+gem "rdf-vocab", ">= 2.1.0"
 gem 'rsolr', '~> 2.0'
 
 # Rails & Samvera Plugins
 gem 'about_page', git: 'https://github.com/avalonmediasystem/about_page.git', branch: 'main'
-gem 'active_annotations', '~> 0.6'
 gem 'activerecord-session_store', '>= 2.0.0'
 gem 'acts_as_list'
 gem 'api-pagination'
 gem 'avalon-about', git: 'https://github.com/avalonmediasystem/avalon-about.git', branch: 'main'
 gem 'bootstrap_form'
 gem 'faraday-retry'
-gem 'iiif_manifest', '~> 1.6'
+gem 'iiif_manifest', git: 'https://github.com/samvera/iiif_manifest.git', branch: 'main'
 gem 'rack-cors', require: 'rack/cors'
 gem 'rails_same_site_cookie'
 gem 'recaptcha', require: 'recaptcha/rails'
@@ -71,6 +72,7 @@ gem 'omniauth-lti', git: "https://github.com/avalonmediasystem/omniauth-lti.git"
 # UMD Customization
 gem "omniauth-rails_csrf_protection"
 # End UMD Customization
+gem 'omniauth-lti13', git: 'https://github.com/mohideen/omniauth-lti13.git', branch: 'main'
 gem "omniauth-saml", "~> 2.0", ">= 2.2.3"
 
 # Media Access & Transcoding

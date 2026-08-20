@@ -173,6 +173,9 @@ class User < ActiveRecord::Base
     if auth_hash.uid.blank?
       raise Avalon::MissingUserId
     end
+    if auth_hash.info.email.blank?
+      raise Avalon::MissingUserEmail
+    end
 
     class_id = auth_hash.extra.context_id
     if Course.where(context_id: class_id).empty?
@@ -192,7 +195,7 @@ class User < ActiveRecord::Base
   end
 
   def self.autocomplete(query, _id = nil)
-    self.where("username LIKE :q OR email LIKE :q", q: "%#{query}%").collect { |user|
+    self.where("LOWER(username) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)", q: "%#{query}%").collect { |user|
       { id: user.user_key, display: user.user_key }
     }
   end
@@ -223,4 +226,5 @@ class User < ActiveRecord::Base
 end
 
 class Avalon::MissingUserId < StandardError; end
+class Avalon::MissingUserEmail < StandardError; end
 class Avalon::DeletedUserId < StandardError; end

@@ -13,6 +13,8 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 class IiifPlaylistCanvasPresenter
+  include IiifAuthService
+  
   attr_reader :playlist_item, :stream_info, :cannot_read_item, :position
   attr_accessor :media_fragment
 
@@ -205,11 +207,10 @@ class IiifPlaylistCanvasPresenter
         thumbnail: [{ id: thumbnail_url, type: 'Image' }]
       }.compact
 
-      if master_file.media_object.visibility == 'public'
-        media_hash
-      else
-        media_hash.merge!(auth_service: auth_service(quality))
+      if master_file.media_object.active_visibility != 'public'
+        media_hash.merge!(auth_service: auth_service(quality), auth2_service: auth2_service)
       end
+      media_hash
     end
 
     def placeholder_attributes(label_content)
@@ -229,39 +230,6 @@ class IiifPlaylistCanvasPresenter
         value: marker.title,
         format: 'text/html',
         media_fragment: "t=#{marker.start_time / 1000}"
-      }
-    end
-
-    def auth_service(quality)
-      {
-        "context": "http://iiif.io/api/auth/1/context.json",
-        "@id": Rails.application.routes.url_helpers.new_user_session_url(login_popup: 1),
-        "@type": "AuthCookieService1",
-        "confirmLabel": I18n.t('iiif.auth.confirmLabel'),
-        "description": I18n.t('iiif.auth.description'),
-        "failureDescription": I18n.t('iiif.auth.failureDescription'),
-        "failureHeader": I18n.t('iiif.auth.failureHeader'),
-        "header": I18n.t('iiif.auth.header'),
-        "label": I18n.t('iiif.auth.label'),
-        "profile": "http://iiif.io/api/auth/1/login",
-        "service": [
-          {
-            "@id": Rails.application.routes.url_helpers.hls_manifest_master_file_url(master_file.id, quality: quality),
-            "@type": "AuthProbeService1",
-            "profile": "http://iiif.io/api/auth/1/probe"
-          },
-          {
-            "@id": Rails.application.routes.url_helpers.iiif_auth_token_url(id: master_file.id),
-            "@type": "AuthTokenService1",
-            "profile": "http://iiif.io/api/auth/1/token"
-          },
-          {
-            "@id": Rails.application.routes.url_helpers.destroy_user_session_url,
-            "@type": "AuthLogoutService1",
-            "label": I18n.t('iiif.auth.logoutLabel'),
-            "profile": "http://iiif.io/api/auth/1/logout"
-          }
-        ]
       }
     end
 

@@ -125,18 +125,15 @@ class PlaylistsController < ApplicationController
   def duplicate
     old_playlist = Playlist.find(params['old_playlist_id'])
     unless can? :duplicate, old_playlist
-      render json: {errors: 'You do not have sufficient privileges to copy this item'}, status: 401 and return
+      render json: { errors: 'You do not have sufficient privileges to copy this item' }, status: 401 and return
     end
     @playlist = Playlist.new(playlist_params.merge(user: current_user))
     if @playlist.save
 
-      #copy items
+      # copy items
       old_playlist.items.each do |item|
         next if item.clip.master_file.nil?
-        copy_item = item.duplicate!
-        copy_item.playlist_id  = @playlist.id
-        copy_item.save!
-        copy_item.move_to_bottom
+        item.duplicate!(to_playlist: @playlist)
       end
 
       respond_to do |format|
@@ -147,7 +144,7 @@ class PlaylistsController < ApplicationController
     else
       respond_to do |format|
         format.json do
-          render json: {errors: @playlist.errors}
+          render json: { errors: @playlist.errors }
         end
       end
     end
@@ -187,12 +184,12 @@ class PlaylistsController < ApplicationController
       playlist_items = PlaylistItem.where(id: params[:clip_ids])
       playlist_items.each do |item|
         next if item.clip.master_file.nil?
-        if (params[:action_type] == 'copy_to_playlist')
-          item = item.duplicate!
+        if params[:action_type] == 'copy_to_playlist'
+          item.duplicate!(to_playlist: @new_playlist)
+        else
+          item.playlist_id = @new_playlist.id
+          item.save!
         end
-        item.playlist_id = @new_playlist.id
-        item.save!
-        item.move_to_bottom
       end
       @playlist.save!
       @new_playlist.save!
@@ -217,34 +214,35 @@ class PlaylistsController < ApplicationController
   def manifest
     authorize! :read, @playlist
 
-    # Fetch all master files related to the playlist items in a single SpeedyAF::Base.where
-    master_file_ids = @playlist.clips.collect(&:master_file_id)
-    master_files = []
-    master_files = SpeedyAF::Proxy::MasterFile.where("id:#{master_file_ids.join(' id:')}", load_reflections: true) if master_file_ids.present?
-    media_objects = master_files.collect(&:media_object).uniq(&:id)
+    cached_manifest = Rails.cache.fetch([@playlist.cache_key_with_version, 'iiif_playlist_manifest'], expires_in: 1.week) do
+      master_files = @playlist.master_files
+      media_objects = @playlist.media_objects
 
-    # This small optimization relies on the assumption that can? :read, master_file is the same as can? :read, master_file.media_object
-    # This only optimizes the case where multiple playlist items come from the same media object
-    cannot_read_hash = {}
-    media_objects.each { |mo| cannot_read_hash[mo.id] = cannot?(:read, mo) }
+      # This small optimization relies on the assumption that can? :read, master_file is the same as can? :read, master_file.media_object
+      # This only optimizes the case where multiple playlist items come from the same media object
+      cannot_read_hash = {}
+      media_objects.each { |mo| cannot_read_hash[mo.id] = cannot?(:read, mo) }
 
-    # Condense secure_streams into single call using master_files
-    stream_info_hash = secure_stream_infos(master_files, media_objects)
+      # Condense secure_streams into single call using master_files
+      stream_info_hash = secure_stream_infos(master_files, media_objects)
 
-    canvas_presenters = @playlist.items.collect.with_index do |item, i|
-      master_file = master_files.find { |mf| mf.id == item.clip.master_file_id }
-      cannot_read_item = master_file.nil? || cannot_read_hash[master_file.media_object_id]
-      position = i + 1
-      IiifPlaylistCanvasPresenter.new(playlist_item: item, stream_info: stream_info_hash[master_file&.id], cannot_read_item: cannot_read_item, position: position, master_file: master_file)
+      canvas_presenters = @playlist.items.collect.with_index do |item, i|
+        master_file = master_files.find { |mf| mf.id == item.clip.master_file_id }
+        cannot_read_item = master_file.nil? || cannot_read_hash[master_file.media_object_id]
+        position = i + 1
+        IiifPlaylistCanvasPresenter.new(playlist_item: item, stream_info: stream_info_hash[master_file&.id], cannot_read_item: cannot_read_item, position: position, master_file: master_file)
+      end
+
+      can_edit_playlist = can? :edit, @playlist
+      presenter = IiifPlaylistManifestPresenter.new(playlist: @playlist, items: canvas_presenters, can_edit_playlist: can_edit_playlist)
+      manifest = IIIFManifest::V3::ManifestFactory.new(presenter).to_h
+
+      manifest.to_json
     end
 
-    can_edit_playlist = can? :edit, @playlist
-    presenter = IiifPlaylistManifestPresenter.new(playlist: @playlist, items: canvas_presenters, can_edit_playlist: can_edit_playlist)
-    manifest = IIIFManifest::V3::ManifestFactory.new(presenter).to_h
-
     respond_to do |wants|
-      wants.json { render json: manifest.to_json }
-      wants.html { render json: manifest.to_json }
+      wants.json { render json: cached_manifest }
+      wants.html { render json: cached_manifest }
     end
   end
 
@@ -307,31 +305,31 @@ class PlaylistsController < ApplicationController
     changed_playlist, new, changed_position, unchanged = playlist.items.
       sort_by(&:position).
       group_by do |item|
-	if item.playlist_id_was != item.playlist_id
-	  :changed_playlist
-	elsif item.position_was.nil?
-	  :new
-	elsif item.position_was != item.position
-	  :changed_position
-	else
-	  :unchanged
-	end
+      if item.playlist_id_was != item.playlist_id
+        :changed_playlist
+      elsif item.position_was.nil?
+        :new
+      elsif item.position_was != item.position
+        :changed_position
+      else
+        :unchanged
+      end
     end.values_at(:changed_playlist, :new, :changed_position, :unchanged).map(&:to_a)
     # items that will be in this playlist
     unmoved_items = unchanged
     # place items whose positions were specified
-    changed_position.map {|item| unmoved_items.insert(item.position - 1, item)}
+    changed_position.map { |item| unmoved_items.insert(item.position - 1, item) }
     # add new items at the end
-    unmoved_items = unmoved_items + new
+    unmoved_items += new
     # calculate positions
     unmoved_items.compact.
-      select {|item| item.playlist_id_was == item.playlist_id}.
+      select { |item| item.playlist_id_was == item.playlist_id }.
       each_with_index do |item, position|
-	item.position = position + 1
-      end
+      item.position = position + 1
+    end
 
     # items that have moved to another playlist
-    changed_playlist.select {|item| item.playlist_id_was != item.playlist_id}.each do |item|
+    changed_playlist.select { |item| item.playlist_id_was != item.playlist_id }.each do |item|
       item.position = nil
     end
   end

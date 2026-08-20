@@ -184,6 +184,7 @@ Rails.application.routes.draw do
       get :captions
       get :waveform
       match ':quality.m3u8', to: 'master_files#hls_manifest', via: [:get], as: :hls_manifest
+      match '/stream/:quality', to: 'master_files#stream', via: [:get], as: :stream
       get 'structure', to: 'master_files#structure', constraints: { format: 'json' }
       post 'structure', to: 'master_files#set_structure', constraints: { format: 'json' }
       delete 'structure', to: 'master_files#delete_structure', constraints: { format: 'json' }
@@ -207,6 +208,7 @@ Rails.application.routes.draw do
     end
   end
 
+  match "iiif_auth_probe/:id", to: 'master_files#iiif_auth_probe', via: [:get], as: :iiif_auth_probe
   match "iiif_auth_token/:id", to: 'master_files#iiif_auth_token', via: [:get], as: :iiif_auth_token
 
   resources :derivatives, only: [:create]
@@ -299,4 +301,12 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  # Routing errors are triggered in the middleware stack so can't be handled by
+  # a regular rescue_from block. Constraint is necessary to not break retrieval
+  # of things from active storage.
+  match '*unmatched', to: 'application#handle_routing_error', via: :all, constraints: lambda { |req|
+    req.path.exclude? 'rails/active_storage'
+    req.path.exclude? 'persona/users'
+  }
 end

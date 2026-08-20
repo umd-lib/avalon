@@ -25,7 +25,7 @@ describe MediaObjectsController, type: :controller do
 
   describe 'security' do
     let(:media_object) { FactoryBot.create(:media_object) }
-    let(:published_media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+    let(:published_media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
     let(:private_media_object) { FactoryBot.create(:published_media_object, visibility: 'private') }
     describe 'ingest api' do
       before do
@@ -305,6 +305,17 @@ describe MediaObjectsController, type: :controller do
           expect(JSON.parse(response.body)["errors"].class).to eq Array
           expect(JSON.parse(response.body)["errors"].first.class).to eq String
         end
+        it "should return 422 if required fields are missing" do
+          media_object = FactoryBot.create(:published_media_object)
+          fields = {}
+          descMetadata_fields.each { |f| fields[f] = media_object.send(f) }
+          fields[:title] = nil
+          post 'create', params: { format: 'json', fields: fields, files: [master_file], collection_id: collection.id, publish: true }
+          expect(response.status).to eq(422)
+          expect(JSON.parse(response.body)).to include('errors')
+          expect(JSON.parse(response.body)["errors"].class).to eq Array
+          expect(JSON.parse(response.body)["errors"].first.class).to eq String
+        end
         it "should create a new media_object" do
           # master_file_obj = FactoryBot.create(:master_file, master_file.slice(:files))
           media_object = FactoryBot.create(:media_object)#, sections: [master_file_obj])
@@ -567,6 +578,17 @@ describe MediaObjectsController, type: :controller do
           allow_any_instance_of(MediaObject).to receive(:save).and_return false
           allow_any_instance_of(MasterFile).to receive(:stop_processing!)
           put 'json_update', params: { format: 'json', id: media_object.id, fields: {}, collection_id: media_object.collection_id }
+          expect(response.status).to eq(422)
+          expect(JSON.parse(response.body)).to include('errors')
+          expect(JSON.parse(response.body)["errors"].class).to eq Array
+          expect(JSON.parse(response.body)["errors"].first.class).to eq String
+        end
+        it "should return 422 if required fields are missing" do
+          media_object = FactoryBot.create(:published_media_object)
+          fields = {}
+          descMetadata_fields.each { |f| fields[f] = media_object.send(f) }
+          fields[:title] = nil
+          put 'json_update', params: { format: 'json', id: media_object.id, fields: { title: nil }, files: [master_file], collection_id: collection.id }
           expect(response.status).to eq(422)
           expect(JSON.parse(response.body)).to include('errors')
           expect(JSON.parse(response.body)["errors"].class).to eq Array
@@ -1139,7 +1161,7 @@ describe MediaObjectsController, type: :controller do
   end
 
   describe "#show" do
-    let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+    let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
 
     context "Known items should be retrievable" do
       context 'with fedora 3 pid' do
@@ -1349,7 +1371,7 @@ describe MediaObjectsController, type: :controller do
 
           context "from collection" do
             let(:inherited_group_member) { FactoryBot.create(:user) }
-            let(:inherited_group) { FactoryBot.create(:group, users: [inherited_group_member]) }
+            let(:inherited_group) { FactoryBot.create(:group, users: [inherited_group_member.username]) }
             let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private', collection: collection) }
             let(:collection) { FactoryBot.create(:collection, default_read_groups: [inherited_group.name]) }
 
@@ -1406,7 +1428,7 @@ describe MediaObjectsController, type: :controller do
 
           context "from unit" do
             let(:inherited_group_member) { FactoryBot.create(:user) }
-            let(:inherited_group) { FactoryBot.create(:group, users: [inherited_group_member]) }
+            let(:inherited_group) { FactoryBot.create(:group, users: [inherited_group_member.username]) }
             let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'private', collection: collection) }
             let(:collection) { FactoryBot.create(:collection, unit: unit) }
             let(:unit) { FactoryBot.create(:unit, default_read_groups: [inherited_group.name]) }
@@ -1516,7 +1538,7 @@ describe MediaObjectsController, type: :controller do
     end
 
     context "Conditional Share partials should be rendered" do
-      let!(:media_object) { FactoryBot.create(:published_media_object, :with_master_file, visibility: 'public') }
+      let!(:media_object) { FactoryBot.create(:published_media_object, :with_master_file, visibility: 'public', disable_inheritance: true) }
       let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
       let(:cache) { Rails.cache }
 
@@ -2082,7 +2104,7 @@ describe MediaObjectsController, type: :controller do
     end
 
     around(:example) do |example|
-      # In Rails 5.1+ this can be restricted to whitelist jobs allowed to be performed
+      # In Rails 5.1+ this can be restricted to allowlist jobs to be performed
       perform_enqueued_jobs { example.run }
     end
 
@@ -2364,9 +2386,15 @@ describe MediaObjectsController, type: :controller do
       before(:each) { login_user media_object.collection.managers.first }
 
       context "grant and revoke special read access" do
-        it "grants and revokes special read access to users" do
-          expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_user: user, submit_add_user: 'Add' } }.to change { media_object.reload.read_users }.from([]).to([user])
-          expect {put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_user: user, submit_remove_user: 'Remove' } }.to change { media_object.reload.read_users }.from([user]).to([])
+        context "users" do
+          it "grants and revokes special read access to users" do
+            expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_user: user, submit_add_user: 'Add' } }.to change { media_object.reload.read_users }.from([]).to([user])
+            expect {put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', remove_user: user, submit_remove_user: 'Remove' } }.to change { media_object.reload.read_users }.from([user]).to([])
+          end
+          it "is case insensitive" do
+            put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_user: "Test1@example.com", submit_add_user: 'Add' }
+            expect(media_object.reload.read_users).to include("test1@example.com")
+          end
         end
         it "grants and revokes special read access to groups" do
           expect { put :update, params: { id: media_object.id, step: 'access-control', donot_advance: 'true', add_group: group, submit_add_group: 'Add' } }.to change { media_object.reload.read_groups }.from([]).to([group])
@@ -2629,8 +2657,18 @@ describe MediaObjectsController, type: :controller do
   end
 
   describe '#manifest' do
+    let(:media_object) { FactoryBot.create(:published_media_object, :with_master_file) }
     before do
       login_as :administrator
+    end
+
+    it "returns a IIIF manifest" do
+      get :manifest, format: 'json', params: { id: media_object.id }
+      expect(response).to have_http_status(200)
+      parsed_response = JSON.parse(response.body)
+      expect(parsed_response['@context']).to include "http://iiif.io/api/presentation/3/context.json"
+      expect(parsed_response['type']).to eq 'Manifest'
+      expect(parsed_response['items']).not_to be_empty
     end
 
     context 'with supplemental files' do
@@ -2656,29 +2694,54 @@ describe MediaObjectsController, type: :controller do
         expect(mf_rendering['id']).to eq Rails.application.routes.url_helpers.master_file_supplemental_file_url(id: mf_supplemental_file.id, master_file_id: master_file.id)
       end
     end
- 
+
     context 'read from solr' do
       let!(:master_file) { FactoryBot.create(:master_file, :with_derivative, media_object: media_object) }
-      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
-      it 'should not read from fedora' do
-        perform_enqueued_jobs(only: MediaObjectIndexingJob)
-        WebMock.reset_executed_requests!
-        get 'manifest', params: { id: media_object.id, format: 'json' }
-        expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+
+      context 'with disable inheritance' do
+        let(:collection) { FactoryBot.create(:collection, default_visibility: 'private') }
+        let(:media_object) { FactoryBot.create(:published_media_object, collection: collection, visibility: 'public', disable_inheritance: true) }
+
+        it 'should not read from fedora' do
+          perform_enqueued_jobs(only: MediaObjectIndexingJob)
+          WebMock.reset_executed_requests!
+          get 'manifest', params: { id: media_object.id, format: 'json' }
+          expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+        end
+      end
+
+      context 'with inheritance' do
+        let(:collection) { FactoryBot.create(:collection, default_visibility: 'public') }
+        let(:media_object) { FactoryBot.create(:published_media_object, collection: collection, visibility: 'private', disable_inheritance: false) }
+
+        it 'should not read from fedora' do
+          perform_enqueued_jobs(only: MediaObjectIndexingJob)
+          WebMock.reset_executed_requests!
+          get 'manifest', params: { id: media_object.id, format: 'json' }
+          expect(a_request(:any, /#{ActiveFedora.fedora.base_uri}/)).not_to have_been_made
+        end
       end
     end
 
     context 'caching' do
-      let!(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+      let(:collection) { FactoryBot.create(:collection, default_visibility: 'public') }
+      let!(:media_object) { FactoryBot.create(:published_media_object, collection: collection) }
+      let!(:master_file) { FactoryBot.create(:master_file, :with_derivative, media_object: media_object) }
       let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
-      subject { Rails.cache.read("#{SpeedyAF::Proxy::MediaObject.find(media_object.id).cache_key_with_version}/iiif_manifest") }
+      subject { Rails.cache.read("#{SpeedyAF::Proxy::MediaObject.find(media_object.id).cache_key_with_version}/#{media_object.active_visibility}/iiif_manifest") }
 
       before do
         allow(Rails).to receive(:cache).and_return(memory_store)
         # Range ids are randomly generated. Force the id to a known value so we can equality match.
         allow_any_instance_of(IIIFManifest::V3::ManifestBuilder::RangeBuilder).to receive(:path).and_return('range')
-        presenter = IiifManifestPresenter.new(media_object: media_object, master_files: [])
+        stream_info_hash = { media_object.section_ids.first => {stream_hls: [{quality: master_file.derivatives.first.quality, mimetype: master_file.derivatives.first.mime_type, url: master_file.derivatives.first.hls_url}]} }
+        allow_any_instance_of(MediaObjectsController).to receive(:secure_stream_infos).and_return(stream_info_hash)
+        allow_any_instance_of(IIIFManifest::V3::ManifestBuilder::IIIFManifest::AnnotationPage).to receive(:index).and_return(1)
+        allow_any_instance_of(IIIFManifest::V3::ManifestBuilder::IIIFManifest::Annotation).to receive(:index).and_return(1)
+        @canvas_presenters = media_object.sections.collect { |mf| IiifCanvasPresenter.new(master_file: mf, stream_info: stream_info_hash[mf.id]) }
+        presenter = IiifManifestPresenter.new(media_object: media_object, master_files: @canvas_presenters)
         @manifest = IIIFManifest::V3::ManifestFactory.new(presenter).to_h
+        @manifest["thumbnail"] = [{ "id" => presenter.thumbnail, "type" => 'Image' }] if presenter.thumbnail
       end
 
       after do
@@ -2687,22 +2750,37 @@ describe MediaObjectsController, type: :controller do
 
       it 'should cache the iiif manifest' do
         get 'manifest', params: { id: media_object.id, format: 'json' }
-        expect(subject).to be_a(IIIFManifest::V3::ManifestBuilder::IIIFManifest)
-        expect(subject.to_json).to eq(@manifest.to_json)
+        expect(subject).to eq(@manifest.to_json)
       end
 
       it 'should update the cache when the media object is updated' do
         get 'manifest', params: { id: media_object.id, format: 'json' }
-        old_manifest = subject.to_json
+        old_manifest = subject
         media_object.title = 'Test'
         media_object.save!
-        new_presenter = IiifManifestPresenter.new(media_object: media_object, master_files: [])
-        new_manifest = IIIFManifest::V3::ManifestFactory.new(new_presenter).to_h.to_json
+        @canvas_presenters.first.master_file.reload
+        new_presenter = IiifManifestPresenter.new(media_object: media_object, master_files: @canvas_presenters)
+        new_manifest = IIIFManifest::V3::ManifestFactory.new(new_presenter).to_h
+        new_manifest["thumbnail"] = [{ "id" => new_presenter.thumbnail, "type" => 'Image' }] if new_presenter.thumbnail
         get 'manifest', params: { id: media_object.id, format: 'json' }
-        new_cache = Rails.cache.read("#{SpeedyAF::Proxy::MediaObject.find(media_object.id).cache_key_with_version}/iiif_manifest")
-        expect(new_cache).to be_a(IIIFManifest::V3::ManifestBuilder::IIIFManifest)
-        expect(new_cache.to_json).to_not eq(old_manifest)
-        expect(new_cache.to_json).to eq(new_manifest)
+        new_cache = Rails.cache.read("#{SpeedyAF::Proxy::MediaObject.find(media_object.id).cache_key_with_version}/#{media_object.active_visibility}/iiif_manifest")
+        expect(new_cache).to_not eq(old_manifest)
+        expect(new_cache).to eq(new_manifest.to_json)
+      end
+
+      it 'should update the cache when the collection default_visibility is updated' do
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        old_manifest = subject
+        media_object.collection.default_visibility = 'private'
+        media_object.collection.save!
+        @canvas_presenters.first.master_file.reload
+        new_presenter = IiifManifestPresenter.new(media_object: media_object, master_files: @canvas_presenters)
+        new_manifest = IIIFManifest::V3::ManifestFactory.new(new_presenter).to_h
+        new_manifest["thumbnail"] = [{ "id" => new_presenter.thumbnail, "type" => 'Image' }] if new_presenter.thumbnail
+        get 'manifest', params: { id: media_object.id, format: 'json' }
+        new_cache = Rails.cache.read("#{SpeedyAF::Proxy::MediaObject.find(media_object.id).cache_key_with_version}/#{media_object.active_visibility}/iiif_manifest")
+        expect(new_cache).to_not eq(old_manifest)
+        expect(new_cache).to eq(new_manifest.to_json)
       end
     end
   end

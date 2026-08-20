@@ -23,6 +23,7 @@ class Admin::Collection < ActiveFedora::Base
   include Identifier
   include MigrationTarget
   include AdminCollectionBehavior
+  include UserNormalization
 
   belongs_to :governing_policy, class_name: 'ActiveFedora::Base', predicate: ActiveFedora::RDF::ProjectHydra.isGovernedBy
   belongs_to :unit, class_name: 'Admin::Unit', predicate: Avalon::RDFVocab::Bibframe.heldBy
@@ -78,7 +79,8 @@ class Admin::Collection < ActiveFedora::Base
   around_save :reindex_members, if: Proc.new { |c| c.name_changed? or c.unit_changed? }
   around_save :return_checkouts, if: Proc.new { |c| c.cdl_enabled_changed? && c.cdl_enabled == false }
   before_create :create_dropbox_directory!
-  
+  before_save :normalize_user_values
+
   before_destroy :destroy_dropbox_directory!
 
   # UMD Customization
@@ -189,7 +191,7 @@ class Admin::Collection < ActiveFedora::Base
       solr_doc["name_uniq_si"] = self.name.downcase.gsub(/\s+/,'') if self.name.present?
       solr_doc["has_poster_bsi"] = !(poster.content.nil? || poster.content == '')
       solr_doc["inheritable_read_access_person_ssim"] = default_read_users
-      solr_doc["inheritable_read_access_group_ssim"] = default_read_groups
+      solr_doc["inheritable_read_access_group_ssim"] = default_read_groups + collect_ips_for_index(default_ip_read_groups)
     end
   end
 
@@ -274,16 +276,6 @@ class Admin::Collection < ActiveFedora::Base
       private_default_visibility!
     else
       raise ArgumentError, "Invalid default visibility: #{value.inspect}"
-    end
-  end
-
-  def default_visibility
-    if default_read_groups.include? Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_PUBLIC
-      Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PUBLIC
-    elsif default_read_groups.include? Hydra::AccessControls::AccessRight::PERMISSION_TEXT_VALUE_AUTHENTICATED
-      Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_AUTHENTICATED
-    else
-      Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PRIVATE
     end
   end
 
@@ -417,5 +409,13 @@ class Admin::Collection < ActiveFedora::Base
 
     def unpublished_count
       media_objects.count - published_count
+    end
+
+    def collect_ips_for_index ip_strings
+      ips = ip_strings.collect do |ip|
+        addr = IPAddr.new(ip) rescue next
+        addr.to_range.map(&:to_s)
+      end
+      ips.flatten.compact.uniq || []
     end
 end

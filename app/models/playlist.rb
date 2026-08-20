@@ -21,6 +21,12 @@ class Playlist < ActiveRecord::Base
     where(query, *term_array)
   end
   scope :with_tag, ->(tag_filter) { where("tags LIKE ?", "%\n- #{tag_filter}\n%") }
+  scope :contains_master_file, ->(master_file_id) { joins(:clips).merge(AvalonClip.from_master_file(master_file_id)).distinct }
+  scope :contains_media_object, lambda { |media_object|
+    sections = media_object.section_ids || []
+    # Initialize from blank ActiveRecord relation to avoid unnecessary loading into memory
+    sections.reduce(Playlist.none) { |r, s| r.or(Playlist.contains_master_file(s)) }
+  }
 
   validates :user, presence: true
   validates :title, presence: true
@@ -105,6 +111,18 @@ class Playlist < ActiveRecord::Base
     sections = SpeedyAF::Proxy::MasterFile.where("id:#{section_ids.join(' id:')}")
     cached_clips.map {|c| c.master_file = sections.find { |mf| mf.id == c.master_file_id }}
     cached_clips
+  end
+
+  def master_files
+    return @master_files unless @master_files.nil?
+
+    # Fetch all master files related to the playlist items in a single SpeedyAF::Base.where
+    master_file_ids = clips.collect(&:master_file_id)
+    @master_files = master_file_ids.present? ? SpeedyAF::Proxy::MasterFile.where("id:#{master_file_ids.join(' id:')}", load_reflections: true) : []
+  end
+
+  def media_objects
+    @media_objects ||= master_files.collect(&:media_object).uniq(&:id).compact
   end
 
   class << self

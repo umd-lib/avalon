@@ -252,23 +252,26 @@ class MasterFilesController < ApplicationController
 
   def get_frame
     mimeType = "image/jpeg"
-    content = if params[:offset]
-      authorize! :edit, @master_file, message: "You do not have sufficient privileges to edit this file"
-      opts = { type: params[:type], size: params[:size], offset: params[:offset].to_f * 1000, preview: true }
-      @master_file.extract_still(opts)
-    else
-      # UMD Customization
-      authorize! :minimal_read, @master_file, message: "You do not have sufficient privileges to view this file"
-      # End UMD Customization
-      whitelist = ["thumbnail", "poster"]
-      if whitelist.include? params[:type]
-        ds = @master_file.send(params[:type].to_sym)
-        mimeType = ds.mime_type
-        ds.content
-      end
-    end
-    if content
-      send_data content, filename: "#{params[:type]}-#{@master_file.id.split(':')[1]}", disposition: :inline, type: mimeType
+    file = if params[:offset]
+             authorize! :edit, @master_file, message: "You do not have sufficient privileges to edit this file"
+             opts = { type: params[:type], size: params[:size], offset: params[:offset].to_f * 1000, preview: true }
+             Rails.cache.fetch([@master_file.cache_key_with_version, params[:type], params[:offset]]) do
+               { content: @master_file.extract_still(opts), mimetype: mimeType }
+             end
+           else
+             # UMD Customization
+             authorize! :minimal_read, @master_file, message: "You do not have sufficient privileges to view this file"
+             # End UMD Customization
+             allowlist = ["thumbnail", "poster"]
+             if allowlist.include? params[:type]
+               Rails.cache.fetch([@master_file.cache_key_with_version, params[:type]]) do
+                 image = @master_file.send(params[:type].to_sym)
+                 { content: image.content, mimetype: image.mime_type || mimeType }
+               end
+             end
+           end
+    if file[:content]
+      send_data file[:content], filename: "#{params[:type]}-#{@master_file.id.split(':')[1]}", disposition: :inline, type: file[:mimetype]
     elsif @master_file.is_video?
       redirect_to ActionController::Base.helpers.asset_path('video_icon.png')
     else
@@ -301,11 +304,30 @@ class MasterFilesController < ApplicationController
 
       return head :unauthorized if cannot?(:read, @master_file) && cannot_stream
       # End UMD Customization
-      @hls_streams = if quality == "auto"
-                       gather_hls_streams(@master_file)
-                     else
-                       hls_stream(@master_file, quality)
-                     end
+      stream = hls_stream(@master_file, quality).first
+      case stream
+      when nil
+        render plain: 'Not Found', status: :not_found unless quality == 'auto'
+        @hls_streams = gather_hls_streams(@master_file)
+      else
+        redirect_to(stream[:url], allow_other_host: true)
+      end
+    end
+  end
+
+  def stream
+    return head :unauthorized if cannot?(:read, @master_file)
+    stream = file_stream(@master_file, params[:quality])
+
+    if stream.nil?
+      return head :not_found
+    elsif stream[:mimetype] == 'application/x-mpegURL'
+      redirect_to hls_manifest_master_file_url
+    elsif stream[:url]&.split('?')&.first.blank?
+      # an empty master file hls_url will result in a stream url with only the query fragment including the token
+      return head :not_found
+    else
+      redirect_to(stream[:url], allow_other_host: true)
     end
   end
 
@@ -332,12 +354,20 @@ class MasterFilesController < ApplicationController
     redirect_to edit_media_object_path(@master_file.media_object_id, step: 'structure')
   end
 
+  def iiif_auth_probe
+    auth_token = request.headers['Authorization']&.sub('Bearer ', '')
+    return render json: iiif_auth_probe_resp(success: false), status: :unauthorized unless StreamToken.valid_token?(auth_token, @master_file.id) || can?(:read, @master_file)
+
+    render json: iiif_auth_probe_resp(success: true), status: :ok
+  end
+
   def iiif_auth_token
+    message_id = params[:messageId]
+    origin = params[:origin]
+
     if cannot? :read, @master_file
-      head :unauthorized
+      render 'iiif_auth_token_error', layout: false, locals: { message_id: message_id }, status: :unauthorized
     else
-      message_id = params[:messageId]
-      origin = params[:origin]
       access_token = StreamToken.find_or_create_session_token(session, @master_file.id)
       expires = (StreamToken.find_by(token: access_token).expires - Time.now.utc).to_i
       render 'iiif_auth_token', layout: false, locals: { message_id: message_id, origin: origin, access_token: access_token, expires: expires }
@@ -424,7 +454,7 @@ protected
   end
 
   def set_masterfile_proxy
-    @master_file = SpeedyAF::Proxy::MasterFile.find(params[:id], load_reflections: true)
+    @master_file = SpeedyAF::Proxy::MasterFile.find(params[:id], load_reflections: [:media_object, :derivatives])
     set_masterfile if @master_file.nil?
     @master_file
   rescue SpeedyAF::RecordNotFound
@@ -467,6 +497,13 @@ protected
     hls_stream = stream_info[:stream_hls].select { |stream| stream[:quality] == quality }
     unnest_wowza_stream(hls_stream&.first) if Settings.streaming.server.to_sym == :wowza
     hls_stream
+  end
+
+  def file_stream(master_file, quality)
+    stream_info = secure_streams(master_file.stream_details, master_file.media_object_id)
+    file_stream = stream_info[:stream_hls].find { |stream| stream[:quality] == quality }
+    file_stream ||= stream_info[:stream_hls].first
+    file_stream
   end
 
   def unnest_wowza_stream(stream)
@@ -514,5 +551,15 @@ private
     end
     width = width.to_i
     [width, height]
+  end
+
+  def iiif_auth_probe_resp(success: false)
+    {
+      "@context": "http://iiif.io/api/auth/2/context.json",
+      "type": "AuthProbeResult2",
+      "status": success ? 200 : 401,
+      "header": success ? nil : { "en": [I18n.t('iiif.auth.failureHeader')] },
+      "note": success ? nil : { "en": [I18n.t('iiif.auth.failureDescription')] }
+    }.compact
   end
 end

@@ -494,9 +494,10 @@ describe CatalogController do
           end
         end
 
-        it 'should raise error on other non-quote related invalid request' do
+        it 'should not raise error on other non-quote related invalid request' do
           allow_any_instance_of(Blacklight::SearchService).to receive(:search_results).and_raise(Blacklight::Exceptions::InvalidRequest)
-          expect { get 'index', params: { q: 'Test' } }.to raise_error(Blacklight::Exceptions::InvalidRequest)
+          expect(get 'index', params: { q: 'Test' }).to redirect_to(root_path)
+          expect(flash[:error]).to be_present
         end
       end
     end
@@ -540,6 +541,64 @@ describe CatalogController do
           expect(response).to render_template('catalog/index')
           expect(assigns(:response).documents.count).to eq 1
           expect(assigns(:response).documents.map(&:id)).to contain_exactly(media_object.id)
+        end
+      end
+
+      context 'item access facet' do
+        let(:collection) { FactoryBot.create(:collection, default_visibility: 'private') }
+        let(:media_object) { FactoryBot.create(:fully_searchable_media_object, avalon_uploader: 'archivist1', collection: collection, disable_inheritance: disable_inheritance, visibility: visibility) }
+        let(:disable_inheritance) { false }
+        let(:visibility) { 'private' }
+
+        before do
+          login_as :administrator
+        end
+
+        context 'inheritance' do
+          it 'should show the object as private' do
+            get :index, params: { 'f' => { 'read_access_group_ssim' => ['private'] } }
+            expect(assigns(:response).documents.count).to eq 1
+            expect(assigns(:response).documents.map(&:id)).to contain_exactly(media_object.id)
+          end
+
+          context 'with a saved non-active visibility' do
+            let(:visibility) { 'public' }
+
+            it 'should show the object as private' do
+              get :index, params: { 'f' => { 'read_access_group_ssim' => ['public'] } }
+              expect(assigns(:response).documents.count).to eq 0
+              expect(assigns(:response)["responseHeader"]["params"]["facet.query"]).not_to be_blank
+              expect(assigns(:response)["facet_counts"]["facet_queries"]).not_to be_blank
+              get :index, params: { 'f' => { 'read_access_group_ssim' => ['private'] } }
+              expect(assigns(:response).documents.count).to eq 1
+              expect(assigns(:response).documents.map(&:id)).to contain_exactly(media_object.id)
+            end
+          end
+        end
+        context 'disable inheritance' do
+          let(:disable_inheritance) { true }
+          let(:visibility) { 'public' }
+
+          it 'should show the object as public' do
+            get :index, params: { 'f' => { 'read_access_group_ssim' => ['public'] } }
+            expect(assigns(:response).documents.count).to eq 1
+            expect(assigns(:response).documents.map(&:id)).to contain_exactly(media_object.id)
+          end
+        end
+
+        context 'as end-user' do
+          before do
+            login_as :user
+          end
+
+          it 'should not query facet' do
+            get :index, params: { 'f' => { 'read_access_group_ssim' => ['public'] } }
+            expect(assigns(:response).documents.count).to eq 0
+            expect(assigns(:response)["responseHeader"]["params"]["facet.query"]).to be_blank
+            expect(assigns(:response)["facet_counts"]["facet_queries"]).to be_blank
+            expect(assigns(:response)["responseHeader"]["params"]["facet.field"]).not_to include "read_access_group_ssim"
+            expect(assigns(:response)["facet_counts"]["facet_fields"].keys).not_to include "read_access_group_ssim"
+          end
         end
       end
     end

@@ -39,7 +39,7 @@ RSpec.describe PlaylistItemsController, type: :controller do
   let(:playlist) { FactoryBot.create(:playlist, user: playlist_owner) }
   let(:playlist_item) { FactoryBot.create(:playlist_item, playlist: playlist, clip: clip) }
   let(:master_file) { FactoryBot.create(:master_file, media_object: media_object) }
-  let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public') }
+  let(:media_object) { FactoryBot.create(:published_media_object, visibility: 'public', disable_inheritance: true) }
   let(:clip) { AvalonClip.create(master_file: master_file) }
 
   describe 'security' do
@@ -107,12 +107,12 @@ RSpec.describe PlaylistItemsController, type: :controller do
         end.to change(PlaylistItem, :count).by(1)
       end
 
-      it 'creates a new AvalonAnnotation' do
+      it 'creates a new Annotation' do
         expect do
           post :create, params: { playlist_id: playlist.to_param, playlist_item: valid_attributes }, session: valid_session
-        end.to change(AvalonAnnotation, :count).by(1)
-        expect(AvalonAnnotation.last.start_time).to eq (0.0)
-        expect(AvalonAnnotation.last.end_time).to eq (97000.0)
+        end.to change(Annotation, :count).by(1)
+        expect(Annotation.last.start_time).to eq (0.0)
+        expect(Annotation.last.end_time).to eq (97000.0)
       end
 
       it 'adds the Playlist Item to the playlist' do
