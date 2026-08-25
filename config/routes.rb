@@ -302,6 +302,10 @@ Rails.application.routes.draw do
     end
   end
 
+  # UMD Customization
+  health_check_routes
+  # End UMD Customization
+
   # Routing errors are triggered in the middleware stack so can't be handled by
   # a regular rescue_from block. Constraint is necessary to not break retrieval
   # of things from active storage.
