@@ -124,7 +124,13 @@ class ApplicationController < ActionController::Base
       end
 
       logger.debug "Redirecting to Course Reserve Page for #{params['context_id']}"
-      collection = Admin::Collection.all.find { |collection| collection&.unit&.name == Settings.streaming_reserves.unit_name }
+      collection = SpeedyAF::Proxy::Admin::Collection.where("unit_ssi: \"#{Settings.streaming_reserves.unit_name}\"").to_a.first
+
+      if collection.nil?
+        logger.error "Course Reserves collection not found for unit: #{Settings.streaming_reserves.unit_name}"
+        flash[:error] = "Course Reserves is not available"
+        return root_path
+      end
 
       "/collections/#{collection.id}/course_reserves?course_id=#{params['context_id']}"
     else

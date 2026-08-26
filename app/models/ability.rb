@@ -482,7 +482,7 @@ class Ability
   end
 
   def self.course_reserves_collection
-    @course_reserves_collection ||= Admin::Collection.all.find { |collection| collection.unit&.name == Settings.streaming_reserves.unit_name }
+    @course_reserves_collection ||= SpeedyAF::Proxy::Admin::Collection.where("unit_ssi: \"#{Settings.streaming_reserves.unit_name}\"").to_a.first
   end
 
   def self.clear_course_reserves_collection_cache
