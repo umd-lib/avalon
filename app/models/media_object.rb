@@ -496,13 +496,22 @@ class MediaObject < ActiveFedora::Base
   
   # UMD Customization
   def is_streaming_reserve?
-    collection&.unit&.name == Settings.streaming_reserves.unit_name
+    collection_unit&.name == Settings.streaming_reserves.unit_name
   end
 
   def allow_aeon_request?
     return false if Settings.disallow_aeon_request.collections.include?(collection&.name)
-    return false if Settings.disallow_aeon_request.units.include?(collection&.unit&.name)
+    return false if Settings.disallow_aeon_request.units.include?(collection_unit&.name)
     true
+  end
+
+  def collection_unit
+    return nil unless collection_id.present?
+    @collection_unit ||= begin
+      SpeedyAF::Proxy::Admin::Collection.find(collection_id)&.unit
+    rescue ActiveFedora::ObjectNotFoundError, Ldp::Gone
+      nil
+    end
   end
   # End UMD Customization
 
