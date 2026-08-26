@@ -507,7 +507,11 @@ class MediaObject < ActiveFedora::Base
 
   def collection_unit
     return nil unless collection_id.present?
-    SpeedyAF::Proxy::Admin::Collection.find(collection_id).unit
+    @collection_unit ||= begin
+      SpeedyAF::Proxy::Admin::Collection.find(collection_id)&.unit
+    rescue ActiveFedora::ObjectNotFoundError, Ldp::Gone
+      nil
+    end
   end
   # End UMD Customization
 
