@@ -74,8 +74,12 @@ class CollectionsController < CatalogController
 
     @media_and_metadata = docs.filter_map do |solr_doc|
       mo = SpeedyAF::Proxy::MediaObject.find(solr_doc['id'])
-      leases = mo.leases.select { |lease| lease.inherited_read_groups.include?(course_id) }
-      [mo, solr_doc] if leases.empty? || leases.any?(&:lease_is_active?)
+      lease_ids = Array(solr_doc['isGovernedBy_ssim'])
+      leases = lease_ids.map { |lid| SpeedyAF::Proxy::Lease.find(lid) rescue nil }.compact
+                        .select { |l| l.attrs[:lease_type] == 'external' }
+
+      active = leases.empty? || leases.any?(&:lease_is_active?)
+      [mo, solr_doc] if active
     end
   end
 
