@@ -73,7 +73,7 @@ class CollectionsController < CatalogController
     docs = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
     @media_and_metadata = docs.filter_map do |solr_doc|
-      mo = MediaObject.find(solr_doc['id'])
+      mo = SpeedyAF::Proxy::MediaObject.find(solr_doc['id'])
       leases = mo.leases.select { |lease| lease.inherited_read_groups.include?(course_id) }
       [mo, solr_doc] if leases.empty? || leases.any?(&:lease_is_active?)
     end
