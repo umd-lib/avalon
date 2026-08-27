@@ -127,7 +127,7 @@ class AccessToken < ApplicationRecord
   def media_object_not_in_streaming_reserves_unit
     if media_object_id.present? && media_object_exists?
       media_object = MediaObject.find(media_object_id)
-      if media_object&.collection&.unit&.name == Settings.streaming_reserves.unit_name
+      if media_object&.is_streaming_reserve?
         errors.add(:media_object_id, 'is in the streaming reserves unit and cannot be accessed with a token.')
       end
     end

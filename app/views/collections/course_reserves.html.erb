@@ -14,19 +14,19 @@
     </div>
     <% for media_object, solr_doc in @media_and_metadata %>
       <div class="list-group-item list-group-item-action">
-        <h2> <%= link_to media_object.title, "/master_files/" + media_object.master_files.first.id + "/embed" %> </h2>
+        <h2> <%= link_to media_object.title, "/master_files/" + media_object.sections.first.id + "/embed" %> </h2>
 
-        <%= link_to image_tag("/master_files/" + media_object.master_files.first.id + "/thumbnail", class: 'result-thumbnail block'),
-              "/master_files/" + media_object.master_files.first.id + "/embed" %>
+        <%= link_to image_tag("/master_files/" + media_object.sections.first.id + "/thumbnail", class: 'result-thumbnail block'),
+              "/master_files/" + media_object.sections.first.id + "/embed" %>
 
         <%# UMD Customization %>
-        <% if media_object.master_files.first.has_transcripts? %>
+        <% if media_object.sections.first.has_transcripts? %>
           <p>
-            <% transcripts = media_object.master_files.first.supplemental_file_transcripts %>
+            <% transcripts = media_object.sections.first.supplemental_file_transcripts %>
             <% transcripts.each_with_index do |transcript_file, index| %>
               <% language_suffix = " (#{LanguageTerm.find(transcript_file.language).text})" %>
               <% link_title = I18n.t('course_reserves.transcript_download') + language_suffix %>
-              <%= link_to link_title, "/master_files/" + media_object.master_files.first.id + "/supplemental_files/" + transcript_file.id.to_s %>
+              <%= link_to link_title, "/master_files/" + media_object.sections.first.id + "/supplemental_files/" + transcript_file.id.to_s %>
               <% if transcripts.size > (index + 1) %><br/><% end %>
             <% end %>
           </p>

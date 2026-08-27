@@ -73,9 +73,14 @@ class CollectionsController < CatalogController
     docs = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
     @media_and_metadata = docs.filter_map do |solr_doc|
-      mo = MediaObject.find(solr_doc['id'])
-      leases = mo.leases.select { |lease| lease.inherited_read_groups.include?(course_id) }
-      [mo, solr_doc] if leases.empty? || leases.any?(&:lease_is_active?)
+      mo = SpeedyAF::Proxy::MediaObject.find(solr_doc['id'])
+      lease_ids = Array(solr_doc['isGovernedBy_ssim'])
+      leases = lease_ids.map { |lid| SpeedyAF::Proxy::Lease.find(lid) rescue nil }.compact
+                        .select { |l| l.attrs[:lease_type] == 'external' }
+                        .select { |l| l.attrs[:inheritable_read_access_group] == course_id }
+
+      active = leases.empty? || leases.any?(&:lease_is_active?)
+      [mo, solr_doc] if active
     end
   end
 
