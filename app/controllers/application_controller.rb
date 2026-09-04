@@ -122,16 +122,16 @@ class ApplicationController < ActionController::Base
     # reference the media object route in routes.rb
     if params['target_id'] == 'course_reserves'
 
-      if params['context_id'] == nil
-        logger.warn "No form data found, params['context_id'] is nil"
+      if lti_group == nil
+        logger.warn "lti_group is nil"
         notice_text = "LTI Redirect URL failed"
         redirect_to root_path, flash: { error: notice_text.html_safe }
       end
 
-      logger.debug "Redirecting to Course Reserve Page for #{params['context_id']}"
+      logger.debug "Redirecting to Course Reserve Page for #{lti_group}"
       collection = Admin::Collection.all.find { |collection| collection&.unit&.name == Settings.streaming_reserves.unit_name }
 
-      "/collections/#{collection.id}/course_reserves?course_id=#{params['context_id']}"
+      "/collections/#{collection.id}/course_reserves?course_id=#{lti_group}"
     else
       logger.debug "Getting regular LTI Redirect URL"
       find_redirect_url(auth_type, lti_group: lti_group)

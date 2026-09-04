@@ -179,16 +179,16 @@ class User < ActiveRecord::Base
 
     class_id = auth_hash.extra.context_id
     if Course.where(context_id: class_id).empty?
-    # UMD Customization
-    # Use Term name + initial part of Course Name as the Avalon course name
-    class_name = "#{auth_hash.extra.raw_info.custom_course_term_name} #{auth_hash.extra.raw_info.context_title.split(":")[0]}".strip
-    # End UMD Customization
-    Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
+      # UMD Customization
+      # Use Term name + initial part of Course Name as the Avalon course name
+      class_name = "#{auth_hash.extra.custom["course_term_name"]} #{auth_hash.extra.context_title.to_s.split(":")[0]}".strip
+      # End UMD Customization
+      Course.create :context_id => class_id, :label => auth_hash.extra.consumer.context_label, :title => class_name unless class_name.nil?
     end
     
     # UMD Customization
     # Creating a dummy email based on the context_id and the streaming hostname (Canvas doesn't provide an email)
-    email = auth_hash.info.email || class_id + '@' + ENV['SETTINGS__DOMAIN__HOST']
+    email = class_id + '@' + ENV['SETTINGS__DOMAIN__HOST']
     # Using Avalon course name as the username to be more readable
     find_or_create_by_username_or_email(class_name, email, 'lti')
     # End UMD Customization
