@@ -703,6 +703,19 @@ the Course Reserves item and verify that:
 * a 401 Unauthorized response code is displayed in the "Network" tab of the
 browser tools.
 
+8.11.4) In the private/incognito window, go directly to the Course Reserves
+page for the "Digitized Items" collection created in step 8.2, replacing
+`<collection_id>` with that collection's id:
+
+`https://av-test.lib.umd.edu/collections/<collection_id>/course_reserves?course_id=test-course-context-id`
+
+Verify that:
+
+* a page asking you to open the page from your Canvas course is displayed
+  (not an "Internal Server Error" page)
+* a 401 Unauthorized response code is displayed in the "Network" tab of the
+browser tools.
+
 ### 8) robots.txt
 
 **Note:** This step cannot be tested in the local development environment.

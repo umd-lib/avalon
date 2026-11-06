@@ -1,0 +1,19 @@
+<%# UMD Customization %>
+<%# Shown when the Course Reserves page is opened without an Canvas (LTI) course session, %>
+<%# e.g. from a bookmark, a shared link, or after the session has expired. %>
+<div class="card">
+  <div class="card-header">
+    <h1 class="page-title"><%= t('course_reserves.unavailable.title') %></h1>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-warning">
+      <p><%= t('course_reserves.unavailable.message_html') %></p>
+      <p class="mb-0"><%= t('course_reserves.unavailable.instructions') %></p>
+    </div>
+    <div class="card-footer">
+      <h4>Contact Us</h4>
+      <p>Contact Course Reserves Staff at <a href="mailto:askmckres@umd.edu">askmckres@umd.edu</a></p>
+    </div>
+  </div>
+</div>
+<%# End UMD Customization %>

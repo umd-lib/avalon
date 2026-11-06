@@ -191,4 +191,77 @@ describe CollectionsController, type: :controller do
       end
     end
   end
+
+  # UMD Customization
+  describe '#course_reserves' do
+    let(:course_id) { '24eee5f140077bd1767f89fcd61c8e239bc45b49' }
+    let(:course_query) { "read_access_virtual_group_ssim:#{course_id} AND has_model_ssim:MediaObject" }
+
+    before { allow(ActiveFedora::SolrService).to receive(:get).and_call_original }
+
+    shared_examples 'course reserves unavailable' do
+      it 'shows how to reopen the page from Canvas instead of a server error' do
+        get :course_reserves, params: { id: collection.id, course_id: course_id }
+        expect(response).to have_http_status(:unauthorized)
+        expect(response).to render_template('collections/course_reserves_unavailable')
+      end
+
+      it 'does not query Solr for course items' do
+        get :course_reserves, params: { id: collection.id, course_id: course_id }
+        expect(ActiveFedora::SolrService).not_to have_received(:get).with(/read_access_virtual_group_ssim/, anything)
+      end
+    end
+
+    context 'when not signed in (e.g. a bookmarked or shared link)' do
+      it_behaves_like 'course reserves unavailable'
+    end
+
+    context 'when signed in without a uid' do
+      before { login_as :user, uid: nil }
+
+      it_behaves_like 'course reserves unavailable'
+    end
+
+    context 'when signed in through the Canvas (LTI) launch' do
+      let!(:media_object) { FactoryBot.create(:published_media_object, :with_master_file, read_groups: [course_id]) }
+
+      before { login_as :user, uid: "#{course_id}@av.lib.umd.edu" }
+
+      it "lists the course's items" do
+        get :course_reserves, params: { id: collection.id, course_id: course_id }
+        expect(response).to have_http_status(:ok)
+        expect(response).to render_template('collections/course_reserves')
+        expect(ActiveFedora::SolrService).to have_received(:get).with(course_query, hash_including(rows: 0))
+        expect(assigns(:media_and_metadata).map { |mo, _doc| mo.id }).to eq([media_object.id])
+      end
+
+      it 'uses the course from the signed-in user, not the course_id param' do
+        get :course_reserves, params: { id: collection.id, course_id: 'some-other-course' }
+        expect(ActiveFedora::SolrService).to have_received(:get).with(course_query, hash_including(rows: 0))
+      end
+
+      context 'when one of the course items has no sections' do
+        let!(:item_without_sections) { FactoryBot.create(:published_media_object, read_groups: [course_id]) }
+
+        it 'leaves that item out, lists the others, and logs a warning' do
+          allow(Rails.logger).to receive(:warn).and_call_original
+          get :course_reserves, params: { id: collection.id, course_id: course_id }
+          expect(response).to have_http_status(:ok)
+          expect(assigns(:media_and_metadata).map { |mo, _doc| mo.id }).to eq([media_object.id])
+          expect(Rails.logger).to have_received(:warn).with(/#{item_without_sections.id}.*no sections/)
+        end
+
+        context 'when the page is rendered' do
+          render_views
+
+          it 'renders the page instead of a server error' do
+            get :course_reserves, params: { id: collection.id, course_id: course_id }
+            expect(response).to have_http_status(:ok)
+            expect(response.body).to include("/master_files/#{media_object.sections.first.id}/embed")
+          end
+        end
+      end
+    end
+  end
+  # End UMD Customization
 end
