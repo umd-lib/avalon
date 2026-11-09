@@ -42,6 +42,10 @@ en:
       download_only: download
   course_reserves:
     transcript_download: "Download Transcript"
+    unavailable:
+      title: "Avalon Streaming Reserves"
+      message_html: "Items are digitized and available through the Library Streaming Media module. Streaming Media Reserves can be accessed from anywhere through ELMS. For more information, please see our \"How to Find Streaming Media Reserves Tutorial\" at <a href=\"https://www.lib.umd.edu/find/reserves/students\">https://www.lib.umd.edu/find/reserves/students</a>."
+      instructions: "Access to these items is restricted to your course in ELMS. Please return to your course and select the Streaming Media Reserves link again. Bookmarks and shared links to this page will not work."
   # End UMD Customization
   media_object:
     empty_share_link: ""

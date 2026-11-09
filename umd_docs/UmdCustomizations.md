@@ -112,6 +112,20 @@ Jira links:
 
 * <https://umd-dit.atlassian.net/browse/LIBAVALON-438>
 
+### Course Reserves - Page opened outside Canvas
+
+The Course Reserves page (`/collections/:id/course_reserves`) gets the course
+from the user signed in by the Canvas (LTI) launch, not from the `course_id` URL
+parameter. When there is no such user (the page was opened from a bookmark or a
+shared link, or the session expired), the page now shows a message asking the
+user to reopen it from their Canvas course, with a 401 Unauthorized status.
+Previously this case built an invalid Solr query and returned a 500 Internal
+Server Error.
+
+Items with no sections (nothing to play) are left out of the Course Reserves
+page, and a warning naming the item and course is logged ("Course Reserves:
+skipping ..."). Previously one such item caused a 500 error for the whole page.
+
 ----
 [libavalon197]: https://umd-dit.atlassian.net/browse/LIBAVALON-197
 [libavalon198]: https://umd-dit.atlassian.net/browse/LIBAVALON-198

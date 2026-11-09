@@ -65,26 +65,50 @@ class CollectionsController < CatalogController
 
   # UMD Customization
   def course_reserves
+    # The course comes from the user signed in by the Canvas (LTI) launch, never from the
+    # course_id URL param. Without one (page opened from a bookmark or shared link, or the
+    # session expired), show how to get back in rather than running an invalid Solr query.
     course_id = current_user&.uid&.split('@')&.first
-    query = "read_access_virtual_group_ssim:#{course_id} AND has_model_ssim:MediaObject"
+    return render('course_reserves_unavailable', status: :unauthorized) if course_id.blank?
+
+    @media_and_metadata = course_reserves_items(course_id)
+  end
+
+  private
+
+  def course_reserves_items(course_id)
+    query = "read_access_virtual_group_ssim:#{RSolr.solr_escape(course_id)} AND has_model_ssim:MediaObject"
     meta_response = ActiveFedora::SolrService.get(query, rows: 0)
     total_items = meta_response['response']['numFound'] || 0
     query_params = { fq: "workflow_published_sim:Published", sort: "title_ssort asc", rows: total_items }
     docs = ActiveFedora::SolrService.get(query, query_params)['response']['docs'] ||= []
 
-    @media_and_metadata = docs.filter_map do |solr_doc|
-      mo = SpeedyAF::Proxy::MediaObject.find(solr_doc['id'])
-      lease_ids = Array(solr_doc['isGovernedBy_ssim'])
-      leases = lease_ids.map { |lid| SpeedyAF::Proxy::Lease.find(lid) rescue nil }.compact
-                        .select { |l| l.attrs[:lease_type] == 'external' }
-                        .select { |l| l.attrs[:inheritable_read_access_group] == course_id }
-
-      active = leases.empty? || leases.any?(&:lease_is_active?)
-      [mo, solr_doc] if active
-    end
+    docs.filter_map { |solr_doc| course_reserves_entry(solr_doc, course_id) }
   end
 
-  private
+  # Returns [media_object, solr_doc, first_section] for an item to list, or nil to leave it out:
+  # its course lease isn't active, or it has no section to play (which would break the page).
+  def course_reserves_entry(solr_doc, course_id)
+    return nil unless course_lease_active?(solr_doc, course_id)
+
+    mo = SpeedyAF::Proxy::MediaObject.find(solr_doc['id'])
+    section = mo.sections.first
+    if section.nil?
+      Rails.logger.warn "Course Reserves: skipping #{mo.id} for course #{course_id}; it has no sections"
+      return nil
+    end
+
+    [mo, solr_doc, section]
+  end
+
+  def course_lease_active?(solr_doc, course_id)
+    lease_ids = Array(solr_doc['isGovernedBy_ssim'])
+    leases = lease_ids.map { |lid| SpeedyAF::Proxy::Lease.find(lid) rescue nil }.compact
+                      .select { |l| l.attrs[:lease_type] == 'external' }
+                      .select { |l| l.attrs[:inheritable_read_access_group] == course_id }
+
+    leases.empty? || leases.any?(&:lease_is_active?)
+  end
 
   def contains_course_id?(document, id)
     return false unless document.include?('read_access_group_ssim')
